@@ -540,7 +540,7 @@ src/test/java/
 | 13 | Resource pack | Vanilla-only; pack is a Phase 5 stretch |
 | 14 | Particle shedding | Phase 4 |
 | 15 | Fusion animation | ~2s ramping progress + particle burst |
-| 16 | Paper target | 1.20.4+ |
+| 16 | Paper target | 26.1.2 stable (Java 25) — Minecraft 26.1+ requires Java 25 |
 | 17 | Config format | YAML + `/fusion reload`; hardcoded defaults overridable by YAML |
 | 18 | Machine persistence | Flat `machines.yml` in plugin data folder, loaded on startup |
 | 19 | Multi-world | World whitelist, default `*` |
@@ -566,7 +566,7 @@ A single vertical slice that proves the whole loop with the minimum surface.
 
 **The fusion:** Diamond Sword (Target) + Nether Star (Ingredient) → Nova Sword. Swing → nearby mobs pushed outward + particle burst.
 
-- [ ] Project scaffold (Maven/Gradle, Paper 1.20.4 dependency, plugin.yml)
+- [x] Project scaffold (Gradle Kotlin DSL, Paper 26.1.2 dependency, plugin.yml)
 - [ ] `Modifier` interface + `ModifierContext` (only the fields NOVA uses)
 - [ ] `ModifierRegistry` with exactly one modifier: NOVA
 - [ ] `LatentRegistry` loading one config entry: `NETHER_STAR: [NOVA]`

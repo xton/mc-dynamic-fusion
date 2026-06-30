@@ -1,0 +1,6 @@
+# Latent modifier identities for ingredient items.
+# Phase Zero ships exactly one entry to prove the config-load path.
+# Only special/rare items carry latent modifiers; common items contribute nothing.
+latent_modifiers:
+  NETHER_STAR:
+    - NOVA

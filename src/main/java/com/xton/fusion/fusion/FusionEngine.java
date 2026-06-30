@@ -1,0 +1,92 @@
+package com.xton.fusion.fusion;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.bukkit.Material;
+import org.bukkit.inventory.ItemStack;
+
+import com.xton.fusion.item.FusedItemFactory;
+import com.xton.fusion.item.FusedItemReader;
+import com.xton.fusion.item.LatentRegistry;
+
+/**
+ * Core merge logic. Fusion is asymmetric: the Target defines the output base
+ * type and carries its existing modifiers forward; the Ingredient is consumed,
+ * contributing its latent modifiers.
+ *
+ * <p>Duplicates are kept (no dedupe). The modifier cap is a technical guard,
+ * not a balance lever — excess is dropped from the tail.
+ */
+public final class FusionEngine {
+
+    private final LatentRegistry latent;
+    private final FusedItemReader reader;
+    private final FusedItemFactory factory;
+    private final int maxModifiers;
+    private final int maxGeneration;
+
+    public FusionEngine(LatentRegistry latent,
+                        FusedItemReader reader,
+                        FusedItemFactory factory,
+                        int maxModifiers,
+                        int maxGeneration) {
+        this.latent = latent;
+        this.reader = reader;
+        this.factory = factory;
+        this.maxModifiers = maxModifiers;
+        this.maxGeneration = maxGeneration;
+    }
+
+    public FusionResult fuse(ItemStack target, ItemStack ingredient) {
+        if (isEmpty(target)) {
+            return FusionResult.fail("Hold a weapon to enhance in your main hand.");
+        }
+        if (isEmpty(ingredient)) {
+            return FusionResult.fail("Hold an ingredient in your off hand.");
+        }
+
+        List<String> contributed = latent.get(ingredient.getType());
+        if (contributed.isEmpty()) {
+            return FusionResult.fail(pretty(ingredient.getType()) + " has no latent magic to give.");
+        }
+
+        int generation = reader.generation(target) + 1;
+        if (generation > maxGeneration) {
+            return FusionResult.fail("This weapon has reached its maximum fusion depth.");
+        }
+
+        List<String> merged = new ArrayList<>();
+        if (reader.isFused(target)) {
+            merged.addAll(reader.readModifierIds(target));
+        }
+        merged.addAll(contributed);
+        if (merged.size() > maxModifiers) {
+            merged = new ArrayList<>(merged.subList(0, maxModifiers));
+        }
+
+        String fusedFrom = pretty(target.getType()) + " + " + pretty(ingredient.getType());
+        ItemStack output = factory.create(target.getType(), merged, generation, fusedFrom);
+        return FusionResult.ok(output);
+    }
+
+    private static boolean isEmpty(ItemStack item) {
+        return item == null || item.getType() == Material.AIR || item.getAmount() <= 0;
+    }
+
+    /** {@code NETHER_STAR} -> {@code "Nether Star"}. */
+    static String pretty(Material material) {
+        String[] words = material.name().toLowerCase().split("_");
+        StringBuilder sb = new StringBuilder();
+        for (String word : words) {
+            if (word.isEmpty()) {
+                continue;
+            }
+            if (sb.length() > 0) {
+                sb.append(' ');
+            }
+            sb.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+        }
+        return sb.toString();
+    }
+}

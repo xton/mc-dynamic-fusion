@@ -1,0 +1,34 @@
+name: build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Install both JDKs: Gradle 8.14 runs on 21, and uses 25 as the
+      # Java toolchain to compile/test against the Java 25 paper-api.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            21
+            25
+
+      - name: Build
+        env:
+          JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
+        run: ./gradlew build --no-daemon "-Porg.gradle.java.installations.paths=${{ env.JAVA_HOME_25_X64 }}"
+
+      - name: Upload plugin jar
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-jar
+          path: build/libs/*.jar

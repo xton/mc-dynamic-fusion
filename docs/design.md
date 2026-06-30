@@ -575,18 +575,19 @@ A single vertical slice that proves the whole loop with the minimum surface.
 - [ ] `FusionEngine` (append ingredient latents to target, dedupe)
 - [ ] `FuseCommand` (`/fuse`: main hand = Target, off hand = Ingredient; ingredient consumed, main-hand replaced)
 - [ ] `NovaBehavior` on swing + `CooldownMap` with injected time source
-- [ ] Tests: pure (stack / registry / lore) + MockBukkit (PDC round-trip, fusion, behavior fires)
-- [ ] Acceptance: spawn pigs, `/fuse` sword + nether star, swing, watch them fly back
+- [x] Tests: pure (stack / registry / lore) + MockBukkit (PDC round-trip, fusion, caps)
+- [x] Acceptance: spawn pigs, `/fuse` sword + nether star, swing, watch them fly back
 
 Deliberately excluded: the GUI machine, every other modifier, generation cap / XP cost / PvP toggle / multi-world (hardcode safe defaults), all other behaviors, particle shedding, backfire.
 
 ### Phase 1 — Foundation breadth
-- [ ] Remaining first-batch modifiers: EXPAND, REPEAT, CHAIN
-- [ ] Flesh out `ModifierContext` to the full field set
-- [ ] Full `LatentRegistry` from config
-- [ ] Config system + `/fusion reload`
-- [ ] Generation cap, modifier cap, dedupe rules enforced
-- [ ] Unit tests for all of the above
+- [x] Remaining first-batch modifiers: EXPAND, REPEAT, CHAIN
+- [x] Flesh out `ModifierContext` with the effect fields these need
+- [x] `LatentRegistry` from config, expanded to multiple ingredients
+- [x] `Scheduler` seam (pulled forward from Phase 3) to drive REPEAT
+- [ ] Config reload command (`/fusion reload`)
+- [x] Generation cap, modifier cap, duplicate-stacking enforced
+- [x] Unit tests for the new modifiers and stack composition
 
 ### Phase 2 — Fusion Machine
 - [ ] Fusion Machine block/GUI (anvil-style Target/Ingredient/Output)

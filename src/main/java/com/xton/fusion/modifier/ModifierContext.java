@@ -22,6 +22,9 @@ public class ModifierContext {
     private double power;
     private double amplifier = 1.0; // running potency multiplier (AMPLIFY compounds this)
     private boolean radial;
+    private double expandBonus;     // EXPAND adds to the effect radius (stacks)
+    private int chainCount;         // CHAIN: extra entities to hop to (stacks)
+    private int repeatCount;        // REPEAT: extra times the effect fires (stacks)
 
     public Player getCaster() {
         return caster;
@@ -74,6 +77,33 @@ public class ModifierContext {
 
     public ModifierContext setRadial(boolean radial) {
         this.radial = radial;
+        return this;
+    }
+
+    public double getExpandBonus() {
+        return expandBonus;
+    }
+
+    public ModifierContext addExpandBonus(double bonus) {
+        this.expandBonus += bonus;
+        return this;
+    }
+
+    public int getChainCount() {
+        return chainCount;
+    }
+
+    public ModifierContext addChainCount(int count) {
+        this.chainCount += count;
+        return this;
+    }
+
+    public int getRepeatCount() {
+        return repeatCount;
+    }
+
+    public ModifierContext addRepeatCount(int count) {
+        this.repeatCount += count;
         return this;
     }
 }

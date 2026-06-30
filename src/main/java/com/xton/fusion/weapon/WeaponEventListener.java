@@ -12,26 +12,25 @@ import org.bukkit.inventory.ItemStack;
 import com.xton.fusion.item.FusedItemReader;
 import com.xton.fusion.modifier.ModifierRegistry;
 import com.xton.fusion.modifier.ModifierStack;
-import com.xton.fusion.modifier.impl.NovaModifier;
 import com.xton.fusion.util.CooldownMap;
-import com.xton.fusion.weapon.behaviors.NovaBehavior;
+import com.xton.fusion.weapon.behaviors.SwingEffectBehavior;
 
-/** Routes melee swings to weapon behaviours. */
+/** Routes melee swings of fused weapons to the swing-effect behaviour. */
 public final class WeaponEventListener implements Listener {
 
     private final FusedItemReader reader;
     private final ModifierRegistry registry;
-    private final NovaBehavior nova;
-    private final CooldownMap novaCooldown;
+    private final SwingEffectBehavior swingEffect;
+    private final CooldownMap cooldown;
 
     public WeaponEventListener(FusedItemReader reader,
                                ModifierRegistry registry,
-                               NovaBehavior nova,
-                               CooldownMap novaCooldown) {
+                               SwingEffectBehavior swingEffect,
+                               CooldownMap cooldown) {
         this.reader = reader;
         this.registry = registry;
-        this.nova = nova;
-        this.novaCooldown = novaCooldown;
+        this.swingEffect = swingEffect;
+        this.cooldown = cooldown;
     }
 
     @EventHandler
@@ -45,13 +44,13 @@ public final class WeaponEventListener implements Listener {
             return;
         }
         List<String> ids = reader.readModifierIds(hand);
-        if (!ids.contains(NovaModifier.ID)) {
-            return;
-        }
-        if (!novaCooldown.tryUse(player.getUniqueId())) {
-            return;
-        }
         ModifierStack stack = registry.resolve(ids);
-        nova.execute(player, stack);
+        if (stack.isEmpty()) {
+            return; // fused, but no implemented modifiers to act on
+        }
+        if (!cooldown.tryUse(player.getUniqueId())) {
+            return;
+        }
+        swingEffect.execute(player, stack);
     }
 }

@@ -1,6 +1,25 @@
 # Latent modifier identities for ingredient items.
-# Phase Zero ships exactly one entry to prove the config-load path.
 # Only special/rare items carry latent modifiers; common items contribute nothing.
+# Re-fusing stacks modifiers (duplicates are kept), so combining ingredients
+# compounds their effects.
 latent_modifiers:
+  # NOVA — all-directions burst
   NETHER_STAR:
     - NOVA
+  # EXPAND — widen the area
+  HEART_OF_THE_SEA:
+    - EXPAND
+  MAGMA_CREAM:
+    - EXPAND
+  # CHAIN — hop to nearby entities
+  STRING:
+    - CHAIN
+  ECHO_SHARD:
+    - CHAIN
+  # REPEAT — fire several times
+  RABBIT_FOOT:
+    - REPEAT
+  SLIME_BALL:
+    - REPEAT
+  CHORUS_FRUIT:
+    - REPEAT

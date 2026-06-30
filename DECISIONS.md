@@ -211,3 +211,29 @@ ingredient contributes its stack) and command parsing **are** unit-tested
 Action-bar reason text and rename-to-name need a live client. The registry
 merge is a load-time fix; confirm sword + amethyst shard now fuses (MINING) and
 the other new ingredients work. See `docs/uat/uat-round-2.md`.
+
+---
+
+## UAT round 3 — feedback fixes (2026-06-30)
+
+- ↳ **Right-clicking the machine no longer triggers the weapon.** Right-clicking
+  an interactive block fires an arm-swing animation, which `PlayerAnimationEvent`
+  (our swing trigger) sees — so opening the anvil fired the held weapon's effect.
+  `WeaponEventListener` now records each player's last right-click tick and
+  ignores a swing on the same/next tick as a right-click. (Would also have
+  misfired on any interactive block, not just ours.)
+- ↳ **Invalid-fusion feedback moved from the action bar into the result slot.**
+  The round-2 action bar was **invisible** because the in-game HUD isn't drawn
+  while a container/anvil screen is open. Now, when both inputs are present but
+  can't fuse, the **result slot shows a red barrier** named "Can't fuse:
+  <reason>" — persistent and in-screen. Nothing is shown mid-setup (only one
+  input). The barrier isn't takeable (clicking the result re-checks and refuses).
+  Removed the dead action-bar/throttle code.
+- ↳ **Rename now sticks on the taken item.** Round 2 applied the rename only in
+  the preview (`onPrepare`); `onClick` delivered the raw fusion output, so the
+  taken weapon kept the default "Fusion Weapon" name. Extracted a shared
+  `applyRename` helper used by both the preview and the take.
+
+### Verification gap (please UAT)
+All three need a live client (right-click vs attack timing; the in-GUI barrier;
+the renamed taken item). Build green, 29 tests.

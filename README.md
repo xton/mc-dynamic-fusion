@@ -39,9 +39,47 @@ folder and restart.
 ## Tests
 
 ```bash
-./gradlew test
+./gradlew test      # or: make test
 ```
 
 - **Pure unit tests** (no server): modifier logic, latent registry, lore,
   cooldown timing.
 - **MockBukkit tests**: PDC round-trip and the fusion engine.
+
+## Functional smoke test (Docker)
+
+Boots a real Paper server with the plugin installed and asserts it loads
+cleanly (enables, is listed, no errors). Requires Docker. Runs in CI and
+locally:
+
+```bash
+make smoke
+```
+
+## Local UAT — play it yourself
+
+Spin up a real Paper server with the plugin, joinable from your own Minecraft
+client, so you can swing the Nova Sword for real.
+
+```bash
+cp docker/.env.example docker/.env   # then set MC_USERNAME to your username
+make uat                             # builds the jar and starts localhost:25565
+```
+
+Then:
+
+1. Connect your Minecraft client to **localhost** (server must match your
+   client version — defaults to Paper 26.1.2).
+2. You're opped on join. Give yourself the ingredients:
+   `/give @s minecraft:diamond_sword` and `/give @s minecraft:nether_star`.
+3. Sword in main hand, Nether Star in off hand (press **F** to swap), then
+   `/fuse`.
+4. Swing the Nova Sword near some mobs and watch them fly outward.
+
+Iterate after code changes with `make rebuild` (rebuilds the jar and restarts
+the server), `make logs` to tail output, and `make down` to stop it.
+
+> Automated *gameplay* assertions (a bot that joins and fuses) aren't included
+> yet: headless clients like mineflayer don't speak the 26.x protocol at the
+> time of writing. The smoke test covers clean loading; human UAT covers the
+> fun part.

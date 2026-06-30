@@ -76,6 +76,19 @@ class FusionEngineTest {
     }
 
     @Test
+    void fusedIngredientContributesItsStackPlusLatent() {
+        FusionEngine engine = engine(8, 5);
+        // A fused sword (NOVA) used as the ingredient should hand over its stack.
+        ItemStack fusedSword = engine
+                .fuse(new ItemStack(Material.DIAMOND_SWORD), new ItemStack(Material.NETHER_STAR)).output();
+
+        ItemStack out = engine.fuse(new ItemStack(Material.DIAMOND_AXE), fusedSword).output();
+        // Diamond Sword has no latent modifiers, so the axe gains exactly the
+        // ingredient's fused stack.
+        assertEquals(List.of("NOVA"), reader.readModifierIds(out));
+    }
+
+    @Test
     void emptyHandsAreRefused() {
         assertFalse(engine(8, 5).fuse(null, new ItemStack(Material.NETHER_STAR)).success());
         assertFalse(engine(8, 5).fuse(new ItemStack(Material.DIAMOND_SWORD), null).success());

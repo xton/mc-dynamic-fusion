@@ -48,14 +48,19 @@ folder and restart.
 
 ## Try it in-game
 
-1. Hold a **sword** in your main hand (the Target — kept and upgraded).
-2. Hold an **ingredient** in your off hand (Nether Star, String, Magma Cream,
-   Slime Ball, … — see the table above). It's consumed.
-3. Run `/fuse`.
-4. Swing the fused weapon near some mobs and watch the effect.
-5. **Stack it:** fuse the weapon again with another ingredient to combine or
-   compound effects (e.g. Nova + Expand + Expand = a huge shove). Order and
-   duplicates both matter.
+Two ways to fuse:
+
+- **Fusion Machine** — `/fusion machine` (op) gives a **Fusion Machine** (an
+  anvil). Place it, right-click, and use it like an anvil: **left slot =
+  Target** (kept/upgraded), **right slot = Ingredient** (consumed), take the
+  result.
+- **Quick command** — `/fusion fuse` (op): main hand = Target, off hand =
+  Ingredient.
+
+Then swing the fused weapon near some mobs. **Stack it:** fuse again with
+another ingredient to compound effects (Nova + Expand + Expand = a huge shove);
+order and duplicates both matter. A fused weapon can itself be the Ingredient,
+handing its whole modifier list to the next Target.
 
 ## Tests
 
@@ -95,7 +100,7 @@ Then:
 2. You're opped on join. Give yourself the ingredients:
    `/give @s minecraft:diamond_sword` and `/give @s minecraft:nether_star`.
 3. Sword in main hand, Nether Star in off hand (press **F** to swap), then
-   `/fuse`.
+   `/fusion fuse` (or use a `/fusion machine`).
 4. Swing the Nova Sword near some mobs and watch them fly outward.
 
 Iterate after code changes with `make rebuild` (rebuilds the jar and restarts

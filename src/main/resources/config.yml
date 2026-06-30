@@ -18,6 +18,9 @@ effect:
   # Ambient particles shed by a held fused weapon (cosmetic).
   particle-shedding: true
   shed-period-ticks: 4
+  # Ambient glow above placed Fusion Machines so they're easy to spot.
+  machine-glow: true
+  machine-glow-period-ticks: 10
 
 # NOVA — the canonical all-directions burst.
 nova:

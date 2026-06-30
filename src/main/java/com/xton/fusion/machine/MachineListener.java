@@ -9,6 +9,7 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.PrepareAnvilEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 
 /**
@@ -39,7 +40,7 @@ public final class MachineListener implements Listener {
             return;
         }
         store.remove(block.getLocation());
-        // Give the machine item back instead of a plain crafting table.
+        // Give the machine item back instead of a plain anvil.
         event.setDropItems(false);
         block.getWorld().dropItemNaturally(block.getLocation().add(0.5, 0.5, 0.5),
                 menu.createMachineItem());
@@ -58,8 +59,13 @@ public final class MachineListener implements Listener {
         if (!store.contains(block.getLocation())) {
             return;
         }
-        event.setCancelled(true); // suppress the vanilla crafting table UI
+        event.setCancelled(true); // suppress the vanilla anvil UI
         menu.open(player, block.getLocation());
+    }
+
+    @EventHandler
+    public void onPrepare(PrepareAnvilEvent event) {
+        menu.onPrepare(event);
     }
 
     @EventHandler

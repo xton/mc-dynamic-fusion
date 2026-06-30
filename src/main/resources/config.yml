@@ -1,4 +1,4 @@
-# DynamicFusion configuration (Phase Zero).
+# DynamicFusion configuration.
 
 fusion:
   # Maximum modifiers stored on one item. Technical guard on PDC/loop size,
@@ -9,10 +9,32 @@ fusion:
   # XP-level cost to fuse. Free to start; raise later to add cost.
   cost: 0
 
+# Base swing effect every active fused weapon produces (a shove burst).
+effect:
+  base-radius: 2.5
+  base-power: 1.0
+  # Whether the burst affects other players (it's knockback only, no damage).
+  affect-players: false
+
+# NOVA — the canonical all-directions burst.
 nova:
   radius: 4.0
   power: 1.4
 
+# EXPAND — widens the radius; stacks per copy.
+expand:
+  bonus-per-apply: 3.0
+
+# CHAIN — hops to nearby entities beyond the burst; stacks per copy.
+chain:
+  count-per-apply: 3
+  range: 6.0
+
+# REPEAT — fires the effect extra times; stacks per copy.
+repeat:
+  count-per-apply: 2
+  delay-ticks: 4
+
 cooldown:
-  # Per-behavior-type cooldown in milliseconds.
-  nova-ms: 200
+  # Swing cooldown in milliseconds (per player).
+  swing-ms: 200

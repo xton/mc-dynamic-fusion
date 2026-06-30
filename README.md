@@ -5,11 +5,18 @@ A PaperMC plugin for a family server: combine a **Target** item with an
 **Ingredient** item to create weapons with emergent, composable magical
 properties. See [`docs/design.md`](docs/design.md) for the full design.
 
-## Status: Phase Zero (walking skeleton)
+## Status: Phase 1 (the first modifier batch)
 
-One real fusion, end to end: **Diamond Sword (Target) + Nether Star (Ingredient)
-→ Nova Sword**. Swing the result and nearby mobs are pushed outward with a
-particle burst.
+Fuse a weapon (Target) with an ingredient (Ingredient → consumed), then swing
+to unleash a burst that shoves nearby mobs. The ingredient decides what the
+swing does, and **re-fusing stacks modifiers** (duplicates compound):
+
+| Modifier | Ingredients | Effect on swing |
+|---|---|---|
+| **Nova** | Nether Star | all-directions shove burst |
+| **Expand** | Heart of the Sea, Magma Cream | widens the burst (stacks bigger) |
+| **Chain** | String, Echo Shard | hops to nearby entities after the burst |
+| **Repeat** | Rabbit's Foot, Slime Ball, Chorus Fruit | fires several times in a row |
 
 ## Requirements
 
@@ -32,9 +39,13 @@ folder and restart.
 ## Try it in-game
 
 1. Hold a **sword** in your main hand (the Target — kept and upgraded).
-2. Hold a **Nether Star** in your off hand (the Ingredient — consumed).
+2. Hold an **ingredient** in your off hand (Nether Star, String, Magma Cream,
+   Slime Ball, … — see the table above). It's consumed.
 3. Run `/fuse`.
-4. Swing the resulting Nova Sword near some mobs and watch them fly outward.
+4. Swing the fused weapon near some mobs and watch the effect.
+5. **Stack it:** fuse the weapon again with another ingredient to combine or
+   compound effects (e.g. Nova + Expand + Expand = a huge shove). Order and
+   duplicates both matter.
 
 ## Tests
 

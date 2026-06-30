@@ -49,7 +49,7 @@ LOG="$(docker logs "$NAME" 2>&1)"
 fail=0
 
 echo "==> Assert: plugin enabled"
-grep -q 'DynamicFusion (Phase Zero) enabled' <<<"$LOG" \
+grep -q 'DynamicFusion enabled' <<<"$LOG" \
   || { echo "  MISSING: enable log line"; fail=1; }
 
 echo "==> Assert: plugin listed via RCON"

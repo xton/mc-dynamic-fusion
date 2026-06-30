@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /** Maps modifier IDs to their implementations. */
 public final class ModifierRegistry {
@@ -22,6 +23,11 @@ public final class ModifierRegistry {
 
     public boolean isKnown(String id) {
         return byId.containsKey(id);
+    }
+
+    /** All registered modifier IDs, in registration order. */
+    public Set<String> ids() {
+        return new java.util.LinkedHashSet<>(byId.keySet());
     }
 
     /**

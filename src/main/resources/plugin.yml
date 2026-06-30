@@ -9,5 +9,5 @@ commands:
     description: Fuse your main-hand weapon (Target) with your off-hand item (Ingredient).
     usage: /fuse
   fusion:
-    description: DynamicFusion admin command (e.g. get a Fusion Machine).
-    usage: /fusion machine
+    description: DynamicFusion admin command (machine, give).
+    usage: /fusion machine | /fusion give <player> <base> <MODIFIER...>

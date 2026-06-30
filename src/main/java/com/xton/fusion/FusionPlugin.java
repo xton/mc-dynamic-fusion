@@ -111,7 +111,9 @@ public final class FusionPlugin extends JavaPlugin {
             getLogger().warning("Command 'fuse' is missing from plugin.yml.");
         }
         if (getCommand("fusion") != null) {
-            getCommand("fusion").setExecutor(new FusionCommand(menu));
+            FusionCommand fusionCmd = new FusionCommand(menu, registry, factory);
+            getCommand("fusion").setExecutor(fusionCmd);
+            getCommand("fusion").setTabCompleter(fusionCmd);
         }
 
         getLogger().info("DynamicFusion enabled (" + machines.size() + " machine(s) loaded).");

@@ -20,6 +20,10 @@ services:
       MEMORY: "${MC_MEMORY:-2G}"
       OPS: "${MC_USERNAME:-}"
       MOTD: "DynamicFusion UAT"
+      # ViaVersion lets newer clients (e.g. 26.2) join this 26.1.2 server, so
+      # you don't need a client that exactly matches the server version. itzg
+      # auto-resolves a build from Modrinth compatible with the server.
+      MODRINTH_PROJECTS: "${MC_MODRINTH_PROJECTS:-viaversion}"
       ENABLE_RCON: "TRUE"
       RCON_PASSWORD: "${RCON_PASSWORD:-fusion}"
     volumes:

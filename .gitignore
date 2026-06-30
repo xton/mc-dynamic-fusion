@@ -22,3 +22,7 @@ gradle-app.setting
 
 # Claude Code runtime artifacts
 .claude/scheduled_tasks.*
+
+# Local UAT server runtime (world, configs, staged plugin jar) and secrets
+docker/data/
+docker/.env

@@ -1,0 +1,27 @@
+# Local UAT server: real Paper + the DynamicFusion plugin, joinable from your
+# own Minecraft client at localhost:25565. Driven by `make uat`.
+#
+# Set your Minecraft username in docker/.env (copy docker/.env.example) so you
+# are opped on join. The built plugin jar is placed in ./data/plugins by the
+# Makefile before this comes up.
+services:
+  mc:
+    image: ${MC_IMAGE:-itzg/minecraft-server:java25}
+    container_name: fusion-uat
+    tty: true
+    stdin_open: true
+    ports:
+      - "25565:25565"
+    environment:
+      EULA: "TRUE"
+      TYPE: "PAPER"
+      VERSION: "${MC_VERSION:-26.1.2}"
+      ONLINE_MODE: "TRUE"
+      MEMORY: "${MC_MEMORY:-2G}"
+      OPS: "${MC_USERNAME:-}"
+      MOTD: "DynamicFusion UAT"
+      ENABLE_RCON: "TRUE"
+      RCON_PASSWORD: "${RCON_PASSWORD:-fusion}"
+    volumes:
+      - ./data:/data
+    restart: "no"

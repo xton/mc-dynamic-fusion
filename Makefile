@@ -9,8 +9,8 @@ help:
 	@echo "  jar      - assemble the plugin jar only"
 	@echo "  test     - run unit tests"
 	@echo "  smoke    - functional smoke test (boots Paper + plugin in Docker)"
-	@echo "  uat      - launch a local UAT server at localhost:25565 (set docker/.env first)"
-	@echo "  rebuild  - rebuild the jar and restart the running UAT server"
+	@echo "  uat      - (re)build the jar and (re)start the UAT server at localhost:25565, attaching to logs"
+	@echo "  rebuild  - rebuild the jar and restart the server in place (no log attach)"
 	@echo "  down     - stop and remove the UAT server"
 	@echo "  logs     - follow the UAT server logs"
 
@@ -33,8 +33,10 @@ _stage-plugin: jar
 	rm -f docker/data/plugins/*.jar
 	cp build/libs/*.jar docker/data/plugins/
 
+# Always recreate the container so a freshly staged jar is actually loaded —
+# plain `up` re-attaches to a running server without restarting it.
 uat: _stage-plugin
-	$(COMPOSE) up
+	$(COMPOSE) up --force-recreate
 
 rebuild: _stage-plugin
 	$(COMPOSE) restart mc

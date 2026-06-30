@@ -68,8 +68,9 @@ make uat                             # builds the jar and starts localhost:25565
 
 Then:
 
-1. Connect your Minecraft client to **localhost** (server must match your
-   client version — defaults to Paper 26.1.2).
+1. Connect your Minecraft client to **localhost**. The server runs Paper
+   26.1.2 with **ViaVersion**, so newer clients (e.g. 26.2) connect fine —
+   you don't need a client that exactly matches the server version.
 2. You're opped on join. Give yourself the ingredients:
    `/give @s minecraft:diamond_sword` and `/give @s minecraft:nether_star`.
 3. Sword in main hand, Nether Star in off hand (press **F** to swap), then

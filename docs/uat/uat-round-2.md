@@ -4,10 +4,11 @@
 
 ## 1. Reason shown for invalid fusions
 1. Put a sword in the left slot and **dirt** (no magic) in the right slot.
-   - ✅ The result is empty AND an **action-bar message** explains why
-     ("Dirt has no magic to give.").
-2. Empty the slots.
-   - ✅ The message clears (no spurious warning with empty slots).
+   - ✅ The **result slot shows a red barrier** named with the reason
+     ("Can't fuse: Dirt has no magic to give.") — visible right in the GUI.
+     (An action bar would be hidden behind the open anvil screen.)
+2. Remove one input.
+   - ✅ The barrier clears (no warning mid-setup, only when both inputs are in).
 
 ## 2. Renaming keeps the fusion valid
 3. Sword (left) + Nether Star (right) → result previews.

@@ -3,7 +3,6 @@ package com.xton.fusion.machine;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 
 import org.bukkit.Location;
@@ -52,8 +51,6 @@ public final class FusionMachineMenu {
 
     /** Players with a fusion anvil open → the machine block that opened it. */
     private final Map<UUID, Location> openAnvils = new HashMap<>();
-    /** Last failure hint shown per player, to avoid re-sending it every keystroke. */
-    private final Map<UUID, String> lastHint = new HashMap<>();
 
     public FusionMachineMenu(FusionEngine engine, FusionKeys keys, int cost) {
         this.engine = engine;
@@ -109,29 +106,18 @@ public final class FusionMachineMenu {
 
         AnvilView anvilView = event.getView() instanceof AnvilView av ? av : null;
         if (result.success()) {
-            ItemStack output = result.output();
-            // Honor the anvil's rename field so renaming yields a valid, named
-            // result instead of invalidating the fusion.
-            String rename = anvilView != null ? anvilView.getRenameText() : null;
-            if (rename != null && !rename.isBlank()) {
-                ItemMeta meta = output.getItemMeta();
-                meta.displayName(Component.text(rename).decoration(TextDecoration.ITALIC, false));
-                output.setItemMeta(meta);
-            }
-            event.setResult(output);
+            event.setResult(applyRename(result.output(), anvilView));
+        } else if (!isEmpty(target) && !isEmpty(ingredient)) {
+            // Both inputs present but they can't fuse — say why right in the
+            // result slot. (An action bar is invisible while the anvil GUI is
+            // open, so the message has to live inside the GUI.)
+            event.setResult(hintBarrier(result.message()));
         } else {
-            event.setResult(null);
+            event.setResult(null); // still mid-setup, nothing to explain
         }
         // We handle the XP cost ourselves; don't let a vanilla level cost block the result.
         if (anvilView != null) {
             anvilView.setRepairCost(0);
-        }
-
-        // Explain *why* it can't fuse (only when something is actually loaded).
-        if (viewer instanceof Player player) {
-            String hint = result.success() || (isEmpty(target) && isEmpty(ingredient))
-                    ? null : result.message();
-            sendHint(player, hint);
         }
     }
 
@@ -160,7 +146,10 @@ public final class FusionMachineMenu {
             player.giveExpLevels(-cost);
         }
 
-        deliver(player, result.output());
+        // Re-apply the rename so the *taken* item keeps the custom name, not just
+        // the preview.
+        AnvilView view = event.getView() instanceof AnvilView av ? av : null;
+        deliver(player, applyRename(result.output(), view));
         consume(inv, 0); // Target is upgraded into the result
         consume(inv, 1); // Ingredient is spent
         inv.setItem(RESULT_SLOT, null);
@@ -170,18 +159,28 @@ public final class FusionMachineMenu {
 
     public void onClose(InventoryCloseEvent event) {
         openAnvils.remove(event.getPlayer().getUniqueId());
-        lastHint.remove(event.getPlayer().getUniqueId());
     }
 
     // ----- internals -----
 
-    private void sendHint(Player player, String hint) {
-        UUID id = player.getUniqueId();
-        if (Objects.equals(lastHint.get(id), hint)) {
-            return;
+    /** Apply the anvil's rename text to the fused output, if any was typed. */
+    private ItemStack applyRename(ItemStack output, AnvilView view) {
+        String rename = view != null ? view.getRenameText() : null;
+        if (rename != null && !rename.isBlank()) {
+            ItemMeta meta = output.getItemMeta();
+            meta.displayName(Component.text(rename).decoration(TextDecoration.ITALIC, false));
+            output.setItemMeta(meta);
         }
-        lastHint.put(id, hint);
-        player.sendActionBar(hint == null ? Component.empty() : plain(hint, NamedTextColor.RED));
+        return output;
+    }
+
+    /** A non-takeable red barrier that explains, in the result slot, why a fusion can't happen. */
+    private ItemStack hintBarrier(String message) {
+        ItemStack item = new ItemStack(Material.BARRIER);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(plain("Can't fuse: " + message, NamedTextColor.RED));
+        item.setItemMeta(meta);
+        return item;
     }
 
     private static boolean isEmpty(ItemStack item) {

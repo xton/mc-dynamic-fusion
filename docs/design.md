@@ -598,10 +598,10 @@ Deliberately excluded: the GUI machine, every other modifier, generation cap / X
 - [ ] MockBukkit integration tests
 
 ### Phase 3 — Weapon Behaviors
-- [ ] `WeaponEventListener` (swing, hit, interact routing)
-- [ ] Mining Ray behavior (hardness cap)
-- [ ] Bow override behavior
-- [ ] `Scheduler` abstraction; DELAYED / REPEAT behaviors
+- [x] `WeaponEventListener` (swing routing; mining dispatch) + `ProjectileListener` (bow)
+- [x] Mining Ray behavior (hardness cap, config-driven arc)
+- [x] Bow override behavior (fused bow stamps stack → impact burst)
+- [x] `Scheduler` abstraction (Phase 1); DELAYED modifier added (REPEAT in Phase 1)
 
 ### Phase 4 — Polish & deferred modifiers
 - [ ] INVERT, PERSIST, REVERSE (with finalized semantics) + backfire outcomes

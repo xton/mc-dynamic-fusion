@@ -49,3 +49,35 @@ The GUI's click/close behavior can't be exercised here (no client; CI only
 checks that the plugin loads + unit tests + a smoke boot). Item-handling logic
 is written defensively but is **unverified in a live client** — see
 `docs/uat/phase-2.md`. MachineStore persistence *is* unit-tested.
+
+## Phase 3 — Weapon Behaviors (2026-06-30)
+
+- ↳ **DELAYED modifier** added (ingredient: **Gunpowder**). Adds a fuse before
+  the swing burst fires, via the Scheduler; stacks for a longer fuse. Composes
+  with REPEAT (delay = base offset, then repeats spaced after it).
+- ↳ **MINING modeled as a modifier** (`MINING`, ingredient: **Amethyst Shard**)
+  rather than a tool archetype, to fit the modifier-driven design. On swing it
+  sweeps a yaw arc of raytraces and breaks the first block each ray hits.
+  - ↳ **Hardness-capped** at config `mining.max-hardness` (default 3.0): stone
+    breaks, obsidian/bedrock resist. Unbreakable (hardness < 0) always skipped.
+    Honors design decision #9 (respect hardness).
+  - ↳ Uses `breakNaturally(tool)` so fortune/silk on the weapon apply.
+  - ↳ **No region/claim protection** (no WorldGuard etc.). On a family server
+    this is acceptable; noted as a limitation. A mining weapon will break
+    soft blocks wherever the player aims.
+- ↳ **Bow override = stamp + impact burst.** A fused bow stamps its modifier
+  CSV onto the projectile (PDC); on impact, `SwingEffectBehavior.burstAt(loc)`
+  fires the same shove/area/chain at the landing point. No new modifier — any
+  fused bow throws its effect downrange.
+  - ↳ Projectile burst is a **single** burst (honors NOVA/EXPAND/CHAIN); it
+    does **not** replay REPEAT/DELAYED. Kept simple; revisit if wanted.
+- ↳ **`SwingEffectBehavior` refactored** to a location-based `applyBurst` with
+  an injectable "exclude" entity, so swing (centre on caster, exclude caster)
+  and projectile (centre on impact, exclude none) share one code path.
+
+### Verification gap (please UAT)
+Mining (block breaking) and the bow projectile/impact burst need a live client;
+CI only confirms the plugin loads + units + smoke boot. The pure modifier logic
+(DELAYED accumulation, MINING flag) **is** unit-tested. See `docs/uat/phase-3.md`.
+**Watch especially:** that the mining ray can't grief protected/valuable areas
+and that hardness-capping behaves as intended.

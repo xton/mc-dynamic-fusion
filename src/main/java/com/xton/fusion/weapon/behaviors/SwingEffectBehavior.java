@@ -17,17 +17,22 @@ import com.xton.fusion.modifier.ModifierStack;
 import com.xton.fusion.util.Scheduler;
 
 /**
- * Resolves a melee weapon's modifier stack into a burst that shoves nearby
- * entities outward, then applies the area / chain / repeat modifiers:
+ * Resolves a weapon's modifier stack into a burst that shoves nearby entities
+ * outward, then applies the area / chain / repeat / delay modifiers:
  *
  * <ul>
  *   <li><b>base</b> — every active fused weapon shoves entities within a small
- *       radius around the caster.</li>
+ *       radius around the origin.</li>
  *   <li><b>NOVA</b> — sets the burst radius (the canonical all-directions area).</li>
  *   <li><b>EXPAND</b> — adds to the radius; stacks.</li>
  *   <li><b>CHAIN</b> — after the burst, hops to the nearest entities beyond it.</li>
  *   <li><b>REPEAT</b> — fires the whole effect again a few times in succession.</li>
+ *   <li><b>DELAYED</b> — holds the effect for a fuse before firing.</li>
  * </ul>
+ *
+ * <p>{@link #execute} centres the burst on the swinging player (each repeat
+ * re-reads their position); {@link #burstAt} centres it on an arbitrary point
+ * (used by the bow projectile on impact).
  */
 public final class SwingEffectBehavior {
 
@@ -44,31 +49,44 @@ public final class SwingEffectBehavior {
         this.settings = settings;
     }
 
+    /** Melee swing: burst around the caster, honoring DELAYED + REPEAT timing. */
     public void execute(Player caster, ModifierStack stack) {
-        ModifierContext ctx = new ModifierContext()
-                .setCaster(caster)
-                .setRadius(settings.baseRadius())
-                .setPower(settings.basePower());
-        stack.applyTo(ctx);
-
+        ModifierContext ctx = build(stack);
         int repeats = 1 + Math.max(0, ctx.getRepeatCount());
+        long base = Math.max(0, ctx.getDelayTicks());
         for (int i = 0; i < repeats; i++) {
-            scheduler.runLater(() -> fireOnce(caster, ctx), (long) i * settings.repeatDelayTicks());
+            long delay = base + (long) i * settings.repeatDelayTicks();
+            scheduler.runLater(() -> {
+                if (caster.isValid()) {
+                    applyBurst(caster.getWorld(), caster.getLocation(), ctx, caster);
+                }
+            }, delay);
         }
     }
 
-    private void fireOnce(Player caster, ModifierContext ctx) {
-        if (caster == null || !caster.isValid()) {
+    /** Single burst at a point (e.g. where a fused bow's projectile landed). */
+    public void burstAt(Location origin, ModifierStack stack) {
+        if (origin == null || origin.getWorld() == null) {
             return;
         }
-        World world = caster.getWorld();
-        Location origin = caster.getLocation();
+        applyBurst(origin.getWorld(), origin, build(stack), null);
+    }
+
+    private ModifierContext build(ModifierStack stack) {
+        ModifierContext ctx = new ModifierContext()
+                .setRadius(settings.baseRadius())
+                .setPower(settings.basePower());
+        stack.applyTo(ctx);
+        return ctx;
+    }
+
+    private void applyBurst(World world, Location origin, ModifierContext ctx, Entity exclude) {
         double radius = ctx.getRadius() + ctx.getExpandBonus();
         double power = ctx.getPower();
 
         List<LivingEntity> hit = new ArrayList<>();
         for (Entity entity : world.getNearbyEntities(origin, radius, radius, radius)) {
-            LivingEntity target = asTarget(caster, entity);
+            LivingEntity target = asTarget(exclude, entity);
             if (target == null) {
                 continue;
             }
@@ -78,13 +96,13 @@ public final class SwingEffectBehavior {
         burst(world, origin, radius);
 
         if (ctx.getChainCount() > 0) {
-            chain(world, caster, origin, hit, ctx.getChainCount(), power);
+            chain(world, exclude, origin, hit, ctx.getChainCount(), power);
         }
     }
 
     /** Returns the entity as a valid push target, or null if it should be skipped. */
-    private LivingEntity asTarget(Player caster, Entity entity) {
-        if (entity.equals(caster) || !(entity instanceof LivingEntity living)) {
+    private LivingEntity asTarget(Entity exclude, Entity entity) {
+        if (entity.equals(exclude) || !(entity instanceof LivingEntity living)) {
             return null;
         }
         if (!settings.affectPlayers() && entity instanceof Player) {
@@ -103,11 +121,11 @@ public final class SwingEffectBehavior {
         target.setVelocity(target.getVelocity().add(push));
     }
 
-    private void chain(World world, Player caster, Location origin,
+    private void chain(World world, Entity exclude, Location origin,
                        List<LivingEntity> hit, int hops, double power) {
         Location from = origin;
         for (int i = 0; i < hops; i++) {
-            LivingEntity next = nearestUnhit(world, caster, from, hit);
+            LivingEntity next = nearestUnhit(world, exclude, from, hit);
             if (next == null) {
                 break;
             }
@@ -118,12 +136,12 @@ public final class SwingEffectBehavior {
         }
     }
 
-    private LivingEntity nearestUnhit(World world, Player caster, Location from, List<LivingEntity> hit) {
+    private LivingEntity nearestUnhit(World world, Entity exclude, Location from, List<LivingEntity> hit) {
         double range = settings.chainRange();
         LivingEntity best = null;
         double bestSq = range * range;
         for (Entity entity : world.getNearbyEntities(from, range, range, range)) {
-            LivingEntity target = asTarget(caster, entity);
+            LivingEntity target = asTarget(exclude, entity);
             if (target == null || hit.contains(target)) {
                 continue;
             }

@@ -23,3 +23,9 @@ latent_modifiers:
     - REPEAT
   CHORUS_FRUIT:
     - REPEAT
+  # DELAYED — short fuse before the effect
+  GUNPOWDER:
+    - DELAYED
+  # MINING — mining ray (carves soft blocks ahead on swing)
+  AMETHYST_SHARD:
+    - MINING

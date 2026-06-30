@@ -19,13 +19,17 @@ import com.xton.fusion.machine.MachineListener;
 import com.xton.fusion.machine.MachineStore;
 import com.xton.fusion.modifier.ModifierRegistry;
 import com.xton.fusion.modifier.impl.ChainModifier;
+import com.xton.fusion.modifier.impl.DelayedModifier;
 import com.xton.fusion.modifier.impl.ExpandModifier;
+import com.xton.fusion.modifier.impl.MiningModifier;
 import com.xton.fusion.modifier.impl.NovaModifier;
 import com.xton.fusion.modifier.impl.RepeatModifier;
 import com.xton.fusion.util.BukkitTaskScheduler;
 import com.xton.fusion.util.CooldownMap;
 import com.xton.fusion.util.Scheduler;
+import com.xton.fusion.weapon.ProjectileListener;
 import com.xton.fusion.weapon.WeaponEventListener;
+import com.xton.fusion.weapon.behaviors.MiningRayBehavior;
 import com.xton.fusion.weapon.behaviors.SwingEffectBehavior;
 
 /** Entry point — wires up the fusion loop and registered modifiers. */
@@ -48,7 +52,10 @@ public final class FusionPlugin extends JavaPlugin {
                 .register(new ChainModifier(
                         getConfig().getInt("chain.count-per-apply", 3)))
                 .register(new RepeatModifier(
-                        getConfig().getInt("repeat.count-per-apply", 2)));
+                        getConfig().getInt("repeat.count-per-apply", 2)))
+                .register(new DelayedModifier(
+                        getConfig().getInt("delayed.ticks-per-apply", 30)))
+                .register(new MiningModifier());
 
         LatentRegistry latent = loadLatentRegistry();
 
@@ -67,9 +74,17 @@ public final class FusionPlugin extends JavaPlugin {
                 getConfig().getBoolean("effect.affect-players", false));
         SwingEffectBehavior swingEffect = new SwingEffectBehavior(scheduler, settings);
 
+        MiningRayBehavior miningRay = new MiningRayBehavior(new MiningRayBehavior.Settings(
+                getConfig().getDouble("mining.range", 4.0),
+                getConfig().getDouble("mining.arc-degrees", 45.0),
+                getConfig().getDouble("mining.step-degrees", 15.0),
+                getConfig().getDouble("mining.max-hardness", 3.0)));
+
         CooldownMap cooldown = new CooldownMap(swingCooldownMs);
         getServer().getPluginManager().registerEvents(
-                new WeaponEventListener(reader, registry, swingEffect, cooldown), this);
+                new WeaponEventListener(reader, registry, swingEffect, miningRay, cooldown), this);
+        getServer().getPluginManager().registerEvents(
+                new ProjectileListener(reader, registry, swingEffect, keys), this);
 
         // Fusion Machine (Phase 2): placeable block + GUI, persisted to machines.yml.
         MachineStore machines = new MachineStore(new File(getDataFolder(), "machines.yml"), getLogger());

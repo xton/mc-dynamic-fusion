@@ -1,0 +1,10 @@
+name: DynamicFusion
+version: '${version}'
+main: com.xton.fusion.FusionPlugin
+api-version: '1.21'
+description: Noita-style emergent fusion weapons. Phase Zero — the Nova Sword.
+author: xton
+commands:
+  fuse:
+    description: Fuse your main-hand weapon (Target) with your off-hand item (Ingredient).
+    usage: /fuse

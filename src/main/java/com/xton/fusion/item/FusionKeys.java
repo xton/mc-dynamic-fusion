@@ -1,0 +1,20 @@
+package com.xton.fusion.item;
+
+import org.bukkit.NamespacedKey;
+import org.bukkit.plugin.Plugin;
+
+/** Namespaced PDC keys used to mark and describe fused items. */
+public final class FusionKeys {
+
+    public final NamespacedKey isFused;
+    public final NamespacedKey modifierStack;
+    public final NamespacedKey generation;
+    public final NamespacedKey fusedFrom;
+
+    public FusionKeys(Plugin plugin) {
+        this.isFused = new NamespacedKey(plugin, "is_fused");
+        this.modifierStack = new NamespacedKey(plugin, "modifier_stack");
+        this.generation = new NamespacedKey(plugin, "generation");
+        this.fusedFrom = new NamespacedKey(plugin, "fused_from");
+    }
+}

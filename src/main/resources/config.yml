@@ -1,0 +1,18 @@
+# DynamicFusion configuration (Phase Zero).
+
+fusion:
+  # Maximum modifiers stored on one item. Technical guard on PDC/loop size,
+  # not a balance lever — excess is dropped from the tail.
+  max-modifiers: 8
+  # Maximum fusion depth (generation). Refused past this.
+  max-generation: 5
+  # XP-level cost to fuse. Free to start; raise later to add cost.
+  cost: 0
+
+nova:
+  radius: 4.0
+  power: 1.4
+
+cooldown:
+  # Per-behavior-type cooldown in milliseconds.
+  nova-ms: 200

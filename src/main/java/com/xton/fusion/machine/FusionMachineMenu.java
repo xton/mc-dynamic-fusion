@@ -94,6 +94,7 @@ public final class FusionMachineMenu {
     // ----- event handling (routed by MachineListener) -----
 
     /** Compute the fusion result for the anvil's two inputs as a live preview. */
+    @SuppressWarnings("deprecation") // AnvilInventory#setRepairCost is the reliable cross-version call
     public void onPrepare(PrepareAnvilEvent event) {
         HumanEntity viewer = event.getView().getPlayer();
         if (!openAnvils.containsKey(viewer.getUniqueId())) {
@@ -115,10 +116,11 @@ public final class FusionMachineMenu {
         } else {
             event.setResult(null); // still mid-setup, nothing to explain
         }
-        // We handle the XP cost ourselves; don't let a vanilla level cost block the result.
-        if (anvilView != null) {
-            anvilView.setRepairCost(0);
-        }
+        // Clear the vanilla level cost so the result is takeable in survival (we
+        // charge our own XP). Set it on the AnvilInventory directly — relying on
+        // the view being an AnvilView was unreliable and left the cost in place,
+        // so the anvil blocked the result as "Too Expensive".
+        inv.setRepairCost(0);
     }
 
     public void onClick(InventoryClickEvent event) {

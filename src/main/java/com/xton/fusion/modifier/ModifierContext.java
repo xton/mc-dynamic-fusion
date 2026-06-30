@@ -25,6 +25,8 @@ public class ModifierContext {
     private double expandBonus;     // EXPAND adds to the effect radius (stacks)
     private int chainCount;         // CHAIN: extra entities to hop to (stacks)
     private int repeatCount;        // REPEAT: extra times the effect fires (stacks)
+    private int delayTicks;         // DELAYED: ticks before the effect fires (stacks)
+    private boolean mining;         // MINING: weapon carves blocks ahead on swing
 
     public Player getCaster() {
         return caster;
@@ -104,6 +106,24 @@ public class ModifierContext {
 
     public ModifierContext addRepeatCount(int count) {
         this.repeatCount += count;
+        return this;
+    }
+
+    public int getDelayTicks() {
+        return delayTicks;
+    }
+
+    public ModifierContext addDelayTicks(int ticks) {
+        this.delayTicks += ticks;
+        return this;
+    }
+
+    public boolean isMining() {
+        return mining;
+    }
+
+    public ModifierContext setMining(boolean mining) {
+        this.mining = mining;
         return this;
     }
 }

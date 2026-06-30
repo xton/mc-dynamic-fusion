@@ -5,18 +5,23 @@ A PaperMC plugin for a family server: combine a **Target** item with an
 **Ingredient** item to create weapons with emergent, composable magical
 properties. See [`docs/design.md`](docs/design.md) for the full design.
 
-## Status: Phase 1 (the first modifier batch)
+## Status: Phase 3 (weapon behaviors)
 
 Fuse a weapon (Target) with an ingredient (Ingredient → consumed), then swing
-to unleash a burst that shoves nearby mobs. The ingredient decides what the
-swing does, and **re-fusing stacks modifiers** (duplicates compound):
+to unleash an effect. The ingredient decides what it does, and **re-fusing
+stacks modifiers** (duplicates compound):
 
-| Modifier | Ingredients | Effect on swing |
+| Modifier | Ingredients | Effect |
 |---|---|---|
-| **Nova** | Nether Star | all-directions shove burst |
+| **Nova** | Nether Star | all-directions shove burst on swing |
 | **Expand** | Heart of the Sea, Magma Cream | widens the burst (stacks bigger) |
 | **Chain** | String, Echo Shard | hops to nearby entities after the burst |
 | **Repeat** | Rabbit's Foot, Slime Ball, Chorus Fruit | fires several times in a row |
+| **Delayed** | Gunpowder | holds the effect for a fuse, then fires |
+| **Mining** | Amethyst Shard | swing carves an arc of soft blocks ahead |
+
+**Fused bows** throw their effect downrange: the burst fires where the arrow
+lands.
 
 ## Requirements
 

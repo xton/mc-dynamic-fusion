@@ -12,24 +12,29 @@ import org.bukkit.inventory.ItemStack;
 import com.xton.fusion.item.FusedItemReader;
 import com.xton.fusion.modifier.ModifierRegistry;
 import com.xton.fusion.modifier.ModifierStack;
+import com.xton.fusion.modifier.impl.MiningModifier;
 import com.xton.fusion.util.CooldownMap;
+import com.xton.fusion.weapon.behaviors.MiningRayBehavior;
 import com.xton.fusion.weapon.behaviors.SwingEffectBehavior;
 
-/** Routes melee swings of fused weapons to the swing-effect behaviour. */
+/** Routes melee swings of fused weapons to the swing-effect and mining behaviours. */
 public final class WeaponEventListener implements Listener {
 
     private final FusedItemReader reader;
     private final ModifierRegistry registry;
     private final SwingEffectBehavior swingEffect;
+    private final MiningRayBehavior miningRay;
     private final CooldownMap cooldown;
 
     public WeaponEventListener(FusedItemReader reader,
                                ModifierRegistry registry,
                                SwingEffectBehavior swingEffect,
+                               MiningRayBehavior miningRay,
                                CooldownMap cooldown) {
         this.reader = reader;
         this.registry = registry;
         this.swingEffect = swingEffect;
+        this.miningRay = miningRay;
         this.cooldown = cooldown;
     }
 
@@ -52,5 +57,8 @@ public final class WeaponEventListener implements Listener {
             return;
         }
         swingEffect.execute(player, stack);
+        if (stack.contains(MiningModifier.ID)) {
+            miningRay.mine(player);
+        }
     }
 }

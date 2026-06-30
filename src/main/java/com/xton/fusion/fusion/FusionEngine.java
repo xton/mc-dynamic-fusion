@@ -40,10 +40,10 @@ public final class FusionEngine {
 
     public FusionResult fuse(ItemStack target, ItemStack ingredient) {
         if (isEmpty(target)) {
-            return FusionResult.fail("Hold a weapon to enhance in your main hand.");
+            return FusionResult.fail("No weapon to enhance.");
         }
         if (isEmpty(ingredient)) {
-            return FusionResult.fail("Hold an ingredient in your off hand.");
+            return FusionResult.fail("No ingredient to fuse.");
         }
 
         List<String> contributed = latent.get(ingredient.getType());

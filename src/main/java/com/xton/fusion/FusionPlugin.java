@@ -7,12 +7,16 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import com.xton.fusion.command.FuseCommand;
+import com.xton.fusion.command.FusionCommand;
 import com.xton.fusion.fusion.FusionEngine;
 import com.xton.fusion.item.FusedItemFactory;
 import com.xton.fusion.item.FusedItemReader;
 import com.xton.fusion.item.FusionKeys;
 import com.xton.fusion.item.LatentRegistry;
 import com.xton.fusion.item.LoreGenerator;
+import com.xton.fusion.machine.FusionMachineMenu;
+import com.xton.fusion.machine.MachineListener;
+import com.xton.fusion.machine.MachineStore;
 import com.xton.fusion.modifier.ModifierRegistry;
 import com.xton.fusion.modifier.impl.ChainModifier;
 import com.xton.fusion.modifier.impl.ExpandModifier;
@@ -67,13 +71,21 @@ public final class FusionPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(
                 new WeaponEventListener(reader, registry, swingEffect, cooldown), this);
 
+        // Fusion Machine (Phase 2): placeable block + GUI, persisted to machines.yml.
+        MachineStore machines = new MachineStore(new File(getDataFolder(), "machines.yml"), getLogger());
+        FusionMachineMenu menu = new FusionMachineMenu(engine, scheduler, keys);
+        getServer().getPluginManager().registerEvents(new MachineListener(machines, menu), this);
+
         if (getCommand("fuse") != null) {
             getCommand("fuse").setExecutor(new FuseCommand(engine));
         } else {
             getLogger().warning("Command 'fuse' is missing from plugin.yml.");
         }
+        if (getCommand("fusion") != null) {
+            getCommand("fusion").setExecutor(new FusionCommand(menu));
+        }
 
-        getLogger().info("DynamicFusion enabled.");
+        getLogger().info("DynamicFusion enabled (" + machines.size() + " machine(s) loaded).");
     }
 
     private LatentRegistry loadLatentRegistry() {

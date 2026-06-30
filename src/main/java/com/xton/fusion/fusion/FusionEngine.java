@@ -46,9 +46,14 @@ public final class FusionEngine {
             return FusionResult.fail("No ingredient to fuse.");
         }
 
-        List<String> contributed = latent.get(ingredient.getType());
+        // The ingredient contributes its base-material latent modifiers AND, if
+        // it is itself a fused item, its whole fused stack.
+        List<String> contributed = new ArrayList<>(latent.get(ingredient.getType()));
+        if (reader.isFused(ingredient)) {
+            contributed.addAll(reader.readModifierIds(ingredient));
+        }
         if (contributed.isEmpty()) {
-            return FusionResult.fail(pretty(ingredient.getType()) + " has no latent magic to give.");
+            return FusionResult.fail(pretty(ingredient.getType()) + " has no magic to give.");
         }
 
         int generation = reader.generation(target) + 1;

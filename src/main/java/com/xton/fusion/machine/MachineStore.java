@@ -4,10 +4,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.logging.Logger;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 /**
@@ -49,6 +52,28 @@ public final class MachineStore {
 
     public int size() {
         return keys.size();
+    }
+
+    /** Machine locations in currently-loaded worlds (skips unknown worlds). */
+    public List<Location> locations() {
+        List<Location> out = new ArrayList<>();
+        for (String key : keys) {
+            String[] parts = key.split(";");
+            if (parts.length != 4) {
+                continue;
+            }
+            World world = Bukkit.getWorld(parts[0]);
+            if (world == null) {
+                continue;
+            }
+            try {
+                out.add(new Location(world, Integer.parseInt(parts[1]),
+                        Integer.parseInt(parts[2]), Integer.parseInt(parts[3])));
+            } catch (NumberFormatException ignored) {
+                // skip malformed key
+            }
+        }
+        return out;
     }
 
     private void load() {

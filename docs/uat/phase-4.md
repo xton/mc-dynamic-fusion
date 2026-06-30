@@ -24,7 +24,7 @@ Run the UAT server (`make rebuild`), join, `/op`, and grab ingredients.
 ## XP cost (config)
 7. Edit `docker/data/plugins/DynamicFusion/config.yml`: set `fusion.cost: 3`,
    then `make rebuild` (or `/reload`-equivalent restart).
-8. With **< 3 levels**, try to fuse (via `/fuse` or the machine).
+8. With **< 3 levels**, try to fuse (via `/fusion fuse` or the machine).
    - ✅ Refused: "Fusing costs 3 XP levels."
 9. With **≥ 3 levels**, fuse.
    - ✅ Succeeds and your level drops by 3.

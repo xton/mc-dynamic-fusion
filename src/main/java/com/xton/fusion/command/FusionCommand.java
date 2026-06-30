@@ -5,7 +5,10 @@ import java.util.List;
 import java.util.Locale;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -15,6 +18,8 @@ import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import com.xton.fusion.fusion.FusionEngine;
+import com.xton.fusion.fusion.FusionResult;
 import com.xton.fusion.item.FusedItemFactory;
 import com.xton.fusion.machine.FusionMachineMenu;
 import com.xton.fusion.modifier.ModifierRegistry;
@@ -26,24 +31,29 @@ import net.kyori.adventure.text.format.NamedTextColor;
  * Admin command (op-only):
  * <ul>
  *   <li>{@code /fusion machine} — get a Fusion Machine block.</li>
- *   <li>{@code /fusion give <player> <base> <MOD...>} — build a fused weapon
- *       directly from a modifier list, for testing without grinding.</li>
+ *   <li>{@code /fusion fuse} — fuse main-hand (Target) with off-hand (Ingredient).</li>
+ *   <li>{@code /fusion give <player> <base> <MOD...>} — build a fused weapon directly.</li>
  * </ul>
  */
 public final class FusionCommand implements CommandExecutor, TabCompleter {
 
-    private static final List<String> SUBCOMMANDS = List.of("machine", "give");
+    private static final List<String> SUBCOMMANDS = List.of("machine", "fuse", "give");
     private static final List<String> BASE_HINTS =
             List.of("DIAMOND_SWORD", "NETHERITE_SWORD", "BOW", "DIAMOND_AXE", "TRIDENT");
 
     private final FusionMachineMenu menu;
     private final ModifierRegistry registry;
     private final FusedItemFactory factory;
+    private final FusionEngine engine;
+    private final int cost;
 
-    public FusionCommand(FusionMachineMenu menu, ModifierRegistry registry, FusedItemFactory factory) {
+    public FusionCommand(FusionMachineMenu menu, ModifierRegistry registry,
+                         FusedItemFactory factory, FusionEngine engine, int cost) {
         this.menu = menu;
         this.registry = registry;
         this.factory = factory;
+        this.engine = engine;
+        this.cost = cost;
     }
 
     /** Filter args to known modifier IDs (upper-cased), skipping anything unknown. */
@@ -68,10 +78,14 @@ public final class FusionCommand implements CommandExecutor, TabCompleter {
         if (args.length >= 1 && args[0].equalsIgnoreCase("machine")) {
             return giveMachine(sender);
         }
+        if (args.length >= 1 && args[0].equalsIgnoreCase("fuse")) {
+            return fuse(sender);
+        }
         if (args.length >= 1 && args[0].equalsIgnoreCase("give")) {
             return give(sender, args);
         }
-        sender.sendMessage(Component.text("Usage: /fusion machine | /fusion give <player> <base> <MODIFIER...>",
+        sender.sendMessage(Component.text(
+                "Usage: /fusion machine | /fusion fuse | /fusion give <player> <base> <MODIFIER...>",
                 NamedTextColor.GRAY));
         return true;
     }
@@ -84,6 +98,39 @@ public final class FusionCommand implements CommandExecutor, TabCompleter {
         player.getInventory().addItem(menu.createMachineItem());
         player.sendMessage(Component.text("Gave you a Fusion Machine — place it and right-click.",
                 NamedTextColor.GREEN));
+        return true;
+    }
+
+    /** Quick hand-fusion: main hand = Target (kept), off hand = Ingredient (consumed). */
+    private boolean fuse(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage("Only players can fuse.");
+            return true;
+        }
+        ItemStack target = player.getInventory().getItemInMainHand();
+        ItemStack ingredient = player.getInventory().getItemInOffHand();
+
+        FusionResult result = engine.fuse(target, ingredient);
+        if (!result.success()) {
+            player.sendMessage(Component.text(result.message(), NamedTextColor.RED));
+            return true;
+        }
+        if (cost > 0 && player.getLevel() < cost) {
+            player.sendMessage(Component.text("Fusing costs " + cost + " XP levels.", NamedTextColor.RED));
+            return true;
+        }
+        if (cost > 0) {
+            player.giveExpLevels(-cost);
+        }
+
+        player.getInventory().setItemInMainHand(result.output());
+        ingredient.setAmount(ingredient.getAmount() - 1);
+        player.getInventory().setItemInOffHand(ingredient.getAmount() <= 0 ? null : ingredient);
+
+        player.sendMessage(Component.text("✦ Fusion complete!", NamedTextColor.GREEN));
+        Location loc = player.getLocation().add(0, 1, 0);
+        player.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, loc, 40, 0.4, 0.6, 0.4, 0.2);
+        player.getWorld().playSound(player.getLocation(), Sound.BLOCK_ANVIL_USE, 0.8f, 1.2f);
         return true;
     }
 
@@ -111,8 +158,9 @@ public final class FusionCommand implements CommandExecutor, TabCompleter {
         }
         ItemStack item = factory.create(base, ids, 1, "/fusion give");
         target.getInventory().addItem(item);
-        sender.sendMessage(Component.text("Gave " + target.getName() + " a fused " + base.name().toLowerCase(Locale.ROOT)
-                + " [" + String.join(", ", ids) + "].", NamedTextColor.GREEN));
+        sender.sendMessage(Component.text("Gave " + target.getName() + " a fused "
+                + base.name().toLowerCase(Locale.ROOT) + " [" + String.join(", ", ids) + "].",
+                NamedTextColor.GREEN));
         return true;
     }
 

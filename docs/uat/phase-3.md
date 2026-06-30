@@ -26,7 +26,7 @@ UAT server (`make rebuild`), join, `/op` yourself, and grab ingredients with
 
 ## Bow override (fused bow)
 8. Fuse a **bow** (Target) with a **Nether Star** (→ NOVA). (Use the Fusion
-   Machine, or `/fuse` with the bow in main hand.)
+   Machine, or `/fusion fuse` with the bow in main hand.)
 9. Shoot at a group of mobs (or a wall near them).
    - ✅ Where the arrow lands, a shove burst fires, knocking nearby mobs
      outward — the bow "throws" its effect downrange.

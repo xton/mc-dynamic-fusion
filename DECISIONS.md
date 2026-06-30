@@ -147,3 +147,40 @@ above. The big **verification caveat** across Phases 2–5: anything requiring a
 live client (GUIs, particles, projectiles, block-breaking, knockback feel) was
 implemented defensively and is **unverified in-game** — please run the
 `docs/uat/phase-*.md` plans before trusting gameplay.
+
+---
+
+## UAT round 1 — feedback fixes (2026-06-30)
+
+From hands-on UAT. See `docs/uat/uat-round-1.md` for validation steps.
+
+- ↳ **Machine GUI rebuilt on the vanilla anvil** (was an illegible custom
+  9-slot chest with glass panes + a confirm emerald). Now: machine block is an
+  **anvil**; right-click opens a real anvil view; **left = Target, right =
+  Ingredient, result slot = the fused weapon you take**. Result is computed in
+  `PrepareAnvilEvent`; taking it is intercepted to apply XP cost + consume
+  inputs; the anvil returns unused inputs on close. This single change fixes
+  three reports: illegible UI, "can't take the output" (snap-back), and gives
+  the machine a distinctive look.
+- ↳ **Machine block is now an ANVIL** (was a crafting table) + an **ambient
+  glow** above placed machines (`MachineGlowTask`, config `effect.machine-glow`)
+  so they're easy to spot. (Block glint isn't possible on placed blocks.)
+- ↳ **Fused ingredients now contribute their magic.** Ingredient contribution =
+  `latent(material) + fusedStack(ingredient)` (was latent-only, which gave the
+  "has no magic to give" on a fused sword). Per the user's call, a fused
+  ingredient gives **both** its base-material latent modifiers and its fused
+  stack — consistent with how an unfused ingredient always gives its latent.
+  Unit-tested.
+- ↳ **`/fuse` folded into `/fusion fuse`** (op-only) and the top-level `/fuse`
+  command removed, to fix the tab-completion collision between `/fuse` and
+  `/fusion`. All fusion entry points are now op-gated admin subcommands;
+  regular players fuse via the machine.
+- ↳ Used the modern `AnvilView#setRepairCost` (not the deprecated
+  `AnvilInventory#setRepairCost`, which is marked for removal in 26.x) so a
+  vanilla level cost never blocks taking the result.
+
+### Verification gap (please UAT)
+The anvil GUI (preview, taking the result, input consumption, item safety on
+close) and the machine glow need a live client. The engine change (fused
+ingredient contributes its stack) and command parsing **are** unit-tested
+(29 tests). See `docs/uat/uat-round-1.md`.

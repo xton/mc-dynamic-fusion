@@ -1,51 +1,59 @@
 package com.xton.fusion.machine;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
+import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
-import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.PrepareAnvilEvent;
+import org.bukkit.inventory.AnvilInventory;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.view.AnvilView;
 import org.bukkit.persistence.PersistentDataType;
 
 import com.xton.fusion.fusion.FusionEngine;
 import com.xton.fusion.fusion.FusionResult;
 import com.xton.fusion.item.FusionKeys;
-import com.xton.fusion.util.Scheduler;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 
 /**
- * The anvil-style Fusion Machine GUI: a Target slot (kept and upgraded), an
- * Ingredient slot (consumed), a live Output preview, and a Confirm button.
+ * The Fusion Machine GUI, built on the vanilla <b>anvil</b> interface: the left
+ * input is the Target (kept and upgraded), the right input is the Ingredient
+ * (consumed), and the result slot shows/yields the fused weapon — exactly the
+ * familiar anvil flow, so it reads at a glance.
  *
- * <p>Item handling is defensive: only the Target/Ingredient slots accept items,
- * shift/number/double clicks are blocked to avoid routing into locked slots,
- * and items are returned to the player on close so nothing is lost.
+ * <p>We open a controlled anvil view, compute the result in
+ * {@link #onPrepare}, and intercept taking the result in {@link #onClick} to
+ * apply the XP cost and consume the inputs ourselves. The anvil returns unused
+ * inputs to the player on close, so no manual item return is needed.
  */
 public final class FusionMachineMenu {
 
+    private static final int RESULT_SLOT = 2;
+
     private final FusionEngine engine;
-    private final Scheduler scheduler;
     private final FusionKeys keys;
     private final int cost;
 
-    public FusionMachineMenu(FusionEngine engine, Scheduler scheduler, FusionKeys keys, int cost) {
+    /** Players with a fusion anvil open → the machine block that opened it. */
+    private final Map<UUID, Location> openAnvils = new HashMap<>();
+
+    public FusionMachineMenu(FusionEngine engine, FusionKeys keys, int cost) {
         this.engine = engine;
-        this.scheduler = scheduler;
         this.keys = keys;
         this.cost = cost;
     }
@@ -53,7 +61,7 @@ public final class FusionMachineMenu {
     // ----- machine item -----
 
     public ItemStack createMachineItem() {
-        ItemStack item = new ItemStack(Material.CRAFTING_TABLE);
+        ItemStack item = new ItemStack(Material.ANVIL);
         ItemMeta meta = item.getItemMeta();
         meta.getPersistentDataContainer().set(keys.machine, PersistentDataType.BYTE, (byte) 1);
         meta.displayName(plain("Fusion Machine", NamedTextColor.GOLD));
@@ -78,81 +86,43 @@ public final class FusionMachineMenu {
     // ----- opening -----
 
     public void open(Player player, Location machine) {
-        FusionMenuHolder holder = new FusionMenuHolder(machine);
-        Inventory inv = Bukkit.createInventory(holder, FusionMenuHolder.SIZE,
-                plain("Fusion Machine", NamedTextColor.GOLD));
-        holder.setInventory(inv);
-
-        ItemStack pane = pane();
-        for (int slot : new int[] {1, 3, 5, 6, 7}) {
-            inv.setItem(slot, pane);
+        if (player.openAnvil(null, true) != null) {
+            openAnvils.put(player.getUniqueId(), machine);
         }
-        inv.setItem(FusionMenuHolder.CONFIRM, confirmItem());
-        player.openInventory(inv);
     }
 
-    // ----- event handling (called by MachineListener) -----
+    // ----- event handling (routed by MachineListener) -----
+
+    /** Compute the fusion result for the anvil's two inputs as a live preview. */
+    public void onPrepare(PrepareAnvilEvent event) {
+        HumanEntity viewer = event.getView().getPlayer();
+        if (!openAnvils.containsKey(viewer.getUniqueId())) {
+            return;
+        }
+        AnvilInventory inv = event.getInventory();
+        FusionResult result = engine.fuse(inv.getItem(0), inv.getItem(1));
+        event.setResult(result.success() ? result.output() : null);
+        // We handle the XP cost ourselves; don't let a vanilla level cost block the result.
+        if (event.getView() instanceof AnvilView anvilView) {
+            anvilView.setRepairCost(0);
+        }
+    }
 
     public void onClick(InventoryClickEvent event) {
-        InventoryView view = event.getView();
-        if (!(view.getTopInventory().getHolder() instanceof FusionMenuHolder holder)) {
+        if (!(event.getWhoClicked() instanceof Player player)) {
             return;
         }
-        // Block bulk/transfer interactions that could move items into locked slots.
-        ClickType click = event.getClick();
-        if (event.isShiftClick() || click == ClickType.NUMBER_KEY
-                || click == ClickType.SWAP_OFFHAND || click == ClickType.DOUBLE_CLICK) {
-            event.setCancelled(true);
+        Location machine = openAnvils.get(player.getUniqueId());
+        if (machine == null || !(event.getView().getTopInventory() instanceof AnvilInventory inv)) {
             return;
         }
-        int raw = event.getRawSlot();
-        int topSize = view.getTopInventory().getSize();
-        if (raw < 0 || raw >= topSize) {
-            return; // clicks in the player's own inventory are fine
+        if (event.getRawSlot() != RESULT_SLOT) {
+            return; // input slots behave like a normal anvil
         }
-        if (raw == FusionMenuHolder.TARGET || raw == FusionMenuHolder.INGREDIENT) {
-            // Allow normal placement/removal; refresh the preview after it applies.
-            scheduler.runLater(() -> updatePreview(view.getTopInventory()), 1);
-        } else if (raw == FusionMenuHolder.CONFIRM) {
-            event.setCancelled(true);
-            doFuse((Player) event.getWhoClicked(), view.getTopInventory(), holder.getMachineLocation());
-        } else {
-            event.setCancelled(true);
-        }
-    }
+        event.setCancelled(true);
 
-    public void onClose(InventoryCloseEvent event) {
-        InventoryView view = event.getView();
-        if (!(view.getTopInventory().getHolder() instanceof FusionMenuHolder)) {
-            return;
-        }
-        Inventory inv = view.getTopInventory();
-        Player player = (Player) event.getPlayer();
-        returnItem(player, inv.getItem(FusionMenuHolder.TARGET));
-        returnItem(player, inv.getItem(FusionMenuHolder.INGREDIENT));
-        inv.setItem(FusionMenuHolder.TARGET, null);
-        inv.setItem(FusionMenuHolder.INGREDIENT, null);
-    }
-
-    // ----- internals -----
-
-    private void updatePreview(Inventory inv) {
-        ItemStack target = inv.getItem(FusionMenuHolder.TARGET);
-        ItemStack ingredient = inv.getItem(FusionMenuHolder.INGREDIENT);
-        if (isEmpty(target) && isEmpty(ingredient)) {
-            inv.setItem(FusionMenuHolder.OUTPUT, null);
-            return;
-        }
-        FusionResult result = engine.fuse(target, ingredient);
-        inv.setItem(FusionMenuHolder.OUTPUT, result.success() ? result.output() : hint(result.message()));
-    }
-
-    private void doFuse(Player player, Inventory inv, Location machine) {
-        ItemStack target = inv.getItem(FusionMenuHolder.TARGET);
-        ItemStack ingredient = inv.getItem(FusionMenuHolder.INGREDIENT);
-        FusionResult result = engine.fuse(target, ingredient);
+        FusionResult result = engine.fuse(inv.getItem(0), inv.getItem(1));
         if (!result.success()) {
-            player.sendMessage(plain(result.message(), NamedTextColor.RED));
             return;
         }
         if (cost > 0 && player.getLevel() < cost) {
@@ -162,14 +132,39 @@ public final class FusionMachineMenu {
         if (cost > 0) {
             player.giveExpLevels(-cost);
         }
-        ItemStack remaining = ingredient.clone();
-        remaining.setAmount(ingredient.getAmount() - 1);
-        inv.setItem(FusionMenuHolder.INGREDIENT, remaining.getAmount() <= 0 ? null : remaining);
-        inv.setItem(FusionMenuHolder.TARGET, result.output());
-        updatePreview(inv);
 
+        deliver(player, result.output());
+        consume(inv, 0); // Target is upgraded into the result
+        consume(inv, 1); // Ingredient is spent
+        inv.setItem(RESULT_SLOT, null);
+        player.updateInventory();
+        playEffects(machine);
+    }
+
+    public void onClose(InventoryCloseEvent event) {
+        openAnvils.remove(event.getPlayer().getUniqueId());
+    }
+
+    // ----- internals -----
+
+    private void deliver(Player player, ItemStack output) {
+        Map<Integer, ItemStack> leftover = player.getInventory().addItem(output);
+        for (ItemStack extra : leftover.values()) {
+            player.getWorld().dropItemNaturally(player.getLocation(), extra);
+        }
         player.sendMessage(plain("✦ Fusion complete!", NamedTextColor.GREEN));
-        playEffects(machine != null ? machine : player.getLocation());
+    }
+
+    private void consume(Inventory inv, int slot) {
+        ItemStack item = inv.getItem(slot);
+        if (item == null) {
+            return;
+        }
+        if (item.getAmount() <= 1) {
+            inv.setItem(slot, null);
+        } else {
+            item.setAmount(item.getAmount() - 1);
+        }
     }
 
     private void playEffects(Location loc) {
@@ -180,45 +175,6 @@ public final class FusionMachineMenu {
         Location center = loc.clone().add(0.5, 1.0, 0.5);
         world.spawnParticle(Particle.TOTEM_OF_UNDYING, center, 40, 0.4, 0.6, 0.4, 0.2);
         world.playSound(loc, Sound.BLOCK_ANVIL_USE, 0.8f, 1.2f);
-    }
-
-    private void returnItem(Player player, ItemStack item) {
-        if (isEmpty(item)) {
-            return;
-        }
-        Map<Integer, ItemStack> leftover = player.getInventory().addItem(item);
-        for (ItemStack extra : leftover.values()) {
-            player.getWorld().dropItemNaturally(player.getLocation(), extra);
-        }
-    }
-
-    private ItemStack hint(String message) {
-        ItemStack item = new ItemStack(Material.BARRIER);
-        ItemMeta meta = item.getItemMeta();
-        meta.displayName(plain(message, NamedTextColor.RED));
-        item.setItemMeta(meta);
-        return item;
-    }
-
-    private ItemStack pane() {
-        ItemStack item = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-        ItemMeta meta = item.getItemMeta();
-        meta.displayName(Component.text(" "));
-        item.setItemMeta(meta);
-        return item;
-    }
-
-    private ItemStack confirmItem() {
-        ItemStack item = new ItemStack(Material.EMERALD);
-        ItemMeta meta = item.getItemMeta();
-        meta.displayName(plain("Fuse!", NamedTextColor.GREEN));
-        meta.lore(List.of(plain("Click to fuse Target + Ingredient.", NamedTextColor.GRAY)));
-        item.setItemMeta(meta);
-        return item;
-    }
-
-    private static boolean isEmpty(ItemStack item) {
-        return item == null || item.getType() == Material.AIR || item.getAmount() <= 0;
     }
 
     private static Component plain(String text, NamedTextColor color) {

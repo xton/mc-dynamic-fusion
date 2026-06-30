@@ -6,7 +6,6 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import com.xton.fusion.command.FuseCommand;
 import com.xton.fusion.command.FusionCommand;
 import com.xton.fusion.fusion.FusionEngine;
 import com.xton.fusion.item.FusedItemFactory;
@@ -15,6 +14,7 @@ import com.xton.fusion.item.FusionKeys;
 import com.xton.fusion.item.LatentRegistry;
 import com.xton.fusion.item.LoreGenerator;
 import com.xton.fusion.machine.FusionMachineMenu;
+import com.xton.fusion.machine.MachineGlowTask;
 import com.xton.fusion.machine.MachineListener;
 import com.xton.fusion.machine.MachineStore;
 import com.xton.fusion.modifier.ModifierRegistry;
@@ -94,24 +94,24 @@ public final class FusionPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(
                 new ProjectileListener(reader, registry, swingEffect, keys), this);
 
-        // Fusion Machine (Phase 2): placeable block + GUI, persisted to machines.yml.
+        // Fusion Machine: placeable anvil + vanilla anvil GUI, persisted to machines.yml.
         MachineStore machines = new MachineStore(new File(getDataFolder(), "machines.yml"), getLogger());
-        FusionMachineMenu menu = new FusionMachineMenu(engine, scheduler, keys, fusionCost);
+        FusionMachineMenu menu = new FusionMachineMenu(engine, keys, fusionCost);
         getServer().getPluginManager().registerEvents(new MachineListener(machines, menu), this);
 
-        // Ambient particle shedding (Phase 4 polish), toggleable.
+        // Ambient particle shedding (held fused weapons), toggleable.
         if (getConfig().getBoolean("effect.particle-shedding", true)) {
             scheduler.runRepeating(new ShedParticleTask(reader), 40,
                     getConfig().getLong("effect.shed-period-ticks", 4));
         }
-
-        if (getCommand("fuse") != null) {
-            getCommand("fuse").setExecutor(new FuseCommand(engine, fusionCost));
-        } else {
-            getLogger().warning("Command 'fuse' is missing from plugin.yml.");
+        // Ambient glow above placed machines so they're easy to spot.
+        if (getConfig().getBoolean("effect.machine-glow", true)) {
+            scheduler.runRepeating(new MachineGlowTask(machines), 20,
+                    getConfig().getLong("effect.machine-glow-period-ticks", 10));
         }
+
         if (getCommand("fusion") != null) {
-            FusionCommand fusionCmd = new FusionCommand(menu, registry, factory);
+            FusionCommand fusionCmd = new FusionCommand(menu, registry, factory, engine, fusionCost);
             getCommand("fusion").setExecutor(fusionCmd);
             getCommand("fusion").setTabCompleter(fusionCmd);
         }

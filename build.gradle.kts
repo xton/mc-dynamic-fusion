@@ -12,24 +12,18 @@ repositories {
     }
 }
 
-// Minecraft 26.1+ requires Java 25 at runtime; 26.2 is the latest line.
-//
-// CONFIRM LOCALLY: the paper-api version string changed format after 26.1.
-// Pre-26.1 used "{version}-R0.1-SNAPSHOT"; 26.x publishes build-numbered
-// versions (e.g. 26.2.build.NN-alpha). Resolve the exact current string from
-// https://repo.papermc.io/ (blocked in the authoring environment) and pin it
-// here. The Maven version range below asks for "26.2 build or newer".
-val paperApi = "[26.2.build,)"
+// Minecraft 26.1+ requires Java 25 at runtime. 26.1.2 is the latest *stable*
+// line (26.2.* is still -alpha), and it matches the MockBukkit build below.
+// A plugin built against 26.1.2 runs fine on newer 26.x servers.
+val paperApi = "26.1.2.build.72-stable"
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:$paperApi")
 
     testImplementation("io.papermc.paper:paper-api:$paperApi")
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
-    // CONFIRM LOCALLY: MockBukkit artifact/version for MC 26.x. Check the
-    // latest at https://mockbukkit.org / Maven Central; the coordinate below
-    // is a best guess and almost certainly needs the version updated.
-    testImplementation("org.mockbukkit.mockbukkit:mockbukkit-v1.21:4.40.0")
+    testImplementation("org.junit.jupiter:junit-jupiter:6.1.1")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.1")
+    testImplementation("org.mockbukkit.mockbukkit:mockbukkit-v26.1.2:4.113.4")
 }
 
 java {

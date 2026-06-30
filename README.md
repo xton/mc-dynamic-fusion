@@ -14,9 +14,8 @@ particle burst.
 ## Requirements
 
 - **Java 25** (Minecraft 26.1+ requires it)
-- **Paper 26.x** server (build targets the `26.2` line — adjust the
-  `paper-api` coordinate in `build.gradle.kts` to match your server; the exact
-  build-numbered version must be confirmed against `repo.papermc.io`)
+- **Paper 26.1.2+** server (build pins `26.1.2.build.72-stable`, the latest
+  stable line; a plugin built against it runs fine on newer 26.x servers)
 
 ## Build
 

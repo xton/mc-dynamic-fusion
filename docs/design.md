@@ -604,14 +604,15 @@ Deliberately excluded: the GUI machine, every other modifier, generation cap / X
 - [x] `Scheduler` abstraction (Phase 1); DELAYED modifier added (REPEAT in Phase 1)
 
 ### Phase 4 — Polish & deferred modifiers
-- [ ] INVERT, PERSIST, REVERSE (with finalized semantics) + backfire outcomes
-- [ ] Particle shedding task
-- [ ] Portal Gun behavior
-- [ ] Cow Launcher
-- [ ] Lore hover text
+- [x] INVERT (implosion) + PERSIST (lingering field) + backfire (emergent, via INVERT)
+- [ ] REVERSE — deferred (redundant with INVERT under knockback-only effects; see DECISIONS.md)
+- [x] Particle shedding task (toggleable)
+- [ ] Portal Gun behavior — deferred (large stateful behavior)
+- [ ] Cow Launcher — deferred
+- [x] Lore hover text (since Phase 0)
 - [ ] Sound design pass
-- [ ] Config tuning; PvP whitelist; XP-cost option
-- [ ] Multi-world whitelist
+- [x] XP-cost option (`fusion.cost`); PvP via `effect.affect-players` (Phase 1)
+- [ ] Multi-world whitelist — deferred (low value for single-world server)
 
 ### Phase 5 — Stretch Goals
 - [ ] Resource pack with custom textures

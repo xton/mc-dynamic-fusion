@@ -15,6 +15,9 @@ effect:
   base-power: 1.0
   # Whether the burst affects other players (it's knockback only, no damage).
   affect-players: false
+  # Ambient particles shed by a held fused weapon (cosmetic).
+  particle-shedding: true
+  shed-period-ticks: 4
 
 # NOVA — the canonical all-directions burst.
 nova:
@@ -38,6 +41,11 @@ repeat:
 # DELAYED — holds the effect for a fuse before firing; stacks per copy.
 delayed:
   ticks-per-apply: 30
+
+# PERSIST — lingering field that re-pulses the burst; stacks duration.
+persist:
+  ticks-per-apply: 60
+  interval-ticks: 20
 
 # MINING — mining ray that carves an arc of soft blocks ahead on swing.
 mining:

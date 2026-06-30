@@ -20,4 +20,10 @@ public final class BukkitTaskScheduler implements Scheduler {
             Bukkit.getScheduler().runTaskLater(plugin, task, delayTicks);
         }
     }
+
+    @Override
+    public void runRepeating(Runnable task, long initialDelayTicks, long periodTicks) {
+        Bukkit.getScheduler().runTaskTimer(plugin, task, Math.max(0, initialDelayTicks),
+                Math.max(1, periodTicks));
+    }
 }

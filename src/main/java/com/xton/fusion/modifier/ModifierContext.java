@@ -27,6 +27,8 @@ public class ModifierContext {
     private int repeatCount;        // REPEAT: extra times the effect fires (stacks)
     private int delayTicks;         // DELAYED: ticks before the effect fires (stacks)
     private boolean mining;         // MINING: weapon carves blocks ahead on swing
+    private boolean inverted;       // INVERT: pull inward instead of shoving out (toggles)
+    private int persistTicks;       // PERSIST: lingering field duration in ticks (stacks)
 
     public Player getCaster() {
         return caster;
@@ -124,6 +126,25 @@ public class ModifierContext {
 
     public ModifierContext setMining(boolean mining) {
         this.mining = mining;
+        return this;
+    }
+
+    public boolean isInverted() {
+        return inverted;
+    }
+
+    /** INVERT flips the effect; two INVERTs cancel back to normal. */
+    public ModifierContext toggleInverted() {
+        this.inverted = !this.inverted;
+        return this;
+    }
+
+    public int getPersistTicks() {
+        return persistTicks;
+    }
+
+    public ModifierContext addPersistTicks(int ticks) {
+        this.persistTicks += ticks;
         return this;
     }
 }

@@ -23,9 +23,11 @@ import net.kyori.adventure.text.format.NamedTextColor;
 public final class FuseCommand implements CommandExecutor {
 
     private final FusionEngine engine;
+    private final int cost;
 
-    public FuseCommand(FusionEngine engine) {
+    public FuseCommand(FusionEngine engine, int cost) {
         this.engine = engine;
+        this.cost = cost;
     }
 
     @Override
@@ -43,6 +45,13 @@ public final class FuseCommand implements CommandExecutor {
         if (!result.success()) {
             player.sendMessage(Component.text(result.message(), NamedTextColor.RED));
             return true;
+        }
+        if (cost > 0 && player.getLevel() < cost) {
+            player.sendMessage(Component.text("Fusing costs " + cost + " XP levels.", NamedTextColor.RED));
+            return true;
+        }
+        if (cost > 0) {
+            player.giveExpLevels(-cost);
         }
 
         // Target is upgraded in place; Ingredient loses one from the stack.

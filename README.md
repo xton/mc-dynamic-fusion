@@ -5,7 +5,7 @@ A PaperMC plugin for a family server: combine a **Target** item with an
 **Ingredient** item to create weapons with emergent, composable magical
 properties. See [`docs/design.md`](docs/design.md) for the full design.
 
-## Status: Phase 3 (weapon behaviors)
+## Status: Phase 4 (more modifiers + polish)
 
 Fuse a weapon (Target) with an ingredient (Ingredient → consumed), then swing
 to unleash an effect. The ingredient decides what it does, and **re-fusing
@@ -19,9 +19,11 @@ stacks modifiers** (duplicates compound):
 | **Repeat** | Rabbit's Foot, Slime Ball, Chorus Fruit | fires several times in a row |
 | **Delayed** | Gunpowder | holds the effect for a fuse, then fires |
 | **Mining** | Amethyst Shard | swing carves an arc of soft blocks ahead |
+| **Invert** | Fermented Spider Eye | implodes (pulls inward) — two cancel |
+| **Persist** | Blaze Rod, Dragon's Breath | leaves a lingering pulsing field |
 
 **Fused bows** throw their effect downrange: the burst fires where the arrow
-lands.
+lands. Fusing can cost XP levels (`fusion.cost`, off by default).
 
 ## Requirements
 

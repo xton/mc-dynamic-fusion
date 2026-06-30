@@ -5,7 +5,10 @@ A PaperMC plugin for a family server: combine a **Target** item with an
 **Ingredient** item to create weapons with emergent, composable magical
 properties. See [`docs/design.md`](docs/design.md) for the full design.
 
-## Status: Phase 4 (more modifiers + polish)
+## Status: roadmap complete (Phases 0–5)
+
+Admins can spawn any combination for testing with
+`/fusion give <player> <base> <MODIFIER...>`.
 
 Fuse a weapon (Target) with an ingredient (Ingredient → consumed), then swing
 to unleash an effect. The ingredient decides what it does, and **re-fusing

@@ -615,6 +615,6 @@ Deliberately excluded: the GUI machine, every other modifier, generation cap / X
 - [ ] Multi-world whitelist — deferred (low value for single-world server)
 
 ### Phase 5 — Stretch Goals
-- [ ] Resource pack with custom textures
-- [ ] Multi-block fusion structure
-- [ ] `/fusion give <player> <modifiers...>` admin command for testing
+- [ ] Resource pack with custom textures — deferred (needs authored art)
+- [ ] Multi-block fusion structure — deferred (single-block machine suffices)
+- [x] `/fusion give <player> <base> <modifiers...>` admin command (with tab-complete)

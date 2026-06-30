@@ -116,3 +116,34 @@ shedding all need a live client. Pure modifier logic (INVERT toggle, PERSIST
 accumulation) **is** unit-tested. See `docs/uat/phase-4.md`. **Watch:** that a
 persistent field's pulses stop after its duration and don't pile up with heavy
 stacking.
+
+## Phase 5 — Stretch (2026-06-30)
+
+- ↳ **`/fusion give <player> <base> <MODIFIER...>`** admin command (op-only)
+  added — builds a fused weapon directly from a modifier list and gives it,
+  so the whole modifier space is testable without grinding ingredients. Unknown
+  modifier IDs are skipped (with a "Known: ..." hint); unknown base/player are
+  rejected. Includes tab completion (subcommands → online players → base hints
+  → modifier IDs). The arg→known-id parsing is extracted and **unit-tested**.
+- ↳ **`/fusion` op gate hoisted** to cover both `machine` and `give`.
+- ↳ **Multi-block fusion structure deferred** (design's optional Phase 5 item):
+  the single-block machine from Phase 2 already delivers the GUI; a multi-block
+  build adds detection complexity for little gameplay gain right now. Logged.
+- ↳ **Resource pack deferred** — needs authored art assets, out of scope for
+  an autonomous code pass.
+
+### Verification gap (please UAT)
+`/fusion give` item creation needs a live op to run the command; CI covers the
+pure parsing + load + smoke. See `docs/uat/phase-5.md`.
+
+---
+
+## Roadmap complete
+
+Phases 0–5 are merged. Remaining design-doc items intentionally left for a
+human pass: REVERSE semantics, Portal Gun, Cow Launcher, multi-world whitelist,
+multi-block machine, resource pack, and a sound-design polish pass. All flagged
+above. The big **verification caveat** across Phases 2–5: anything requiring a
+live client (GUIs, particles, projectiles, block-breaking, knockback feel) was
+implemented defensively and is **unverified in-game** — please run the
+`docs/uat/phase-*.md` plans before trusting gameplay.

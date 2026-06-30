@@ -9,4 +9,7 @@ public interface Scheduler {
 
     /** Run {@code task} after {@code delayTicks} (run immediately if <= 0). */
     void runLater(Runnable task, long delayTicks);
+
+    /** Run {@code task} repeatedly every {@code periodTicks} after an initial delay. */
+    void runRepeating(Runnable task, long initialDelayTicks, long periodTicks);
 }

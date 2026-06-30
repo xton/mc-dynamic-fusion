@@ -18,27 +18,25 @@ import com.xton.fusion.util.Scheduler;
 
 /**
  * Resolves a weapon's modifier stack into a burst that shoves nearby entities
- * outward, then applies the area / chain / repeat / delay modifiers:
+ * outward (or, with INVERT, pulls them inward), then applies the area / chain /
+ * repeat / delay / persist modifiers.
  *
  * <ul>
- *   <li><b>base</b> — every active fused weapon shoves entities within a small
- *       radius around the origin.</li>
- *   <li><b>NOVA</b> — sets the burst radius (the canonical all-directions area).</li>
+ *   <li><b>base</b> — shove entities within a small radius around the origin.</li>
+ *   <li><b>NOVA</b> — sets the burst radius.</li>
  *   <li><b>EXPAND</b> — adds to the radius; stacks.</li>
- *   <li><b>CHAIN</b> — after the burst, hops to the nearest entities beyond it.</li>
- *   <li><b>REPEAT</b> — fires the whole effect again a few times in succession.</li>
+ *   <li><b>CHAIN</b> — hops to the nearest entities beyond the burst.</li>
+ *   <li><b>REPEAT</b> — fires again a few times in succession.</li>
  *   <li><b>DELAYED</b> — holds the effect for a fuse before firing.</li>
+ *   <li><b>INVERT</b> — implodes (pulls inward) instead of shoving out.</li>
+ *   <li><b>PERSIST</b> — drops a lingering field that re-pulses the burst.</li>
  * </ul>
- *
- * <p>{@link #execute} centres the burst on the swinging player (each repeat
- * re-reads their position); {@link #burstAt} centres it on an arbitrary point
- * (used by the bow projectile on impact).
  */
 public final class SwingEffectBehavior {
 
     /** Tunables resolved from config. */
     public record Settings(double baseRadius, double basePower, double chainRange,
-                           long repeatDelayTicks, boolean affectPlayers) {
+                           long repeatDelayTicks, long persistIntervalTicks, boolean affectPlayers) {
     }
 
     private final Scheduler scheduler;
@@ -49,7 +47,7 @@ public final class SwingEffectBehavior {
         this.settings = settings;
     }
 
-    /** Melee swing: burst around the caster, honoring DELAYED + REPEAT timing. */
+    /** Melee swing: burst around the caster, honoring DELAYED + REPEAT + PERSIST timing. */
     public void execute(Player caster, ModifierStack stack) {
         ModifierContext ctx = build(stack);
         int repeats = 1 + Math.max(0, ctx.getRepeatCount());
@@ -62,6 +60,10 @@ public final class SwingEffectBehavior {
                 }
             }, delay);
         }
+        if (ctx.getPersistTicks() > 0) {
+            // Lingering field stays at the cast location (the caster can walk out).
+            schedulePersist(caster.getWorld(), caster.getLocation().clone(), ctx, caster, base);
+        }
     }
 
     /** Single burst at a point (e.g. where a fused bow's projectile landed). */
@@ -69,7 +71,11 @@ public final class SwingEffectBehavior {
         if (origin == null || origin.getWorld() == null) {
             return;
         }
-        applyBurst(origin.getWorld(), origin, build(stack), null);
+        ModifierContext ctx = build(stack);
+        applyBurst(origin.getWorld(), origin, ctx, null);
+        if (ctx.getPersistTicks() > 0) {
+            schedulePersist(origin.getWorld(), origin.clone(), ctx, null, 0);
+        }
     }
 
     private ModifierContext build(ModifierStack stack) {
@@ -80,9 +86,20 @@ public final class SwingEffectBehavior {
         return ctx;
     }
 
+    private void schedulePersist(World world, Location origin, ModifierContext ctx,
+                                 Entity exclude, long startDelay) {
+        long interval = Math.max(1, settings.persistIntervalTicks());
+        long duration = ctx.getPersistTicks();
+        for (long t = interval; t <= duration; t += interval) {
+            scheduler.runLater(() -> applyBurst(world, origin, ctx, exclude), startDelay + t);
+        }
+    }
+
     private void applyBurst(World world, Location origin, ModifierContext ctx, Entity exclude) {
         double radius = ctx.getRadius() + ctx.getExpandBonus();
         double power = ctx.getPower();
+        boolean inverted = ctx.isInverted();
+        Vector center = origin.toVector();
 
         List<LivingEntity> hit = new ArrayList<>();
         for (Entity entity : world.getNearbyEntities(origin, radius, radius, radius)) {
@@ -90,13 +107,13 @@ public final class SwingEffectBehavior {
             if (target == null) {
                 continue;
             }
-            shove(target, origin.toVector(), power);
+            shove(target, center, power, inverted);
             hit.add(target);
         }
         burst(world, origin, radius);
 
         if (ctx.getChainCount() > 0) {
-            chain(world, exclude, origin, hit, ctx.getChainCount(), power);
+            chain(world, exclude, origin, hit, ctx.getChainCount(), power, inverted);
         }
     }
 
@@ -111,18 +128,22 @@ public final class SwingEffectBehavior {
         return living;
     }
 
-    private void shove(LivingEntity target, Vector from, double power) {
-        Vector push = target.getLocation().toVector().subtract(from);
-        if (push.lengthSquared() < 1.0e-6) {
-            push = new Vector(0, 1, 0);
+    private void shove(LivingEntity target, Vector center, double power, boolean inverted) {
+        Vector dir = target.getLocation().toVector().subtract(center); // outward from centre
+        if (dir.lengthSquared() < 1.0e-6) {
+            dir = new Vector(0, 1, 0);
         }
-        push.normalize().multiply(power);
-        push.setY(Math.max(push.getY(), 0.3)); // a little lift so it reads
-        target.setVelocity(target.getVelocity().add(push));
+        dir.normalize();
+        if (inverted) {
+            dir.multiply(-1); // pull inward
+        }
+        dir.multiply(power);
+        dir.setY(inverted ? 0.15 : Math.max(dir.getY(), 0.3));
+        target.setVelocity(target.getVelocity().add(dir));
     }
 
     private void chain(World world, Entity exclude, Location origin,
-                       List<LivingEntity> hit, int hops, double power) {
+                       List<LivingEntity> hit, int hops, double power, boolean inverted) {
         Location from = origin;
         for (int i = 0; i < hops; i++) {
             LivingEntity next = nearestUnhit(world, exclude, from, hit);
@@ -130,7 +151,7 @@ public final class SwingEffectBehavior {
                 break;
             }
             link(world, from, next.getLocation());
-            shove(next, from.toVector(), power);
+            shove(next, from.toVector(), power, inverted);
             hit.add(next);
             from = next.getLocation();
         }

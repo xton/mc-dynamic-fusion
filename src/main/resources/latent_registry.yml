@@ -29,3 +29,11 @@ latent_modifiers:
   # MINING — mining ray (carves soft blocks ahead on swing)
   AMETHYST_SHARD:
     - MINING
+  # INVERT — implode (pull inward) instead of shoving out
+  FERMENTED_SPIDER_EYE:
+    - INVERT
+  # PERSIST — lingering field that keeps pulsing
+  BLAZE_ROD:
+    - PERSIST
+  DRAGON_BREATH:
+    - PERSIST

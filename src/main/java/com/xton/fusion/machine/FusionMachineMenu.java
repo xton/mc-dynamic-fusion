@@ -41,11 +41,13 @@ public final class FusionMachineMenu {
     private final FusionEngine engine;
     private final Scheduler scheduler;
     private final FusionKeys keys;
+    private final int cost;
 
-    public FusionMachineMenu(FusionEngine engine, Scheduler scheduler, FusionKeys keys) {
+    public FusionMachineMenu(FusionEngine engine, Scheduler scheduler, FusionKeys keys, int cost) {
         this.engine = engine;
         this.scheduler = scheduler;
         this.keys = keys;
+        this.cost = cost;
     }
 
     // ----- machine item -----
@@ -152,6 +154,13 @@ public final class FusionMachineMenu {
         if (!result.success()) {
             player.sendMessage(plain(result.message(), NamedTextColor.RED));
             return;
+        }
+        if (cost > 0 && player.getLevel() < cost) {
+            player.sendMessage(plain("Fusing costs " + cost + " XP levels.", NamedTextColor.RED));
+            return;
+        }
+        if (cost > 0) {
+            player.giveExpLevels(-cost);
         }
         ItemStack remaining = ingredient.clone();
         remaining.setAmount(ingredient.getAmount() - 1);

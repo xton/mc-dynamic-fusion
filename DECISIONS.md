@@ -81,3 +81,38 @@ CI only confirms the plugin loads + units + smoke boot. The pure modifier logic
 (DELAYED accumulation, MINING flag) **is** unit-tested. See `docs/uat/phase-3.md`.
 **Watch especially:** that the mining ray can't grief protected/valuable areas
 and that hardness-capping behaves as intended.
+
+## Phase 4 — Polish + deferred modifiers (2026-06-30)
+
+Implemented the highest-value, safe, testable subset; deferred the big toys.
+
+- ↳ **INVERT modifier** (Fermented Spider Eye). Flips the shove into an
+  implosion (pull toward the burst centre). **Toggles** — two INVERTs cancel,
+  honoring no-dedupe + order. This *is* the backfire path: an inverted NOVA on
+  your own swing drags mobs onto you. Deterministic, not a malfunction. Pure +
+  unit-tested.
+- ↳ **PERSIST modifier** (Blaze Rod, Dragon's Breath). Drops a lingering field
+  at the burst point that re-pulses every `persist.interval-ticks` for a
+  stacking duration. The field is **fixed at the cast location** (the caster
+  can walk out), excludes the caster on swing. Pure accumulation unit-tested;
+  the scheduling/pulsing needs UAT.
+- ↳ **REVERSE deferred.** Under the current knockback-only effect model,
+  "knockback → pull toward caster" is identical to INVERT. Implementing both
+  would duplicate behavior. REVERSE waits until there are distinct effects
+  (damage/heal) for it to reverse. Logged rather than shipped.
+- ↳ **XP cost wired** (`fusion.cost`, default 0). `/fuse` and the GUI now check
+  `player.getLevel() >= cost` and deduct on success. Default 0 = free (no
+  behavior change).
+- ↳ **Particle shedding** added as a toggleable repeating task
+  (`effect.particle-shedding`, default true) using `Particle.ENCHANT`. Added
+  `Scheduler.runRepeating` for it. Cosmetic; UAT to confirm it reads well.
+- ↳ **Deferred to keep this PR focused (logged, not built):** multi-world
+  whitelist (low value for a single-world family server), Portal Gun (large
+  stateful behavior), Cow Launcher (fun extra). These can be a later pass.
+
+### Verification gap (please UAT)
+INVERT pull direction, PERSIST field pulsing, XP deduction, and particle
+shedding all need a live client. Pure modifier logic (INVERT toggle, PERSIST
+accumulation) **is** unit-tested. See `docs/uat/phase-4.md`. **Watch:** that a
+persistent field's pulses stop after its duration and don't pile up with heavy
+stacking.

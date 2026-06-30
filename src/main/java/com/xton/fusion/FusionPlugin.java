@@ -1,6 +1,10 @@
 package com.xton.fusion;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -125,6 +129,19 @@ public final class FusionPlugin extends JavaPlugin {
             saveResource("latent_registry.yml", false);
         }
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
+        // Merge the bundled defaults so ingredients added in newer plugin
+        // versions appear even when the on-disk file predates them (it is only
+        // written when absent). The user's own entries win on conflict.
+        try (InputStream in = getResource("latent_registry.yml")) {
+            if (in != null) {
+                YamlConfiguration defaults = YamlConfiguration.loadConfiguration(
+                        new InputStreamReader(in, StandardCharsets.UTF_8));
+                yaml.setDefaults(defaults);
+                yaml.options().copyDefaults(true);
+            }
+        } catch (IOException e) {
+            getLogger().warning("Could not load default latent registry: " + e.getMessage());
+        }
         ConfigurationSection section = yaml.getConfigurationSection("latent_modifiers");
         return LatentRegistry.fromConfig(section, getLogger());
     }

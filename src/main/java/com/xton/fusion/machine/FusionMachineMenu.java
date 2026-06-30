@@ -3,6 +3,7 @@ package com.xton.fusion.machine;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 import org.bukkit.Location;
@@ -51,6 +52,8 @@ public final class FusionMachineMenu {
 
     /** Players with a fusion anvil open → the machine block that opened it. */
     private final Map<UUID, Location> openAnvils = new HashMap<>();
+    /** Last failure hint shown per player, to avoid re-sending it every keystroke. */
+    private final Map<UUID, String> lastHint = new HashMap<>();
 
     public FusionMachineMenu(FusionEngine engine, FusionKeys keys, int cost) {
         this.engine = engine;
@@ -100,11 +103,35 @@ public final class FusionMachineMenu {
             return;
         }
         AnvilInventory inv = event.getInventory();
-        FusionResult result = engine.fuse(inv.getItem(0), inv.getItem(1));
-        event.setResult(result.success() ? result.output() : null);
+        ItemStack target = inv.getItem(0);
+        ItemStack ingredient = inv.getItem(1);
+        FusionResult result = engine.fuse(target, ingredient);
+
+        AnvilView anvilView = event.getView() instanceof AnvilView av ? av : null;
+        if (result.success()) {
+            ItemStack output = result.output();
+            // Honor the anvil's rename field so renaming yields a valid, named
+            // result instead of invalidating the fusion.
+            String rename = anvilView != null ? anvilView.getRenameText() : null;
+            if (rename != null && !rename.isBlank()) {
+                ItemMeta meta = output.getItemMeta();
+                meta.displayName(Component.text(rename).decoration(TextDecoration.ITALIC, false));
+                output.setItemMeta(meta);
+            }
+            event.setResult(output);
+        } else {
+            event.setResult(null);
+        }
         // We handle the XP cost ourselves; don't let a vanilla level cost block the result.
-        if (event.getView() instanceof AnvilView anvilView) {
+        if (anvilView != null) {
             anvilView.setRepairCost(0);
+        }
+
+        // Explain *why* it can't fuse (only when something is actually loaded).
+        if (viewer instanceof Player player) {
+            String hint = result.success() || (isEmpty(target) && isEmpty(ingredient))
+                    ? null : result.message();
+            sendHint(player, hint);
         }
     }
 
@@ -143,9 +170,23 @@ public final class FusionMachineMenu {
 
     public void onClose(InventoryCloseEvent event) {
         openAnvils.remove(event.getPlayer().getUniqueId());
+        lastHint.remove(event.getPlayer().getUniqueId());
     }
 
     // ----- internals -----
+
+    private void sendHint(Player player, String hint) {
+        UUID id = player.getUniqueId();
+        if (Objects.equals(lastHint.get(id), hint)) {
+            return;
+        }
+        lastHint.put(id, hint);
+        player.sendActionBar(hint == null ? Component.empty() : plain(hint, NamedTextColor.RED));
+    }
+
+    private static boolean isEmpty(ItemStack item) {
+        return item == null || item.getType().isAir() || item.getAmount() <= 0;
+    }
 
     private void deliver(Player player, ItemStack output) {
         Map<Integer, ItemStack> leftover = player.getInventory().addItem(output);

@@ -184,3 +184,30 @@ The anvil GUI (preview, taking the result, input consumption, item safety on
 close) and the machine glow need a live client. The engine change (fused
 ingredient contributes its stack) and command parsing **are** unit-tested
 (29 tests). See `docs/uat/uat-round-1.md`.
+
+---
+
+## UAT round 2 — feedback fixes (2026-06-30)
+
+- ↳ **Invalid fusions now explain themselves.** When the anvil can't fuse, the
+  reason (e.g. "Amethyst Shard has no magic to give.", "No ingredient to fuse.")
+  is shown on the **action bar**, throttled so it isn't re-sent every keystroke.
+  Previously you just got an empty result + X with no explanation.
+- ↳ **Renaming no longer invalidates the fusion.** Root cause: we recomputed the
+  result on every `PrepareAnvilEvent` (including rename keystrokes) and ignored
+  the rename text, so the renamed result was dropped. Now the anvil's rename
+  text is applied to the fused output, so you get a **valid, custom-named**
+  weapon.
+- ↳ **Stale `latent_registry.yml` fixed (the real cause of "can't fuse sword +
+  amethyst shard").** `saveResource(..., false)` only writes the file when
+  absent, so a server that first ran on an early version never received
+  ingredients added later (AMETHYST_SHARD→MINING, GUNPOWDER→DELAYED,
+  FERMENTED_SPIDER_EYE→INVERT, BLAZE_ROD/DRAGON_BREATH→PERSIST). Now the loader
+  **merges the bundled defaults** (`setDefaults` + `copyDefaults`) under the
+  on-disk file, so new ingredients always appear while user edits still win on
+  conflict. (A user can disable a default ingredient by setting it to `[]`.)
+
+### Verification gap (please UAT)
+Action-bar reason text and rename-to-name need a live client. The registry
+merge is a load-time fix; confirm sword + amethyst shard now fuses (MINING) and
+the other new ingredients work. See `docs/uat/uat-round-2.md`.

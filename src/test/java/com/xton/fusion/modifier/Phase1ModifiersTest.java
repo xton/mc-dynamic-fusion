@@ -9,11 +9,11 @@ import org.junit.jupiter.api.Test;
 
 import com.xton.fusion.modifier.impl.ChainModifier;
 import com.xton.fusion.modifier.impl.ExpandModifier;
+import com.xton.fusion.modifier.impl.MultishotModifier;
 import com.xton.fusion.modifier.impl.NovaModifier;
-import com.xton.fusion.modifier.impl.RepeatModifier;
 
 /**
- * Pure: the EXPAND/CHAIN/REPEAT modifiers only mutate context, so they test
+ * Pure: the EXPAND/CHAIN/MULTISHOT modifiers only mutate context, so they test
  * without a server. Verifies each accumulates and that duplicates stack.
  */
 class Phase1ModifiersTest {
@@ -36,11 +36,12 @@ class Phase1ModifiersTest {
     }
 
     @Test
-    void repeatAddsCountAndStacks() {
+    void multishotAddsCountAndStacks() {
         ModifierContext ctx = new ModifierContext();
-        new RepeatModifier(2).apply(ctx);
-        new RepeatModifier(2).apply(ctx);
-        assertEquals(4, ctx.getRepeatCount());
+        assertEquals(1, ctx.getCount(), "base is one projectile");
+        new MultishotModifier(2).apply(ctx);
+        new MultishotModifier(2).apply(ctx);
+        assertEquals(5, ctx.getCount()); // 1 base + 2 + 2
     }
 
     @Test
@@ -49,17 +50,17 @@ class Phase1ModifiersTest {
                 .register(new NovaModifier(4.0, 1.4))
                 .register(new ExpandModifier(3.0))
                 .register(new ChainModifier(3))
-                .register(new RepeatModifier(2));
+                .register(new MultishotModifier(2));
 
         // Duplicates kept and order preserved (no dedupe).
         ModifierStack stack = registry.resolve(
-                List.of("NOVA", "EXPAND", "EXPAND", "CHAIN", "REPEAT"));
+                List.of("NOVA", "EXPAND", "EXPAND", "CHAIN", "MULTISHOT"));
         ModifierContext ctx = stack.applyTo(new ModifierContext());
 
         assertTrue(ctx.isRadial());
         assertEquals(4.0, ctx.getRadius(), 1.0e-9);
         assertEquals(6.0, ctx.getExpandBonus(), 1.0e-9); // EXPAND x2
         assertEquals(3, ctx.getChainCount());
-        assertEquals(2, ctx.getRepeatCount());
+        assertEquals(3, ctx.getCount()); // 1 base + 2
     }
 }

@@ -6,10 +6,16 @@ import org.bukkit.entity.Player;
 /**
  * Mutable state carried through the modifier pipeline.
  *
+ * <p>It describes, in engine-neutral primitives, the <b>projectile(s)</b> a
+ * weapon launches and the <b>burst</b> that fires where a projectile triggers —
+ * modelled after Noita, where everything is a projectile plus an area action.
+ * A swing (or bow shot) launches {@code count} projectiles; each flies with the
+ * spec here (speed / spread / pierce / lifetime …) and, when it stops or
+ * expires, fires the area effect (radius / power / chain / persist …).
+ *
  * <p>The Bukkit references ({@link #caster}, {@link #origin}) are optional and
- * are populated by the weapon behaviour layer. Pure modifiers like
- * {@code NOVA} only read/write the primitive effect parameters, so they can be
- * unit-tested by constructing a context with no caster.
+ * are populated by the weapon behaviour layer. Pure modifiers only read/write
+ * the primitive fields, so they can be unit-tested with no server.
  */
 public class ModifierContext {
 
@@ -17,16 +23,24 @@ public class ModifierContext {
     private Player caster;
     private Location origin;
 
-    // Effect parameters — what the modifiers compute.
+    // ----- projectile spec (how the shot flies) -----
+    private int count = 1;             // MULTISHOT: number of projectiles launched (stacks)
+    private double spreadDegrees;      // SPREAD: half-angle of the random aim cone (stacks)
+    private double speed;              // launch speed in blocks/tick (launcher sets a base)
+    private boolean gravity;           // has-gravity seam: arc & fall vs. straight bolt
+    private boolean pierce;            // PIERCE: pass through soft blocks/entities instead of stopping
+    private double pierceMaxHardness;  // blocks harder than this stop even a piercing shot
+    private int bounces;               // bounce seam: rebounds off hard surfaces (stacks)
+    private int lifetimeTicks;         // DELAYED: ticks before the shot expires & triggers (stacks)
+
+    // ----- burst spec (what happens where the shot triggers) -----
     private double radius;
     private double power;
     private double amplifier = 1.0; // running potency multiplier (AMPLIFY compounds this)
     private boolean radial;
-    private double expandBonus;     // EXPAND adds to the effect radius (stacks)
+    private double expandBonus;     // EXPAND adds to the burst radius (stacks)
     private int chainCount;         // CHAIN: extra entities to hop to (stacks)
-    private int repeatCount;        // REPEAT: extra times the effect fires (stacks)
-    private int delayTicks;         // DELAYED: ticks before the effect fires (stacks)
-    private boolean mining;         // MINING: weapon carves blocks ahead on swing
+    private boolean mining;         // MINING: the shot breaks soft blocks it passes through
     private boolean inverted;       // INVERT: pull inward instead of shoving out (toggles)
     private int persistTicks;       // PERSIST: lingering field duration in ticks (stacks)
 
@@ -47,6 +61,88 @@ public class ModifierContext {
         this.origin = origin;
         return this;
     }
+
+    // ----- projectile spec -----
+
+    public int getCount() {
+        return count;
+    }
+
+    /** MULTISHOT adds projectiles; base is 1. */
+    public ModifierContext addCount(int extra) {
+        this.count += extra;
+        return this;
+    }
+
+    public double getSpreadDegrees() {
+        return spreadDegrees;
+    }
+
+    public ModifierContext addSpreadDegrees(double degrees) {
+        this.spreadDegrees += degrees;
+        return this;
+    }
+
+    public double getSpeed() {
+        return speed;
+    }
+
+    public ModifierContext setSpeed(double speed) {
+        this.speed = speed;
+        return this;
+    }
+
+    public boolean hasGravity() {
+        return gravity;
+    }
+
+    public ModifierContext setGravity(boolean gravity) {
+        this.gravity = gravity;
+        return this;
+    }
+
+    public boolean isPierce() {
+        return pierce;
+    }
+
+    public ModifierContext setPierce(boolean pierce) {
+        this.pierce = pierce;
+        return this;
+    }
+
+    public double getPierceMaxHardness() {
+        return pierceMaxHardness;
+    }
+
+    public ModifierContext setPierceMaxHardness(double maxHardness) {
+        this.pierceMaxHardness = maxHardness;
+        return this;
+    }
+
+    public int getBounces() {
+        return bounces;
+    }
+
+    public ModifierContext addBounces(int count) {
+        this.bounces += count;
+        return this;
+    }
+
+    public int getLifetimeTicks() {
+        return lifetimeTicks;
+    }
+
+    public ModifierContext setLifetimeTicks(int ticks) {
+        this.lifetimeTicks = ticks;
+        return this;
+    }
+
+    public ModifierContext addLifetimeTicks(int ticks) {
+        this.lifetimeTicks += ticks;
+        return this;
+    }
+
+    // ----- burst spec -----
 
     public double getRadius() {
         return radius;
@@ -99,24 +195,6 @@ public class ModifierContext {
 
     public ModifierContext addChainCount(int count) {
         this.chainCount += count;
-        return this;
-    }
-
-    public int getRepeatCount() {
-        return repeatCount;
-    }
-
-    public ModifierContext addRepeatCount(int count) {
-        this.repeatCount += count;
-        return this;
-    }
-
-    public int getDelayTicks() {
-        return delayTicks;
-    }
-
-    public ModifierContext addDelayTicks(int ticks) {
-        this.delayTicks += ticks;
         return this;
     }
 

@@ -4,10 +4,12 @@ import com.xton.fusion.modifier.Modifier;
 import com.xton.fusion.modifier.ModifierContext;
 
 /**
- * Delays the swing effect by a short fuse. Stacks: each copy adds
- * {@code ticksPerApply} more delay.
+ * Extends how long a projectile flies before it expires and triggers — the
+ * "expiry" primitive. Stacks: each copy adds {@code ticksPerApply} more life,
+ * so the shot travels farther before it goes off. Leave it short for a
+ * hit-where-it-lands bolt, or stack it for a long-range lance.
  *
- * <p>Pure: only mutates context. The behaviour layer schedules the delay.
+ * <p>Pure: only mutates context. The projectile layer honours the lifetime.
  */
 public final class DelayedModifier implements Modifier {
 
@@ -35,16 +37,16 @@ public final class DelayedModifier implements Modifier {
 
     @Override
     public String description() {
-        return "fires after a short fuse";
+        return "flies longer before it goes off";
     }
 
     @Override
     public String detailedDescription() {
-        return "Holds the effect, then unleashes it a moment later. Stacks for a longer fuse.";
+        return "Lengthens the fuse so the shot travels farther before it expires and triggers. Stacks for more range.";
     }
 
     @Override
     public ModifierContext apply(ModifierContext ctx) {
-        return ctx.addDelayTicks(ticksPerApply);
+        return ctx.addLifetimeTicks(ticksPerApply);
     }
 }

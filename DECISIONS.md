@@ -264,3 +264,70 @@ the renamed taken item). Build green, 29 tests.
 Placing/right-clicking/breaking the enchanting-table machine, and that a normal
 enchanting table still enchants, need a live client. Build green, 27 tests
 (the MachineStore persistence test was removed with the file store).
+
+---
+
+## Projectile model refactor — everything is a projectile (2026-07-01)
+
+Reworked the effect model to be Noita-like: instead of hooking swing/bow effects
+directly, a swing or bow shot now **launches one or more projectiles carrying
+the modifier stack**, and each projectile **triggers its burst where it lands**.
+This turns the old special-cased behaviors into composable primitives.
+
+**Model (all live in `ModifierContext`):**
+- Projectile spec — `count` (MULTISHOT), `spreadDegrees` (SPREAD), `speed`,
+  `pierce` (PIERCE) + `pierceMaxHardness`, `lifetimeTicks` (DELAYED = the expiry
+  primitive), plus `mining`. Seams present but not yet wired: `gravity`,
+  `bounces`.
+- Burst spec — the old `radius/power/expandBonus/chainCount/inverted/persist`
+  fields, unchanged; NOVA/EXPAND/CHAIN/INVERT/PERSIST still feed them.
+
+**New classes (`com.xton.fusion.projectile`):**
+- `AoeBurst` — the on-trigger payload; the old `SwingEffectBehavior.applyBurst`
+  (shove/chain/persist/particles) extracted verbatim.
+- `FusionProjectile` — a custom, particle-rendered projectile ticked by us (no
+  Bukkit entity), sub-stepping each tick so we own pierce/mining/lifetime. Not a
+  Bukkit `Projectile`, because Bukkit projectile physics can't express
+  pierce/no-gravity/custom-lifetime cleanly.
+- `ProjectileLauncher` — builds the context from base config + stack (pure,
+  unit-tested) and spawns `count` projectiles with the SPREAD cone.
+
+**Primitive mapping / ↳ calls:**
+- ↳ **REPEAT dropped, replaced by MULTISHOT** (`addCount`). Per the design
+  refinement, repeat isn't a useful projectile primitive; number-of-projectiles
+  is. Old items tagged `REPEAT` simply resolve to nothing now (harmless; they
+  lose that one effect). Ingredients remapped (Rabbit's Foot/Slime/Chorus →
+  MULTISHOT).
+- ↳ **DELAYED repurposed to lifetime** (`addLifetimeTicks`) rather than a
+  pre-fire delay — the user noted "Delayed already IS the expiry primitive." A
+  longer fuse now means the shot flies farther before it triggers.
+- ↳ **MINING rebuilt from primitives**: it sets `pierce` + `mining` + a short
+  lifetime + fast speed (config `mining.lifetime-ticks/speed/max-hardness`). A
+  "true mining ray" is pierce + very short expiry, exactly as described. Retired
+  the arc-raycast `MiningRayBehavior`.
+- ↳ **New PIERCE and SPREAD modifiers** with new ingredients (Arrow/Quartz →
+  PIERCE; Feather/Sugar → SPREAD).
+- ↳ **Melee = a short fast bolt that triggers where it lands.** Non-piercing
+  shots stop at the first block/entity and burst there; base lifetime (30t) is
+  the fallback when they hit open air.
+- ↳ **Pierce + AOE = contact-hits along the line, one burst at the end.** A
+  piercing shot applies a light along-travel shove to each entity it passes
+  (`contactShove`), then fires the full `AoeBurst` once where it finally stops.
+- ↳ **Fused bows now cancel the vanilla arrow** and launch our projectiles
+  instead, speed scaled by draw force (`0.35 + 0.65·force`). A fused bow is a
+  wand; Multishot bows fan a volley. (Previously we stamped PDC on the vanilla
+  arrow and burst on its natural hit — removed.)
+- ↳ **Every triggered shot fires the base burst** (base radius/power from
+  config), so even a Mining-only ray ends with a small pop. Consistent with the
+  old "every active fused weapon produces a burst"; kept simple over
+  special-casing "no burst" cases.
+- ↳ **Bounce/gravity left as documented seams** (fields + a `TODO(bounce seam)`
+  branch in `FusionProjectile`), per "we don't need to implement all these from
+  the start, but the model needs the seams." Grenade/cluster-bomb (spawn-children
+  on trigger, carrying a decremented `generation`) are the next builds on top.
+
+### Verification gap (please UAT)
+All flight/collision behaviour needs a live client — pierce through walls,
+mining tunnels, multishot spread, bow volleys, burst-on-land. Build green; pure
+spec-building is unit-tested (`ProjectileModelTest`), but the world interaction
+is not testable here. See `docs/uat/projectile-model.md`.

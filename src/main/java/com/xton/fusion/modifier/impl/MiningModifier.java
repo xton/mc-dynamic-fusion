@@ -4,14 +4,31 @@ import com.xton.fusion.modifier.Modifier;
 import com.xton.fusion.modifier.ModifierContext;
 
 /**
- * Marks the weapon as a mining ray: on swing it carves an arc of softer blocks
- * ahead of the wielder (see {@code MiningRayBehavior}).
+ * Turns the shot into a mining ray: it pierces and breaks the softer blocks it
+ * passes through, flying fast with a short life so it carves a stub of a tunnel
+ * ahead. A "true mining ray" is exactly this — pierce plus a very short expiry —
+ * built from the same primitives everything else uses. Stack DELAYED to reach
+ * farther; stack PIERCE-hardness (config) to chew tougher stone.
  *
- * <p>Pure: only sets a flag on the context.
+ * <p>Pure: only sets flags and the mining spec on the context.
  */
 public final class MiningModifier implements Modifier {
 
     public static final String ID = "MINING";
+
+    private final int lifetimeTicks;
+    private final double speed;
+    private final double maxHardness;
+
+    public MiningModifier(int lifetimeTicks, double speed, double maxHardness) {
+        this.lifetimeTicks = lifetimeTicks;
+        this.speed = speed;
+        this.maxHardness = maxHardness;
+    }
+
+    public MiningModifier() {
+        this(6, 2.5, 3.0);
+    }
 
     @Override
     public String id() {
@@ -25,16 +42,20 @@ public final class MiningModifier implements Modifier {
 
     @Override
     public String description() {
-        return "carves blocks ahead";
+        return "carves soft blocks ahead";
     }
 
     @Override
     public String detailedDescription() {
-        return "On swing, breaks an arc of softer blocks in front of you (obsidian and the like resist).";
+        return "A short, fast piercing ray that breaks the softer blocks it passes through (obsidian and the like resist).";
     }
 
     @Override
     public ModifierContext apply(ModifierContext ctx) {
-        return ctx.setMining(true);
+        return ctx.setMining(true)
+                .setPierce(true)
+                .setSpeed(speed)
+                .setLifetimeTicks(lifetimeTicks)
+                .setPierceMaxHardness(maxHardness);
     }
 }

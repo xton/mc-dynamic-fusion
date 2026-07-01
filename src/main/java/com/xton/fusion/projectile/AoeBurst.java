@@ -1,4 +1,4 @@
-package com.xton.fusion.weapon.behaviors;
+package com.xton.fusion.projectile;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,85 +13,51 @@ import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 
 import com.xton.fusion.modifier.ModifierContext;
-import com.xton.fusion.modifier.ModifierStack;
 import com.xton.fusion.util.Scheduler;
 
 /**
- * Resolves a weapon's modifier stack into a burst that shoves nearby entities
- * outward (or, with INVERT, pulls them inward), then applies the area / chain /
- * repeat / delay / persist modifiers.
+ * The area action a projectile fires where it triggers: a burst that shoves
+ * nearby entities outward (or, with INVERT, pulls them inward), optionally
+ * chaining to further entities and leaving a lingering PERSIST field. This is
+ * the Noita-style "on-trigger" payload — it reads the already-resolved burst
+ * fields off the {@link ModifierContext} and acts on the world.
  *
- * <ul>
- *   <li><b>base</b> — shove entities within a small radius around the origin.</li>
- *   <li><b>NOVA</b> — sets the burst radius.</li>
- *   <li><b>EXPAND</b> — adds to the radius; stacks.</li>
- *   <li><b>CHAIN</b> — hops to the nearest entities beyond the burst.</li>
- *   <li><b>REPEAT</b> — fires again a few times in succession.</li>
- *   <li><b>DELAYED</b> — holds the effect for a fuse before firing.</li>
- *   <li><b>INVERT</b> — implodes (pulls inward) instead of shoving out.</li>
- *   <li><b>PERSIST</b> — drops a lingering field that re-pulses the burst.</li>
- * </ul>
+ * <p>Extracted from the old swing behaviour so both swing and bow now route
+ * through a projectile that ends in this burst.
  */
-public final class SwingEffectBehavior {
+public final class AoeBurst {
 
     /** Tunables resolved from config. */
-    public record Settings(double baseRadius, double basePower, double chainRange,
-                           long repeatDelayTicks, long persistIntervalTicks, boolean affectPlayers) {
+    public record Settings(double chainRange, long persistIntervalTicks, boolean affectPlayers) {
     }
 
     private final Scheduler scheduler;
     private final Settings settings;
 
-    public SwingEffectBehavior(Scheduler scheduler, Settings settings) {
+    public AoeBurst(Scheduler scheduler, Settings settings) {
         this.scheduler = scheduler;
         this.settings = settings;
     }
 
-    /** Melee swing: burst around the caster, honoring DELAYED + REPEAT + PERSIST timing. */
-    public void execute(Player caster, ModifierStack stack) {
-        ModifierContext ctx = build(stack);
-        int repeats = 1 + Math.max(0, ctx.getRepeatCount());
-        long base = Math.max(0, ctx.getDelayTicks());
-        for (int i = 0; i < repeats; i++) {
-            long delay = base + (long) i * settings.repeatDelayTicks();
-            scheduler.runLater(() -> {
-                if (caster.isValid()) {
-                    applyBurst(caster.getWorld(), caster.getLocation(), ctx, caster);
-                }
-            }, delay);
-        }
-        if (ctx.getPersistTicks() > 0) {
-            // Lingering field stays at the cast location (the caster can walk out).
-            schedulePersist(caster.getWorld(), caster.getLocation().clone(), ctx, caster, base);
-        }
-    }
-
-    /** Single burst at a point (e.g. where a fused bow's projectile landed). */
-    public void burstAt(Location origin, ModifierStack stack) {
-        if (origin == null || origin.getWorld() == null) {
+    /**
+     * Fire the burst at {@code origin}. {@code exclude} (usually the caster) is
+     * never pushed. Schedules PERSIST pulses if the context asks for them.
+     */
+    public void fire(World world, Location origin, ModifierContext ctx, Entity exclude) {
+        if (world == null || origin == null) {
             return;
         }
-        ModifierContext ctx = build(stack);
-        applyBurst(origin.getWorld(), origin, ctx, null);
+        applyBurst(world, origin, ctx, exclude);
         if (ctx.getPersistTicks() > 0) {
-            schedulePersist(origin.getWorld(), origin.clone(), ctx, null, 0);
+            schedulePersist(world, origin.clone(), ctx, exclude);
         }
     }
 
-    private ModifierContext build(ModifierStack stack) {
-        ModifierContext ctx = new ModifierContext()
-                .setRadius(settings.baseRadius())
-                .setPower(settings.basePower());
-        stack.applyTo(ctx);
-        return ctx;
-    }
-
-    private void schedulePersist(World world, Location origin, ModifierContext ctx,
-                                 Entity exclude, long startDelay) {
+    private void schedulePersist(World world, Location origin, ModifierContext ctx, Entity exclude) {
         long interval = Math.max(1, settings.persistIntervalTicks());
         long duration = ctx.getPersistTicks();
         for (long t = interval; t <= duration; t += interval) {
-            scheduler.runLater(() -> applyBurst(world, origin, ctx, exclude), startDelay + t);
+            scheduler.runLater(() -> applyBurst(world, origin, ctx, exclude), t);
         }
     }
 

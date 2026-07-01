@@ -16,17 +16,27 @@ latent_modifiers:
     - CHAIN
   ECHO_SHARD:
     - CHAIN
-  # REPEAT — fire several times
+  # MULTISHOT — launch extra projectiles
   RABBIT_FOOT:
-    - REPEAT
+    - MULTISHOT
   SLIME_BALL:
-    - REPEAT
+    - MULTISHOT
   CHORUS_FRUIT:
-    - REPEAT
-  # DELAYED — short fuse before the effect
+    - MULTISHOT
+  # SPREAD — scatter the aim (shotgun fodder with MULTISHOT)
+  FEATHER:
+    - SPREAD
+  SUGAR:
+    - SPREAD
+  # PIERCE — punch through blocks and entities
+  ARROW:
+    - PIERCE
+  QUARTZ:
+    - PIERCE
+  # DELAYED — longer lifetime / more range
   GUNPOWDER:
     - DELAYED
-  # MINING — mining ray (carves soft blocks ahead on swing)
+  # MINING — short fast piercing ray that carves soft blocks
   AMETHYST_SHARD:
     - MINING
   # INVERT — implode (pull inward) instead of shoving out

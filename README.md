@@ -11,22 +11,32 @@ Admins can spawn any combination for testing with
 `/fusion give <player> <base> <MODIFIER...>`.
 
 Fuse a weapon (Target) with an ingredient (Ingredient → consumed), then swing
-to unleash an effect. The ingredient decides what it does, and **re-fusing
-stacks modifiers** (duplicates compound):
+to unleash an effect. **Everything is a projectile** (Noita-style): a swing
+launches one or more short, fast bolts that fly, then **trigger a burst where
+they land**. Modifiers shape both the flight and the burst, and **re-fusing
+stacks them** (duplicates compound):
 
 | Modifier | Ingredients | Effect |
 |---|---|---|
-| **Nova** | Nether Star | all-directions shove burst on swing |
+| **Nova** | Nether Star | all-directions shove burst where the shot triggers |
 | **Expand** | Heart of the Sea, Magma Cream | widens the burst (stacks bigger) |
 | **Chain** | String, Echo Shard | hops to nearby entities after the burst |
-| **Repeat** | Rabbit's Foot, Slime Ball, Chorus Fruit | fires several times in a row |
-| **Delayed** | Gunpowder | holds the effect for a fuse, then fires |
-| **Mining** | Amethyst Shard | swing carves an arc of soft blocks ahead |
+| **Multishot** | Rabbit's Foot, Slime Ball, Chorus Fruit | launches extra projectiles |
+| **Spread** | Feather, Sugar | scatters the aim (Multishot + Spread = shotgun) |
+| **Pierce** | Arrow, Quartz | punches through soft blocks & every entity in its path |
+| **Delayed** | Gunpowder | longer lifetime — the shot flies farther before it triggers |
+| **Mining** | Amethyst Shard | a short, fast piercing ray that bores soft blocks |
 | **Invert** | Fermented Spider Eye | implodes (pulls inward) — two cancel |
 | **Persist** | Blaze Rod, Dragon's Breath | leaves a lingering pulsing field |
 
-**Fused bows** throw their effect downrange: the burst fires where the arrow
-lands. Fusing can cost XP levels (`fusion.cost`, off by default).
+Because these are primitives, builds **compose**: a ray gun is Pierce + Delayed;
+a shotgun is Multishot + Spread; a mining laser is Mining (Pierce + a very short
+expiry). Bounce and gravity are seamed in the model for later builds (grenades,
+cluster bombs).
+
+**Fused bows** become wands: releasing fires the same projectiles downrange,
+their speed scaled by draw force (so a Multishot bow fans a volley). Fusing can
+cost XP levels (`fusion.cost`, off by default).
 
 ## Requirements
 
@@ -51,9 +61,9 @@ folder and restart.
 Two ways to fuse:
 
 - **Fusion Machine** — `/fusion machine` (op) gives a **Fusion Machine** (an
-  anvil). Place it, right-click, and use it like an anvil: **left slot =
-  Target** (kept/upgraded), **right slot = Ingredient** (consumed), take the
-  result.
+  enchanting table). Place it, right-click, and use it like an anvil: **left
+  slot = Target** (kept/upgraded), **right slot = Ingredient** (consumed), take
+  the result.
 - **Quick command** — `/fusion fuse` (op): main hand = Target, off hand =
   Ingredient.
 

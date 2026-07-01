@@ -1,46 +1,41 @@
 package com.xton.fusion.weapon;
 
-import java.util.Arrays;
 import java.util.List;
 
-import org.bukkit.Location;
-import org.bukkit.entity.Projectile;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityShootBowEvent;
-import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.persistence.PersistentDataType;
 
 import com.xton.fusion.item.FusedItemReader;
-import com.xton.fusion.item.FusionKeys;
 import com.xton.fusion.modifier.ModifierRegistry;
 import com.xton.fusion.modifier.ModifierStack;
-import com.xton.fusion.weapon.behaviors.SwingEffectBehavior;
+import com.xton.fusion.projectile.ProjectileLauncher;
 
 /**
- * Bow override: when a fused bow is fired, its modifier stack is stamped onto
- * the projectile, and on impact the swing-effect burst fires at the landing
- * point. So a fused bow throws its weapon effect downrange.
+ * Bow override: a fused bow throws its weapon effect downrange. On release we
+ * cancel the vanilla arrow and launch the bow's modifier stack as
+ * {@link com.xton.fusion.projectile.FusionProjectile}s instead, scaling their
+ * speed by draw force — so the bow becomes a wand firing the same projectile
+ * model as a melee swing (multishot bows fan into a volley, etc.).
  */
 public final class ProjectileListener implements Listener {
 
     private final FusedItemReader reader;
     private final ModifierRegistry registry;
-    private final SwingEffectBehavior swingEffect;
-    private final FusionKeys keys;
+    private final ProjectileLauncher launcher;
 
     public ProjectileListener(FusedItemReader reader, ModifierRegistry registry,
-                              SwingEffectBehavior swingEffect, FusionKeys keys) {
+                              ProjectileLauncher launcher) {
         this.reader = reader;
         this.registry = registry;
-        this.swingEffect = swingEffect;
-        this.keys = keys;
+        this.launcher = launcher;
     }
 
     @EventHandler
     public void onShoot(EntityShootBowEvent event) {
-        if (!(event.getProjectile() instanceof Projectile projectile)) {
+        if (!(event.getEntity() instanceof Player player)) {
             return;
         }
         ItemStack bow = event.getBow();
@@ -48,31 +43,21 @@ public final class ProjectileListener implements Listener {
             return;
         }
         List<String> ids = reader.readModifierIds(bow);
-        if (registry.resolve(ids).isEmpty()) {
-            return;
+        ModifierStack stack = registry.resolve(ids);
+        if (stack.isEmpty()) {
+            return; // fused bow, but no implemented modifiers — leave it vanilla
         }
-        projectile.getPersistentDataContainer().set(keys.modifierStack,
-                PersistentDataType.STRING, String.join(",", ids));
+        // Replace the vanilla arrow with our own projectile(s). Force is 0..1;
+        // map it to a speed scale so a tap still fires a slow shot.
+        event.setCancelled(true);
+        double speedScale = 0.35 + 0.65 * clamp01(event.getForce());
+        launcher.launch(player, stack, speedScale);
     }
 
-    @EventHandler
-    public void onHit(ProjectileHitEvent event) {
-        Projectile projectile = event.getEntity();
-        String csv = projectile.getPersistentDataContainer().get(keys.modifierStack,
-                PersistentDataType.STRING);
-        if (csv == null || csv.isBlank()) {
-            return;
+    private static double clamp01(float f) {
+        if (f < 0f) {
+            return 0.0;
         }
-        Location loc;
-        if (event.getHitBlock() != null) {
-            loc = event.getHitBlock().getLocation().toCenterLocation();
-        } else if (event.getHitEntity() != null) {
-            loc = event.getHitEntity().getLocation();
-        } else {
-            loc = projectile.getLocation();
-        }
-        ModifierStack stack = registry.resolve(Arrays.asList(csv.split(",")));
-        swingEffect.burstAt(loc, stack);
-        projectile.remove();
+        return Math.min(1.0, f);
     }
 }

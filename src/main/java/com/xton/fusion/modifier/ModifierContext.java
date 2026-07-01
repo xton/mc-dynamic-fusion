@@ -7,11 +7,19 @@ import org.bukkit.entity.Player;
  * Mutable state carried through the modifier pipeline.
  *
  * <p>It describes, in engine-neutral primitives, the <b>projectile(s)</b> a
- * weapon launches and the <b>burst</b> that fires where a projectile triggers —
- * modelled after Noita, where everything is a projectile plus an area action.
- * A swing (or bow shot) launches {@code count} projectiles; each flies with the
- * spec here (speed / spread / pierce / lifetime …) and, when it stops or
- * expires, fires the area effect (radius / power / chain / persist …).
+ * weapon launches, split into two halves modelled after Noita:
+ *
+ * <ul>
+ *   <li><b>flight</b> — how each projectile travels: count / spread / speed /
+ *       pierce / lifetime / gravity, plus whether it mines the blocks it
+ *       passes through. A flight can be zero-length (detonate at the origin).</li>
+ *   <li><b>payload</b> — what it delivers where it terminates. The only payload
+ *       effect today is the AOE burst (radius / power / chain / invert /
+ *       persist), and it is present <em>only</em> when a burst modifier asks for
+ *       it ({@link #hasBurst()}). A payload can be empty (a mining ray delivers
+ *       nothing at its terminus), and later effects can spawn child projectiles
+ *       (cluster bomb).</li>
+ * </ul>
  *
  * <p>The Bukkit references ({@link #caster}, {@link #origin}) are optional and
  * are populated by the weapon behaviour layer. Pure modifiers only read/write
@@ -33,7 +41,8 @@ public class ModifierContext {
     private int bounces;               // bounce seam: rebounds off hard surfaces (stacks)
     private int lifetimeTicks;         // LIFETIME: ticks before the shot expires & triggers (stacks)
 
-    // ----- burst spec (what happens where the shot triggers) -----
+    // ----- payload: burst spec (what happens where the shot terminates) -----
+    private boolean burst;          // whether a burst is delivered at all (opt-in)
     private double radius;
     private double power;
     private double amplifier = 1.0; // running potency multiplier (AMPLIFY compounds this)
@@ -142,7 +151,22 @@ public class ModifierContext {
         return this;
     }
 
-    // ----- burst spec -----
+    // ----- payload: burst spec -----
+
+    /** Whether a burst is delivered where the projectile terminates. */
+    public boolean hasBurst() {
+        return burst;
+    }
+
+    /**
+     * Opt this shot's payload into a burst. Called by burst modifiers (NOVA,
+     * EXPAND, CHAIN, INVERT, PERSIST); a stack without any of them delivers no
+     * burst (e.g. a pure mining ray or kinetic lance).
+     */
+    public ModifierContext enableBurst() {
+        this.burst = true;
+        return this;
+    }
 
     public double getRadius() {
         return radius;

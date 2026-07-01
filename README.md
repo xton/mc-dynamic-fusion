@@ -12,9 +12,11 @@ Admins can spawn any combination for testing with
 
 Fuse a weapon (Target) with an ingredient (Ingredient → consumed), then swing
 to unleash an effect. **Everything is a projectile** (Noita-style): a swing
-launches one or more short, fast bolts that fly, then **trigger a burst where
-they land**. Modifiers shape both the flight and the burst, and **re-fusing
-stacks them** (duplicates compound):
+launches one or more short, fast bolts that fly (the **flight**) and deliver
+their **payload** where they land. Some modifiers shape the flight (multishot,
+spread, pierce, lifetime, mining); others are the payload — a **burst** that's
+delivered only when you add one (so a bare mining ray just carves, no pop).
+**Re-fusing stacks** them (duplicates compound):
 
 | Modifier | Ingredients | Effect |
 |---|---|---|

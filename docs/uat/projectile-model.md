@@ -37,8 +37,13 @@ Fastest way to build test weapons is `/fusion give`. New/changed modifier IDs:
 7. `/fusion give <you> DIAMOND_PICKAXE MINING` (or any base)
    - ✅ Swing at stone/dirt → a short, fast ray bores a stub tunnel of soft
      blocks ahead (obsidian/bedrock resist). Short by design.
+   - ✅ **No burst/pop at the end** — a mining ray delivers an empty payload; it
+     just carves and stops (you'll hear the block breaks, not an explosion).
 8. `/fusion give <you> DIAMOND_PICKAXE MINING LIFETIME LIFETIME`
    - ✅ The tunnel reaches farther (LIFETIME extends the ray's life).
+8b. `/fusion give <you> DIAMOND_PICKAXE MINING NOVA` → mines a tunnel **and**
+    bursts at the end (Nova opts the burst back in). Confirms flight + payload
+    compose independently.
 
 ## Fused bow (wand)
 9. `/fusion give <you> BOW NOVA` — draw and release.
@@ -61,8 +66,12 @@ Fastest way to build test weapons is `/fusion give`. New/changed modifier IDs:
     Rabbit's Foot→Multishot).
 
 ## Known limitations / seams (see DECISIONS.md)
+- **Burst is opt-in.** Only NOVA/EXPAND/CHAIN/INVERT/PERSIST deliver a burst; a
+  shot with only flight modifiers (Pierce/Lifetime/Mining/Multishot/Spread)
+  delivers an empty payload and terminates quietly. A bare Pierce/Mining shot is
+  meant to feel kinetic, not explosive.
 - **Bounce** and **gravity** are modelled (fields + hook) but not yet wired — no
-  grenade/arc builds yet. Bolts fly straight.
-- Every triggered shot fires the base burst, so even a Mining-only ray ends with
-  a small pop.
-- Old items tagged `REPEAT` no longer do anything (re-fuse to refresh).
+  grenade/arc builds yet. Bolts fly straight. Cluster bomb (a payload that spawns
+  child projectiles) slots into the `Payload` effect list when built.
+- Old items tagged `REPEAT` (now `MULTISHOT`) or `DELAYED` (now `LIFETIME`) no
+  longer do anything — re-fuse to refresh.

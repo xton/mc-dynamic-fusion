@@ -47,6 +47,7 @@ public final class NovaModifier implements Modifier {
 
     @Override
     public ModifierContext apply(ModifierContext ctx) {
+        ctx.enableBurst();
         ctx.setRadial(true);
         ctx.setRadius(radius);
         // Multiply by the running amplifier so a preceding AMPLIFY compounds.

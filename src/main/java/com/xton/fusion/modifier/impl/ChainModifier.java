@@ -45,6 +45,7 @@ public final class ChainModifier implements Modifier {
 
     @Override
     public ModifierContext apply(ModifierContext ctx) {
-        return ctx.addChainCount(countPerApply);
+        // CHAIN hops out of a burst, so it opts one in.
+        return ctx.enableBurst().addChainCount(countPerApply);
     }
 }

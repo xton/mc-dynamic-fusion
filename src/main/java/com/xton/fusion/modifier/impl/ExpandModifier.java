@@ -45,6 +45,7 @@ public final class ExpandModifier implements Modifier {
 
     @Override
     public ModifierContext apply(ModifierContext ctx) {
-        return ctx.addExpandBonus(bonusPerApply);
+        // EXPAND implies you want a burst (to widen), so it opts one in.
+        return ctx.enableBurst().addExpandBonus(bonusPerApply);
     }
 }

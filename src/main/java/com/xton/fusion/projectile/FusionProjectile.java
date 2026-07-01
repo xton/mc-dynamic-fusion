@@ -36,9 +36,11 @@ import com.xton.fusion.modifier.ModifierContext;
  * </ul>
  *
  * <p>When it stops (hits a hard block, hits an entity without pierce, or
- * expires) it fires its {@link AoeBurst} payload at that point. A non-piercing
- * bolt therefore "triggers where it lands"; a piercing shot contact-hits along
- * the line and bursts once at the end.
+ * expires) it delivers its {@link Payload} at that point. The payload may be
+ * empty — a mining ray does its work along the flight and delivers nothing at
+ * the terminus (no pop). A non-piercing bolt with a burst payload "triggers
+ * where it lands"; a piercing shot contact-hits along the line and bursts once
+ * at the end.
  */
 public final class FusionProjectile extends BukkitRunnable {
 
@@ -50,7 +52,7 @@ public final class FusionProjectile extends BukkitRunnable {
     private static final double GRAVITY_PER_TICK = 0.05;
 
     private final Plugin plugin;
-    private final AoeBurst burst;
+    private final Payload payload;
     private final ModifierContext ctx;
     private final World world;
     private final Player caster;
@@ -62,11 +64,11 @@ public final class FusionProjectile extends BukkitRunnable {
 
     private int age;
 
-    public FusionProjectile(Plugin plugin, AoeBurst burst, ModifierContext ctx,
+    public FusionProjectile(Plugin plugin, Payload payload, ModifierContext ctx,
                             World world, Location origin, Vector velocity,
                             Player caster, int generation) {
         this.plugin = plugin;
-        this.burst = burst;
+        this.payload = payload;
         this.ctx = ctx;
         this.world = world;
         this.position = origin.toVector();
@@ -142,6 +144,10 @@ public final class FusionProjectile extends BukkitRunnable {
 
         if (ctx.isMining() && breakable) {
             ItemStack tool = caster != null ? caster.getInventory().getItemInMainHand() : null;
+            // breakNaturally already plays the vanilla break particles/sound; a
+            // little extra spark/crack sells the ray boring through.
+            world.spawnParticle(Particle.BLOCK, here, 12, 0.2, 0.2, 0.2, 0.0, type.createBlockData());
+            world.playSound(here, Sound.BLOCK_STONE_BREAK, 0.6f, 0.9f);
             if (tool != null) {
                 block.breakNaturally(tool);
             } else {
@@ -196,12 +202,15 @@ public final class FusionProjectile extends BukkitRunnable {
         }
     }
 
-    /** Fire the payload at {@code where} (may be null if we never had a world) and end. */
+    /**
+     * Deliver the payload at {@code where} (may be null if we never had a world)
+     * and end. An empty payload delivers nothing — no terminus sound or pop —
+     * so a mining ray or kinetic lance simply stops.
+     */
     private void stop(Location where) {
         try {
             if (where != null) {
-                world.playSound(where, Sound.ENTITY_ARROW_HIT, 0.6f, 1.6f);
-                burst.fire(world, where, ctx, caster);
+                payload.detonate(world, where, caster, generation);
             }
         } finally {
             cancel();

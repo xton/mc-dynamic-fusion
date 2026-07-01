@@ -38,6 +38,7 @@ public final class InvertModifier implements Modifier {
 
     @Override
     public ModifierContext apply(ModifierContext ctx) {
-        return ctx.toggleInverted();
+        // INVERT flips a burst inward, so it opts one in.
+        return ctx.enableBurst().toggleInverted();
     }
 }

@@ -1,5 +1,7 @@
 package com.xton.fusion.projectile;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.bukkit.Location;
@@ -49,12 +51,29 @@ public final class ProjectileLauncher {
     }
 
     /**
+     * Build the payload for a resolved context: the effects delivered where a
+     * projectile terminates. Empty unless the stack opted a burst in — so a
+     * mining ray or kinetic lance delivers nothing at its terminus. Pure.
+     *
+     * <p>Seam: a future spawn effect (cluster bomb) would be added here, gated
+     * on a spawn request in the context and the projectile's generation.
+     */
+    public Payload buildPayload(ModifierContext ctx) {
+        List<PayloadEffect> effects = new ArrayList<>();
+        if (ctx.hasBurst()) {
+            effects.add(new BurstEffect(burst, ctx));
+        }
+        return effects.isEmpty() ? Payload.empty() : new Payload(effects);
+    }
+
+    /**
      * Launch the shot from {@code caster}'s eye along their look direction.
      * {@code speedScale} lets a bow scale speed by draw force (1.0 for a melee
      * swing).
      */
     public void launch(Player caster, ModifierStack stack, double speedScale) {
         ModifierContext ctx = buildContext(stack).setCaster(caster);
+        Payload payload = buildPayload(ctx);
         Location origin = caster.getEyeLocation();
         Vector aim = origin.getDirection().normalize();
         double speed = Math.max(0.05, ctx.getSpeed() * speedScale);
@@ -63,7 +82,7 @@ public final class ProjectileLauncher {
         for (int i = 0; i < count; i++) {
             Vector dir = scatter(aim, ctx.getSpreadDegrees());
             Vector velocity = dir.multiply(speed);
-            new FusionProjectile(plugin, burst, ctx, caster.getWorld(),
+            new FusionProjectile(plugin, payload, ctx, caster.getWorld(),
                     origin.clone(), velocity, caster, 0).start();
         }
     }

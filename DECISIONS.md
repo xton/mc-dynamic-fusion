@@ -319,17 +319,38 @@ This turns the old special-cased behaviors into composable primitives.
   instead, speed scaled by draw force (`0.35 + 0.65·force`). A fused bow is a
   wand; Multishot bows fan a volley. (Previously we stamped PDC on the vanilla
   arrow and burst on its natural hit — removed.)
-- ↳ **Every triggered shot fires the base burst** (base radius/power from
-  config), so even a Mining-only ray ends with a small pop. Consistent with the
-  old "every active fused weapon produces a burst"; kept simple over
-  special-casing "no burst" cases.
 - ↳ **Bounce/gravity left as documented seams** (fields + a `TODO(bounce seam)`
   branch in `FusionProjectile`), per "we don't need to implement all these from
   the start, but the model needs the seams." Grenade/cluster-bomb (spawn-children
   on trigger, carrying a decremented `generation`) are the next builds on top.
 
+### Flight + payload model (follow-up, same day)
+
+Corrected the model per feedback: a projectile is a **flight** (how it travels)
+plus a **payload** (a list of effects delivered where it terminates). Both can be
+empty — a zero-length flight detonates at the origin; an empty payload delivers
+nothing. This replaces the earlier "every triggered shot fires the base burst"
+call (which made a Mining-only ray pop at its terminus — unwanted).
+
+- **`Payload` = `List<PayloadEffect>`**, delivered at termination. Today the only
+  effect is `BurstEffect` (the AOE). The list *is* the extensibility seam: a
+  future spawn effect (cluster bomb) re-launches child projectiles from the
+  terminus carrying a decremented `generation`, with no special-casing elsewhere.
+- ↳ **Burst is opt-in, not a base default.** A burst is delivered only if a burst
+  modifier asked for it (`ModifierContext#enableBurst()`, set by NOVA / EXPAND /
+  CHAIN / INVERT / PERSIST). The flight modifiers (MULTISHOT / SPREAD / PIERCE /
+  LIFETIME / MINING) don't. So a **mining ray delivers an empty payload — no pop
+  at its terminus** — while Mining + Nova still bursts. Base radius/power still
+  seed the burst, but only when one is enabled.
+- ↳ **Mining does its work along the flight, not at the end.** Each block it
+  bores plays a break sound + block particles (on top of `breakNaturally`'s own
+  effects); the terminus is silent. Removed the unconditional arrow-hit sound
+  from `stop()` — the burst plays its own sound, an empty payload none.
+
 ### Verification gap (please UAT)
 All flight/collision behaviour needs a live client — pierce through walls,
-mining tunnels, multishot spread, bow volleys, burst-on-land. Build green; pure
-spec-building is unit-tested (`ProjectileModelTest`), but the world interaction
-is not testable here. See `docs/uat/projectile-model.md`.
+mining tunnels (and that they *don't* pop at the end), multishot spread, bow
+volleys, burst-on-land. Build green (35 tests); the flight/payload spec-building
+is unit-tested (`ProjectileModelTest` asserts mining/pierce deliver empty
+payloads), but the world interaction is not testable here. See
+`docs/uat/projectile-model.md`.

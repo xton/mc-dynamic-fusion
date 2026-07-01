@@ -45,6 +45,7 @@ public final class PersistModifier implements Modifier {
 
     @Override
     public ModifierContext apply(ModifierContext ctx) {
-        return ctx.addPersistTicks(ticksPerApply);
+        // PERSIST re-pulses a burst, so it opts one in.
+        return ctx.enableBurst().addPersistTicks(ticksPerApply);
     }
 }

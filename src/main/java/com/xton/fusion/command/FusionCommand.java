@@ -3,6 +3,7 @@ package com.xton.fusion.command;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.logging.Logger;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -46,14 +47,28 @@ public final class FusionCommand implements CommandExecutor, TabCompleter {
     private final FusedItemFactory factory;
     private final FusionEngine engine;
     private final int cost;
+    private final Logger log;
+    private final boolean debug;
 
     public FusionCommand(FusionMachineMenu menu, ModifierRegistry registry,
-                         FusedItemFactory factory, FusionEngine engine, int cost) {
+                         FusedItemFactory factory, FusionEngine engine, int cost,
+                         Logger log, boolean debug) {
         this.menu = menu;
         this.registry = registry;
         this.factory = factory;
         this.engine = engine;
         this.cost = cost;
+        this.log = log;
+        this.debug = debug;
+    }
+
+    private void logFuse(Player player, ItemStack target, ItemStack ingredient, String outcome) {
+        if (debug) {
+            log.info("[fusion] /fusion fuse by " + player.getName() + ": "
+                    + (target == null ? "(empty)" : target.getType().name()) + " + "
+                    + (ingredient == null ? "(empty)" : ingredient.getType().name())
+                    + " => " + outcome);
+        }
     }
 
     /** Filter args to known modifier IDs (upper-cased), skipping anything unknown. */
@@ -113,10 +128,12 @@ public final class FusionCommand implements CommandExecutor, TabCompleter {
         FusionResult result = engine.fuse(target, ingredient);
         if (!result.success()) {
             player.sendMessage(Component.text(result.message(), NamedTextColor.RED));
+            logFuse(player, target, ingredient, "refused(" + result.message() + ")");
             return true;
         }
         if (cost > 0 && player.getLevel() < cost) {
             player.sendMessage(Component.text("Fusing costs " + cost + " XP levels.", NamedTextColor.RED));
+            logFuse(player, target, ingredient, "refused(needs " + cost + " levels)");
             return true;
         }
         if (cost > 0) {
@@ -128,6 +145,7 @@ public final class FusionCommand implements CommandExecutor, TabCompleter {
         player.getInventory().setItemInOffHand(ingredient.getAmount() <= 0 ? null : ingredient);
 
         player.sendMessage(Component.text("✦ Fusion complete!", NamedTextColor.GREEN));
+        logFuse(player, target, ingredient, "committed");
         Location loc = player.getLocation().add(0, 1, 0);
         player.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, loc, 40, 0.4, 0.6, 0.4, 0.2);
         player.getWorld().playSound(player.getLocation(), Sound.BLOCK_ANVIL_USE, 0.8f, 1.2f);

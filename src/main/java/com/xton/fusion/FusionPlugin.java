@@ -50,6 +50,7 @@ public final class FusionPlugin extends JavaPlugin {
         int maxGeneration = getConfig().getInt("fusion.max-generation", 5);
         int fusionCost = getConfig().getInt("fusion.cost", 0);
         long swingCooldownMs = getConfig().getLong("cooldown.swing-ms", 200);
+        boolean debug = getConfig().getBoolean("debug-logging", true);
 
         ModifierRegistry registry = new ModifierRegistry()
                 .register(new NovaModifier(
@@ -100,7 +101,7 @@ public final class FusionPlugin extends JavaPlugin {
 
         // Fusion Machine: placeable anvil + vanilla anvil GUI, persisted to machines.yml.
         MachineStore machines = new MachineStore(new File(getDataFolder(), "machines.yml"), getLogger());
-        FusionMachineMenu menu = new FusionMachineMenu(engine, keys, fusionCost);
+        FusionMachineMenu menu = new FusionMachineMenu(engine, keys, fusionCost, getLogger(), debug);
         getServer().getPluginManager().registerEvents(new MachineListener(machines, menu), this);
 
         // Ambient particle shedding (held fused weapons), toggleable.
@@ -115,7 +116,8 @@ public final class FusionPlugin extends JavaPlugin {
         }
 
         if (getCommand("fusion") != null) {
-            FusionCommand fusionCmd = new FusionCommand(menu, registry, factory, engine, fusionCost);
+            FusionCommand fusionCmd = new FusionCommand(menu, registry, factory, engine, fusionCost,
+                    getLogger(), debug);
             getCommand("fusion").setExecutor(fusionCmd);
             getCommand("fusion").setTabCompleter(fusionCmd);
         }

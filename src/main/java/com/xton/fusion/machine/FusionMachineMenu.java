@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.logging.Logger;
 
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -48,14 +49,20 @@ public final class FusionMachineMenu {
     private final FusionEngine engine;
     private final FusionKeys keys;
     private final int cost;
+    private final Logger log;
+    private final boolean debug;
 
     /** Players with a fusion anvil open → the machine block that opened it. */
     private final Map<UUID, Location> openAnvils = new HashMap<>();
+    /** Last preview line logged per player, to log one line per distinct attempt. */
+    private final Map<UUID, String> lastLogged = new HashMap<>();
 
-    public FusionMachineMenu(FusionEngine engine, FusionKeys keys, int cost) {
+    public FusionMachineMenu(FusionEngine engine, FusionKeys keys, int cost, Logger log, boolean debug) {
         this.engine = engine;
         this.keys = keys;
         this.cost = cost;
+        this.log = log;
+        this.debug = debug;
     }
 
     // ----- machine item -----
@@ -94,6 +101,7 @@ public final class FusionMachineMenu {
     // ----- event handling (routed by MachineListener) -----
 
     /** Compute the fusion result for the anvil's two inputs as a live preview. */
+    @SuppressWarnings("deprecation") // AnvilInventory#setRepairCost is the reliable cross-version call
     public void onPrepare(PrepareAnvilEvent event) {
         HumanEntity viewer = event.getView().getPlayer();
         if (!openAnvils.containsKey(viewer.getUniqueId())) {
@@ -115,9 +123,21 @@ public final class FusionMachineMenu {
         } else {
             event.setResult(null); // still mid-setup, nothing to explain
         }
-        // We handle the XP cost ourselves; don't let a vanilla level cost block the result.
-        if (anvilView != null) {
-            anvilView.setRepairCost(0);
+        // Clear the vanilla level cost so the result is takeable in survival (we
+        // charge our own XP). Set it on the AnvilInventory directly — relying on
+        // the view being an AnvilView was unreliable and left the cost in place,
+        // so the anvil blocked the result as "Too Expensive".
+        inv.setRepairCost(0);
+
+        if (debug) {
+            String line = "anvil preview by " + viewer.getName() + ": " + desc(target) + " + "
+                    + desc(ingredient) + " => "
+                    + (result.success() ? "OK" : "REFUSED(" + result.message() + ")")
+                    + " [view=" + event.getView().getClass().getSimpleName()
+                    + ", isAnvilView=" + (anvilView != null) + "]";
+            if (!line.equals(lastLogged.put(viewer.getUniqueId(), line))) {
+                log.info("[fusion] " + line);
+            }
         }
     }
 
@@ -134,12 +154,16 @@ public final class FusionMachineMenu {
         }
         event.setCancelled(true);
 
-        FusionResult result = engine.fuse(inv.getItem(0), inv.getItem(1));
+        ItemStack a = inv.getItem(0);
+        ItemStack b = inv.getItem(1);
+        FusionResult result = engine.fuse(a, b);
         if (!result.success()) {
+            logTake(player, a, b, "refused(" + result.message() + ")");
             return;
         }
         if (cost > 0 && player.getLevel() < cost) {
             player.sendMessage(plain("Fusing costs " + cost + " XP levels.", NamedTextColor.RED));
+            logTake(player, a, b, "refused(needs " + cost + " levels)");
             return;
         }
         if (cost > 0) {
@@ -155,10 +179,19 @@ public final class FusionMachineMenu {
         inv.setItem(RESULT_SLOT, null);
         player.updateInventory();
         playEffects(machine);
+        logTake(player, a, b, "committed");
+    }
+
+    private void logTake(Player player, ItemStack a, ItemStack b, String outcome) {
+        if (debug) {
+            log.info("[fusion] anvil take by " + player.getName() + ": "
+                    + desc(a) + " + " + desc(b) + " => " + outcome);
+        }
     }
 
     public void onClose(InventoryCloseEvent event) {
         openAnvils.remove(event.getPlayer().getUniqueId());
+        lastLogged.remove(event.getPlayer().getUniqueId());
     }
 
     // ----- internals -----
@@ -185,6 +218,10 @@ public final class FusionMachineMenu {
 
     private static boolean isEmpty(ItemStack item) {
         return item == null || item.getType().isAir() || item.getAmount() <= 0;
+    }
+
+    private static String desc(ItemStack item) {
+        return isEmpty(item) ? "(empty)" : item.getType().name();
     }
 
     private void deliver(Player player, ItemStack output) {

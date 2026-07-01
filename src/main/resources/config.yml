@@ -1,5 +1,9 @@
 # DynamicFusion configuration.
 
+# Log every fusion attempt (anvil preview/take and /fusion fuse) to the server
+# console. Useful for diagnosing; set false to quiet it down.
+debug-logging: true
+
 fusion:
   # Maximum modifiers stored on one item. Technical guard on PDC/loop size,
   # not a balance lever — excess is dropped from the tail.

@@ -31,7 +31,7 @@ import com.xton.fusion.modifier.ModifierContext;
  *       path, stopping only at a block harder than the pierce cap;</li>
  *   <li><b>mining</b> — breaks the soft blocks it pierces (bores a tunnel);</li>
  *   <li><b>lifetime</b> — after so many ticks it expires and triggers wherever
- *       it is (DELAYED lengthens this);</li>
+ *       it is (LIFETIME lengthens this);</li>
  *   <li><b>gravity</b> / <b>bounces</b> — seams wired to fields, ready to grow.</li>
  * </ul>
  *

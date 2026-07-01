@@ -30,7 +30,7 @@ projectile:
   # Launch speed in blocks/tick for a full-power shot (melee = a short fast bolt).
   base-speed: 1.6
   # Ticks a shot lives before it expires and triggers if it hits nothing.
-  # DELAYED lengthens this (more range); MINING shortens it.
+  # LIFETIME lengthens this (more range); MINING shortens it.
   base-lifetime-ticks: 30
   # A piercing shot ghosts through blocks up to this hardness and stops at
   # anything harder (stone is 1.5, obsidian 50, bedrock -1/unbreakable).
@@ -61,8 +61,8 @@ spread:
 # PIERCE — passes through soft blocks/entities (no tunables; uses
 # projectile.pierce-max-hardness as the cutoff).
 
-# DELAYED — lengthens a shot's lifetime so it flies farther; stacks per copy.
-delayed:
+# LIFETIME — lengthens a shot's lifetime so it flies farther; stacks per copy.
+lifetime:
   ticks-per-apply: 30
 
 # PERSIST — lingering field that re-pulses the burst; stacks duration.
@@ -73,7 +73,7 @@ persist:
 # MINING — a short, fast piercing ray that breaks the soft blocks it bores
 # through. Built from pierce + a very short expiry.
 mining:
-  # How long the ray lives (short = short tunnel). Stack DELAYED to reach farther.
+  # How long the ray lives (short = short tunnel). Stack LIFETIME to reach farther.
   lifetime-ticks: 6
   # Launch speed in blocks/tick (fast, so it reads as a ray).
   speed: 2.5

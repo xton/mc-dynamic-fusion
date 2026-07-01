@@ -33,9 +33,9 @@ latent_modifiers:
     - PIERCE
   QUARTZ:
     - PIERCE
-  # DELAYED — longer lifetime / more range
+  # LIFETIME — longer lifetime / more range
   GUNPOWDER:
-    - DELAYED
+    - LIFETIME
   # MINING — short fast piercing ray that carves soft blocks
   AMETHYST_SHARD:
     - MINING

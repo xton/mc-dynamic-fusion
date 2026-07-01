@@ -1,9 +1,8 @@
 package com.xton.fusion.util;
 
 /**
- * Thin seam over task scheduling so timing-based behaviour (REPEAT, and later
- * DELAYED/PERSIST) can be driven by a fake in tests instead of the Bukkit
- * scheduler.
+ * Thin seam over task scheduling so timing-based behaviour (e.g. PERSIST
+ * pulses) can be driven by a fake in tests instead of the Bukkit scheduler.
  */
 public interface Scheduler {
 

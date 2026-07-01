@@ -6,18 +6,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
-import com.xton.fusion.modifier.impl.DelayedModifier;
+import com.xton.fusion.modifier.impl.LifetimeModifier;
 import com.xton.fusion.modifier.impl.MiningModifier;
 
-/** Pure: DELAYED/MINING only mutate context, so they test without a server. */
+/** Pure: LIFETIME/MINING only mutate context, so they test without a server. */
 class Phase3ModifiersTest {
 
     @Test
-    void delayedAddsLifetimeAndStacks() {
+    void lifetimeAddsTicksAndStacks() {
         ModifierContext ctx = new ModifierContext();
-        new DelayedModifier(30).apply(ctx);
+        new LifetimeModifier(30).apply(ctx);
         assertEquals(30, ctx.getLifetimeTicks());
-        new DelayedModifier(30).apply(ctx);
+        new LifetimeModifier(30).apply(ctx);
         assertEquals(60, ctx.getLifetimeTicks());
     }
 

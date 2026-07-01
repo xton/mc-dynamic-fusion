@@ -4,24 +4,24 @@ import com.xton.fusion.modifier.Modifier;
 import com.xton.fusion.modifier.ModifierContext;
 
 /**
- * Extends how long a projectile flies before it expires and triggers — the
+ * Extends how long a projectile lives before it expires and triggers — the
  * "expiry" primitive. Stacks: each copy adds {@code ticksPerApply} more life,
  * so the shot travels farther before it goes off. Leave it short for a
  * hit-where-it-lands bolt, or stack it for a long-range lance.
  *
  * <p>Pure: only mutates context. The projectile layer honours the lifetime.
  */
-public final class DelayedModifier implements Modifier {
+public final class LifetimeModifier implements Modifier {
 
-    public static final String ID = "DELAYED";
+    public static final String ID = "LIFETIME";
 
     private final int ticksPerApply;
 
-    public DelayedModifier(int ticksPerApply) {
+    public LifetimeModifier(int ticksPerApply) {
         this.ticksPerApply = ticksPerApply;
     }
 
-    public DelayedModifier() {
+    public LifetimeModifier() {
         this(30);
     }
 
@@ -32,7 +32,7 @@ public final class DelayedModifier implements Modifier {
 
     @Override
     public String displayName() {
-        return "Delayed";
+        return "Lifetime";
     }
 
     @Override
@@ -42,7 +42,7 @@ public final class DelayedModifier implements Modifier {
 
     @Override
     public String detailedDescription() {
-        return "Lengthens the fuse so the shot travels farther before it expires and triggers. Stacks for more range.";
+        return "Lengthens how long the shot lives, so it travels farther before it expires and triggers. Stacks for more range.";
     }
 
     @Override

@@ -24,12 +24,12 @@ stacks them** (duplicates compound):
 | **Multishot** | Rabbit's Foot, Slime Ball, Chorus Fruit | launches extra projectiles |
 | **Spread** | Feather, Sugar | scatters the aim (Multishot + Spread = shotgun) |
 | **Pierce** | Arrow, Quartz | punches through soft blocks & every entity in its path |
-| **Delayed** | Gunpowder | longer lifetime — the shot flies farther before it triggers |
+| **Lifetime** | Gunpowder | longer lifetime — the shot flies farther before it triggers |
 | **Mining** | Amethyst Shard | a short, fast piercing ray that bores soft blocks |
 | **Invert** | Fermented Spider Eye | implodes (pulls inward) — two cancel |
 | **Persist** | Blaze Rod, Dragon's Breath | leaves a lingering pulsing field |
 
-Because these are primitives, builds **compose**: a ray gun is Pierce + Delayed;
+Because these are primitives, builds **compose**: a ray gun is Pierce + Lifetime;
 a shotgun is Multishot + Spread; a mining laser is Mining (Pierce + a very short
 expiry). Bounce and gravity are seamed in the model for later builds (grenades,
 cluster bombs).

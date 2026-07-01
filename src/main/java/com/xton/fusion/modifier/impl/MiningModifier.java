@@ -7,8 +7,8 @@ import com.xton.fusion.modifier.ModifierContext;
  * Turns the shot into a mining ray: it pierces and breaks the softer blocks it
  * passes through, flying fast with a short life so it carves a stub of a tunnel
  * ahead. A "true mining ray" is exactly this — pierce plus a very short expiry —
- * built from the same primitives everything else uses. Stack DELAYED to reach
- * farther; stack PIERCE-hardness (config) to chew tougher stone.
+ * built from the same primitives everything else uses. Stack LIFETIME to reach
+ * farther; raise the pierce hardness (config) to chew tougher stone.
  *
  * <p>Pure: only sets flags and the mining spec on the context.
  */

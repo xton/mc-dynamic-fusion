@@ -31,7 +31,7 @@ public class ModifierContext {
     private boolean pierce;            // PIERCE: pass through soft blocks/entities instead of stopping
     private double pierceMaxHardness;  // blocks harder than this stop even a piercing shot
     private int bounces;               // bounce seam: rebounds off hard surfaces (stacks)
-    private int lifetimeTicks;         // DELAYED: ticks before the shot expires & triggers (stacks)
+    private int lifetimeTicks;         // LIFETIME: ticks before the shot expires & triggers (stacks)
 
     // ----- burst spec (what happens where the shot triggers) -----
     private double radius;

@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 import com.xton.fusion.modifier.ModifierContext;
 import com.xton.fusion.modifier.ModifierRegistry;
 import com.xton.fusion.modifier.ModifierStack;
-import com.xton.fusion.modifier.impl.DelayedModifier;
+import com.xton.fusion.modifier.impl.LifetimeModifier;
 import com.xton.fusion.modifier.impl.MiningModifier;
 import com.xton.fusion.modifier.impl.MultishotModifier;
 import com.xton.fusion.modifier.impl.NovaModifier;
@@ -37,7 +37,7 @@ class ProjectileModelTest {
                 .register(new MultishotModifier(2))
                 .register(new SpreadModifier(12.0))
                 .register(new PierceModifier())
-                .register(new DelayedModifier(30))
+                .register(new LifetimeModifier(30))
                 .register(new MiningModifier(6, 2.5, 3.0));
     }
 
@@ -66,10 +66,10 @@ class ProjectileModelTest {
     }
 
     @Test
-    void rayGunPiercesWithShortExpiry() {
-        ModifierContext ctx = build("PIERCE", "DELAYED");
+    void rayGunPiercesWithExtendedLifetime() {
+        ModifierContext ctx = build("PIERCE", "LIFETIME");
         assertTrue(ctx.isPierce());
-        assertEquals(60, ctx.getLifetimeTicks());     // base 30 + DELAYED 30
+        assertEquals(60, ctx.getLifetimeTicks());     // base 30 + LIFETIME 30
     }
 
     @Test

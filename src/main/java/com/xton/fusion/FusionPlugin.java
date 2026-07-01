@@ -21,9 +21,9 @@ import com.xton.fusion.machine.FusionMachineMenu;
 import com.xton.fusion.machine.MachineListener;
 import com.xton.fusion.modifier.ModifierRegistry;
 import com.xton.fusion.modifier.impl.ChainModifier;
-import com.xton.fusion.modifier.impl.DelayedModifier;
 import com.xton.fusion.modifier.impl.ExpandModifier;
 import com.xton.fusion.modifier.impl.InvertModifier;
+import com.xton.fusion.modifier.impl.LifetimeModifier;
 import com.xton.fusion.modifier.impl.MiningModifier;
 import com.xton.fusion.modifier.impl.MultishotModifier;
 import com.xton.fusion.modifier.impl.NovaModifier;
@@ -64,8 +64,8 @@ public final class FusionPlugin extends JavaPlugin {
                         getConfig().getInt("multishot.count-per-apply", 2)))
                 .register(new SpreadModifier(
                         getConfig().getDouble("spread.degrees-per-apply", 12.0)))
-                .register(new DelayedModifier(
-                        getConfig().getInt("delayed.ticks-per-apply", 30)))
+                .register(new LifetimeModifier(
+                        getConfig().getInt("lifetime.ticks-per-apply", 30)))
                 .register(new PierceModifier())
                 .register(new MiningModifier(
                         getConfig().getInt("mining.lifetime-ticks", 6),

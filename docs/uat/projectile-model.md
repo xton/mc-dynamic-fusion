@@ -5,8 +5,8 @@ swing/bow shot now **launches projectiles** that fly and **trigger a burst where
 they land**, instead of bursting instantly around you.
 
 Fastest way to build test weapons is `/fusion give`. New/changed modifier IDs:
-`MULTISHOT`, `SPREAD`, `PIERCE` (new); `DELAYED` = lifetime/range; `MINING` =
-short piercing ray. `REPEAT` is gone.
+`MULTISHOT`, `SPREAD`, `PIERCE` (new); `LIFETIME` = lifetime/range (was
+`DELAYED`); `MINING` = short piercing ray. `REPEAT` is gone.
 
 ## Base bolt (melee)
 1. `/fusion give <you> DIAMOND_SWORD NOVA`
@@ -22,13 +22,13 @@ short piercing ray. `REPEAT` is gone.
    - ✅ 5 bolts, fanned into a cone (shotgun). Fire into a mob pack → several
      land in a spread. Add another `SPREAD` for a wider fan.
 
-## Pierce + Delayed (ray gun)
+## Pierce + Lifetime (ray gun)
 4. `/fusion give <you> DIAMOND_SWORD PIERCE`
    - ✅ The bolt punches **through** soft blocks (dirt/wood) and every entity in
      its path instead of stopping at the first, then bursts at the end / when it
      expires. It stops at hard blocks (obsidian).
-5. `/fusion give <you> DIAMOND_SWORD PIERCE DELAYED DELAYED`
-   - ✅ Reaches noticeably farther before expiring (DELAYED = longer lifetime).
+5. `/fusion give <you> DIAMOND_SWORD PIERCE LIFETIME LIFETIME`
+   - ✅ Reaches noticeably farther before expiring (LIFETIME = longer lifetime).
 6. Line up several mobs in a row and fire a piercing shot down the line.
    - ✅ Each mob along the line takes a nudge (contact hit); the full burst
      goes off once at the end.
@@ -37,8 +37,8 @@ short piercing ray. `REPEAT` is gone.
 7. `/fusion give <you> DIAMOND_PICKAXE MINING` (or any base)
    - ✅ Swing at stone/dirt → a short, fast ray bores a stub tunnel of soft
      blocks ahead (obsidian/bedrock resist). Short by design.
-8. `/fusion give <you> DIAMOND_PICKAXE MINING DELAYED DELAYED`
-   - ✅ The tunnel reaches farther (DELAYED extends the ray's life).
+8. `/fusion give <you> DIAMOND_PICKAXE MINING LIFETIME LIFETIME`
+   - ✅ The tunnel reaches farther (LIFETIME extends the ray's life).
 
 ## Fused bow (wand)
 9. `/fusion give <you> BOW NOVA` — draw and release.

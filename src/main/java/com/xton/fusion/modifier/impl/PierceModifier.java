@@ -7,7 +7,7 @@ import com.xton.fusion.modifier.ModifierContext;
  * Makes the shot pierce: instead of stopping at the first block or entity, it
  * passes through everything it can (hitting every entity along the way) and only
  * stops at a block too hard to punch through. Pair a piercing shot with a short
- * DELAYED expiry for a ray gun, or with MINING to bore a tunnel.
+ * LIFETIME for a ray gun, or with MINING to bore a tunnel.
  *
  * <p>Pure: only sets a flag. The hardness cutoff comes from config.
  */

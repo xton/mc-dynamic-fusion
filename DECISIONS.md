@@ -276,7 +276,7 @@ This turns the old special-cased behaviors into composable primitives.
 
 **Model (all live in `ModifierContext`):**
 - Projectile spec — `count` (MULTISHOT), `spreadDegrees` (SPREAD), `speed`,
-  `pierce` (PIERCE) + `pierceMaxHardness`, `lifetimeTicks` (DELAYED = the expiry
+  `pierce` (PIERCE) + `pierceMaxHardness`, `lifetimeTicks` (LIFETIME = the expiry
   primitive), plus `mining`. Seams present but not yet wired: `gravity`,
   `bounces`.
 - Burst spec — the old `radius/power/expandBonus/chainCount/inverted/persist`
@@ -298,9 +298,11 @@ This turns the old special-cased behaviors into composable primitives.
   is. Old items tagged `REPEAT` simply resolve to nothing now (harmless; they
   lose that one effect). Ingredients remapped (Rabbit's Foot/Slime/Chorus →
   MULTISHOT).
-- ↳ **DELAYED repurposed to lifetime** (`addLifetimeTicks`) rather than a
-  pre-fire delay — the user noted "Delayed already IS the expiry primitive." A
-  longer fuse now means the shot flies farther before it triggers.
+- ↳ **DELAYED renamed to LIFETIME and repurposed** (`addLifetimeTicks`) rather
+  than a pre-fire delay — the user noted "Delayed already IS the expiry
+  primitive," and "Delayed" wrongly implied the shot waits to be *fired* instead
+  of waiting to *trigger*. A longer lifetime now means the shot flies farther
+  before it goes off. (Ingredient unchanged: Gunpowder → LIFETIME.)
 - ↳ **MINING rebuilt from primitives**: it sets `pierce` + `mining` + a short
   lifetime + fast speed (config `mining.lifetime-ticks/speed/max-hardness`). A
   "true mining ray" is pierce + very short expiry, exactly as described. Retired

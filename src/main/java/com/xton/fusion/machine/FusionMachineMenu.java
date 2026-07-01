@@ -11,6 +11,8 @@ import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
+import org.bukkit.block.Block;
+import org.bukkit.block.TileState;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -65,10 +67,10 @@ public final class FusionMachineMenu {
         this.debug = debug;
     }
 
-    // ----- machine item -----
+    // ----- machine item + block -----
 
     public ItemStack createMachineItem() {
-        ItemStack item = new ItemStack(Material.ANVIL);
+        ItemStack item = new ItemStack(Material.ENCHANTING_TABLE);
         ItemMeta meta = item.getItemMeta();
         meta.getPersistentDataContainer().set(keys.machine, PersistentDataType.BYTE, (byte) 1);
         meta.displayName(plain("Fusion Machine", NamedTextColor.GOLD));
@@ -88,6 +90,22 @@ public final class FusionMachineMenu {
         }
         Byte flag = item.getItemMeta().getPersistentDataContainer().get(keys.machine, PersistentDataType.BYTE);
         return flag != null && flag == (byte) 1;
+    }
+
+    /** Mark a freshly placed block as a Fusion Machine (block-entity PDC, no side file). */
+    public void tagBlock(Block block) {
+        if (block.getState() instanceof TileState tile) {
+            tile.getPersistentDataContainer().set(keys.machine, PersistentDataType.BYTE, (byte) 1);
+            tile.update();
+        }
+    }
+
+    public boolean isMachineBlock(Block block) {
+        if (block.getState() instanceof TileState tile) {
+            Byte flag = tile.getPersistentDataContainer().get(keys.machine, PersistentDataType.BYTE);
+            return flag != null && flag == (byte) 1;
+        }
+        return false;
     }
 
     // ----- opening -----

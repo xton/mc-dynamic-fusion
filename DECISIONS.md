@@ -237,3 +237,30 @@ the other new ingredients work. See `docs/uat/uat-round-2.md`.
 ### Verification gap (please UAT)
 All three need a live client (right-click vs attack timing; the in-GUI barrier;
 the renamed taken item). Build green, 29 tests.
+
+---
+
+## UAT round 4 — repair cost, logging, machine block (2026-06-30)
+
+- ↳ **Repair-cost fix.** The anvil result was blocked as "Too Expensive" in
+  survival because the `setRepairCost(0)` call was gated behind an
+  `instanceof AnvilView` that was false on 26.x. Now set on the
+  `AnvilInventory` directly. (In practice the user's "can't fuse" was a *dead
+  machine* — see below — but this was a real latent bug regardless.)
+- ↳ **`debug-logging`** (default true) logs every fusion attempt (anvil
+  preview/take, `/fusion fuse`) to the console for diagnosis.
+- ↳ **Machine is now an ENCHANTING TABLE tagged via block-entity PDC**, retiring
+  `machines.yml`, `MachineStore`, and `MachineGlowTask`. Why not PDC on the old
+  anvil? Anvils aren't block entities (no `TileState`), so they can't hold PDC —
+  hence the side file, which could drift from the block and produce "dead
+  machines" (an unregistered block fell through to a vanilla anvil). An
+  enchanting table *is* a block entity: the marker lives on the block, so place
+  tags it, break removes it, and there's no registry to desync. Also more
+  thematic (magic block, floating-book ambiance replaces the glow task).
+  - **Migration:** anvil machines from older builds are no longer recognized;
+    re-obtain with `/fusion machine` (now gives enchanting tables).
+
+### Verification gap (please UAT)
+Placing/right-clicking/breaking the enchanting-table machine, and that a normal
+enchanting table still enchants, need a live client. Build green, 27 tests
+(the MachineStore persistence test was removed with the file store).

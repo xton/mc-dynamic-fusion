@@ -18,9 +18,7 @@ import com.xton.fusion.item.FusionKeys;
 import com.xton.fusion.item.LatentRegistry;
 import com.xton.fusion.item.LoreGenerator;
 import com.xton.fusion.machine.FusionMachineMenu;
-import com.xton.fusion.machine.MachineGlowTask;
 import com.xton.fusion.machine.MachineListener;
-import com.xton.fusion.machine.MachineStore;
 import com.xton.fusion.modifier.ModifierRegistry;
 import com.xton.fusion.modifier.impl.ChainModifier;
 import com.xton.fusion.modifier.impl.DelayedModifier;
@@ -99,20 +97,15 @@ public final class FusionPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(
                 new ProjectileListener(reader, registry, swingEffect, keys), this);
 
-        // Fusion Machine: placeable anvil + vanilla anvil GUI, persisted to machines.yml.
-        MachineStore machines = new MachineStore(new File(getDataFolder(), "machines.yml"), getLogger());
+        // Fusion Machine: placeable enchanting table, tagged via block-entity PDC
+        // (no side file), opening the anvil-style fusion GUI on right-click.
         FusionMachineMenu menu = new FusionMachineMenu(engine, keys, fusionCost, getLogger(), debug);
-        getServer().getPluginManager().registerEvents(new MachineListener(machines, menu), this);
+        getServer().getPluginManager().registerEvents(new MachineListener(menu), this);
 
         // Ambient particle shedding (held fused weapons), toggleable.
         if (getConfig().getBoolean("effect.particle-shedding", true)) {
             scheduler.runRepeating(new ShedParticleTask(reader), 40,
                     getConfig().getLong("effect.shed-period-ticks", 4));
-        }
-        // Ambient glow above placed machines so they're easy to spot.
-        if (getConfig().getBoolean("effect.machine-glow", true)) {
-            scheduler.runRepeating(new MachineGlowTask(machines), 20,
-                    getConfig().getLong("effect.machine-glow-period-ticks", 10));
         }
 
         if (getCommand("fusion") != null) {
@@ -122,7 +115,7 @@ public final class FusionPlugin extends JavaPlugin {
             getCommand("fusion").setTabCompleter(fusionCmd);
         }
 
-        getLogger().info("DynamicFusion enabled (" + machines.size() + " machine(s) loaded).");
+        getLogger().info("DynamicFusion enabled.");
     }
 
     private LatentRegistry loadLatentRegistry() {

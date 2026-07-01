@@ -13,34 +13,33 @@ import org.bukkit.event.inventory.PrepareAnvilEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 
 /**
- * Wires Fusion Machine blocks to the GUI: registers/forgets machine locations
- * on place/break, opens the menu on right-click, and routes inventory events.
+ * Wires Fusion Machine blocks to the GUI. A machine is marked by a PDC flag on
+ * the placed block's own block-entity (no side file), so the marker can never
+ * drift from the block: place tags it, break drops the machine item back, and
+ * right-click opens the fusion (anvil) GUI.
  */
 public final class MachineListener implements Listener {
 
-    private final MachineStore store;
     private final FusionMachineMenu menu;
 
-    public MachineListener(MachineStore store, FusionMachineMenu menu) {
-        this.store = store;
+    public MachineListener(FusionMachineMenu menu) {
         this.menu = menu;
     }
 
     @EventHandler
     public void onPlace(BlockPlaceEvent event) {
         if (menu.isMachineItem(event.getItemInHand())) {
-            store.add(event.getBlock().getLocation());
+            menu.tagBlock(event.getBlock());
         }
     }
 
     @EventHandler
     public void onBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
-        if (!store.contains(block.getLocation())) {
+        if (!menu.isMachineBlock(block)) {
             return;
         }
-        store.remove(block.getLocation());
-        // Give the machine item back instead of a plain anvil.
+        // Give the machine item back instead of a plain enchanting table.
         event.setDropItems(false);
         block.getWorld().dropItemNaturally(block.getLocation().add(0.5, 0.5, 0.5),
                 menu.createMachineItem());
@@ -56,10 +55,10 @@ public final class MachineListener implements Listener {
             return; // allow placing blocks against the machine while sneaking
         }
         Block block = event.getClickedBlock();
-        if (!store.contains(block.getLocation())) {
+        if (!menu.isMachineBlock(block)) {
             return;
         }
-        event.setCancelled(true); // suppress the vanilla anvil UI
+        event.setCancelled(true); // suppress the vanilla enchanting-table UI
         menu.open(player, block.getLocation());
     }
 

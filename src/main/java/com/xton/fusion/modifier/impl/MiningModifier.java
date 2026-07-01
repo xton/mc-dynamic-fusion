@@ -1,16 +1,16 @@
 package com.xton.fusion.modifier.impl;
 
 import com.xton.fusion.modifier.Modifier;
-import com.xton.fusion.modifier.ModifierContext;
+import com.xton.fusion.modifier.ProjectileSpec;
+import com.xton.fusion.modifier.WeaponBuilder;
 
 /**
- * Turns the shot into a mining ray: it pierces and breaks the softer blocks it
- * passes through, flying fast with a short life so it carves a stub of a tunnel
- * ahead. A "true mining ray" is exactly this — pierce plus a very short expiry —
- * built from the same primitives everything else uses. Stack LIFETIME to reach
- * farther; raise the pierce hardness (config) to chew tougher stone.
- *
- * <p>Pure: only sets flags and the mining spec on the context.
+ * Flight transform: turns the projectile into a mining ray — it pierces and
+ * breaks the softer blocks it passes through, flying fast with a short life so
+ * it carves a stub of a tunnel ahead. A "true mining ray" is exactly this:
+ * pierce plus a very short expiry, built from the same primitives as everything
+ * else. Stack LIFETIME to reach farther. Its payload is separate — a bare
+ * mining ray delivers no burst at its terminus.
  */
 public final class MiningModifier implements Modifier {
 
@@ -51,11 +51,17 @@ public final class MiningModifier implements Modifier {
     }
 
     @Override
-    public ModifierContext apply(ModifierContext ctx) {
-        return ctx.setMining(true)
-                .setPierce(true)
-                .setSpeed(speed)
-                .setLifetimeTicks(lifetimeTicks)
-                .setPierceMaxHardness(maxHardness);
+    public Category category() {
+        return Category.TRANSFORM;
+    }
+
+    @Override
+    public void apply(WeaponBuilder builder) {
+        ProjectileSpec p = builder.projectile();
+        p.setMining(true);
+        p.setPierce(true);
+        p.setSpeed(speed);
+        p.setLifetimeTicks(lifetimeTicks);
+        p.setPierceMaxHardness(maxHardness);
     }
 }

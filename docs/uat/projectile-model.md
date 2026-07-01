@@ -1,77 +1,87 @@
-# UAT — Projectile model (everything is a projectile)
+# UAT — Emitter/transform projectile model
 
-Run the UAT server (`make rebuild`), join, `/op` yourself. The big change: a
-swing/bow shot now **launches projectiles** that fly and **trigger a burst where
-they land**, instead of bursting instantly around you.
+Run the UAT server (`make rebuild`), join, `/op` yourself. Two big ideas to
+verify:
 
-Fastest way to build test weapons is `/fusion give`. New/changed modifier IDs:
-`MULTISHOT`, `SPREAD`, `PIERCE` (new); `LIFETIME` = lifetime/range (was
-`DELAYED`); `MINING` = short piercing ray. `REPEAT` is gone.
+1. **A weapon = a projectile (flight) + a payload (bursts).** A swing/bow shot
+   launches projectiles that fly and deliver their payload where they land.
+2. **Modifiers are emitters or transforms.** Emitters (`PUSH`, `DAMAGE`) add a
+   burst; transforms modify the *nearest preceding* emitter (RPN). A transform
+   with nothing before it is inert.
 
-## Base bolt (melee)
-1. `/fusion give <you> DIAMOND_SWORD NOVA`
-   - ✅ Swing while looking at a wall/mob a few blocks away → a bolt flies from
-     your eyes and the shove burst goes off **where it lands**, not on you.
-   - ✅ Swing at open sky → the bolt flies out and bursts when it expires
-     (~1.5s), not instantly at your feet.
+Fastest way to build test weapons is `/fusion give <you> <base> <MOD...>`.
+Modifier IDs: emitters `PUSH DAMAGE`; AOE transforms `EXPAND AMPLIFY CHAIN
+INVERT PERSIST`; flight transforms `MULTISHOT SPREAD PIERCE LIFETIME MINING`.
+(`NOVA`, `REPEAT`, `DELAYED` are gone.)
+
+## Emitters land a burst where the shot lands
+1. `/fusion give <you> DIAMOND_SWORD PUSH`
+   - ✅ Swing toward a mob a few blocks off → a bolt flies from your eyes and a
+     small **shove** goes off where it lands, not on you.
+2. `/fusion give <you> DIAMOND_SWORD DAMAGE`
+   - ✅ Same, but the burst **hurts** mobs in range (watch health) instead of
+     shoving.
+
+## Transforms scale the previous emitter (RPN)
+3. `/fusion give <you> DIAMOND_SWORD PUSH EXPAND EXPAND` → a nova: a much **wider**
+   shove (radius ×1.6 twice).
+4. `/fusion give <you> DIAMOND_SWORD DAMAGE AMPLIFY AMPLIFY` → a **harder-hitting**
+   damage burst (damage ×1.6 twice).
+5. `/fusion give <you> DIAMOND_SWORD EXPAND` (transform only, no emitter)
+   - ✅ **Nothing happens** on swing — a transform with no preceding emitter is
+     inert (the bolt flies and delivers an empty payload).
+6. `/fusion give <you> DIAMOND_SWORD PUSH PUSH EXPAND`
+   - ✅ Only the **second** push is widened (nearest-previous binding). Hard to
+     see precisely, but the two bursts should differ in size.
+7. `/fusion give <you> DIAMOND_SWORD PUSH INVERT` → the landing burst **pulls**
+   mobs inward (two INVERTs cancel). `PUSH PERSIST` → a lingering pulsing shove.
+   `DAMAGE CHAIN` → damage that leaps to nearby mobs.
+
+## Two bursts in one shot
+8. `/fusion give <you> DIAMOND_SWORD PUSH EXPAND DAMAGE AMPLIFY`
+   - ✅ On landing, delivers **both** a widened shove and a stronger damage burst.
 
 ## Multishot + Spread (shotgun)
-2. `/fusion give <you> DIAMOND_SWORD NOVA MULTISHOT`
-   - ✅ Each swing fires 3 bolts (1 base + 2).
-3. `/fusion give <you> DIAMOND_SWORD NOVA MULTISHOT MULTISHOT SPREAD`
-   - ✅ 5 bolts, fanned into a cone (shotgun). Fire into a mob pack → several
-     land in a spread. Add another `SPREAD` for a wider fan.
+9. `/fusion give <you> DIAMOND_SWORD DAMAGE MULTISHOT MULTISHOT SPREAD`
+   - ✅ 5 damaging bolts fanned into a cone. Fire into a pack → several land in a
+     spread. Add another `SPREAD` for a wider fan.
 
 ## Pierce + Lifetime (ray gun)
-4. `/fusion give <you> DIAMOND_SWORD PIERCE`
-   - ✅ The bolt punches **through** soft blocks (dirt/wood) and every entity in
-     its path instead of stopping at the first, then bursts at the end / when it
-     expires. It stops at hard blocks (obsidian).
-5. `/fusion give <you> DIAMOND_SWORD PIERCE LIFETIME LIFETIME`
-   - ✅ Reaches noticeably farther before expiring (LIFETIME = longer lifetime).
-6. Line up several mobs in a row and fire a piercing shot down the line.
-   - ✅ Each mob along the line takes a nudge (contact hit); the full burst
-     goes off once at the end.
+10. `/fusion give <you> DIAMOND_SWORD DAMAGE PIERCE`
+    - ✅ The bolt punches **through** soft blocks and every entity in its path
+      (damaging each), stopping at hard blocks (obsidian).
+11. `/fusion give <you> DIAMOND_SWORD DAMAGE PIERCE LIFETIME LIFETIME`
+    - ✅ Reaches noticeably farther before expiring.
 
 ## Mining ray
-7. `/fusion give <you> DIAMOND_PICKAXE MINING` (or any base)
-   - ✅ Swing at stone/dirt → a short, fast ray bores a stub tunnel of soft
-     blocks ahead (obsidian/bedrock resist). Short by design.
-   - ✅ **No burst/pop at the end** — a mining ray delivers an empty payload; it
-     just carves and stops (you'll hear the block breaks, not an explosion).
-8. `/fusion give <you> DIAMOND_PICKAXE MINING LIFETIME LIFETIME`
-   - ✅ The tunnel reaches farther (LIFETIME extends the ray's life).
-8b. `/fusion give <you> DIAMOND_PICKAXE MINING NOVA` → mines a tunnel **and**
-    bursts at the end (Nova opts the burst back in). Confirms flight + payload
-    compose independently.
+12. `/fusion give <you> DIAMOND_PICKAXE MINING`
+    - ✅ Swing at stone/dirt → a short, fast ray bores a stub tunnel (obsidian
+      resists).
+    - ✅ **No pop at the end** — a bare mining ray delivers an empty payload; you
+      hear block breaks, not an explosion.
+13. `/fusion give <you> DIAMOND_PICKAXE MINING PUSH` → bores a tunnel **and**
+    shoves at the end. Confirms flight + payload compose independently.
 
 ## Fused bow (wand)
-9. `/fusion give <you> BOW NOVA` — draw and release.
-   - ✅ No vanilla arrow; instead a fusion bolt flies where you aim and bursts on
-     impact. A quick tap fires a slow shot; a full draw fires fast.
-10. `/fusion give <you> BOW MULTISHOT MULTISHOT SPREAD` — full draw.
-    - ✅ Fans a volley of bolts downrange.
+14. `/fusion give <you> BOW DAMAGE AMPLIFY` — draw and release.
+    - ✅ No vanilla arrow; a fusion bolt flies where you aim and bursts on impact.
+      Tap = slow shot, full draw = fast.
+15. `/fusion give <you> BOW DAMAGE MULTISHOT MULTISHOT SPREAD` → a shotgun bow.
 
-## Compounding / invert / persist still work
-11. `/fusion give <you> DIAMOND_SWORD NOVA EXPAND EXPAND` → big burst on landing.
-12. `/fusion give <you> DIAMOND_SWORD NOVA INVERT` → landing burst pulls mobs
-    toward the impact point (two INVERTs cancel).
-13. `/fusion give <you> DIAMOND_SWORD NOVA PERSIST` → a lingering pulsing field
-    at the impact point.
-
-## Fuse-path sanity (not just /give)
-14. `/fusion machine`, place it, right-click. Fuse a sword (Target) with an
-    Amethyst Shard (Ingredient) → Mining weapon. Swing → mining ray. Confirms the
-    latent-ingredient remap (Feather/Sugar→Spread, Arrow/Quartz→Pierce,
-    Rabbit's Foot→Multishot).
+## Fuse-path + bundle ingredients (not just /give)
+16. `/fusion machine`, place it, right-click. Try a few ingredients as the
+    Ingredient:
+    - **Nether Star** (reagent → `PUSH`), then **Heart of the Sea** (`EXPAND`).
+    - **TNT** (bundle → `DAMAGE·EXPAND·EXPAND`) — one item, a big boom.
+    - **Firework Star** (`DAMAGE·MULTISHOT·SPREAD`) — flak in one fuse.
+    - **End Crystal** (`DAMAGE·EXPAND·AMPLIFY·PERSIST`) — the works. OP is welcome.
+    - ✅ Lore lists the modifiers; swinging behaves as the recipe predicts.
 
 ## Known limitations / seams (see DECISIONS.md)
-- **Burst is opt-in.** Only NOVA/EXPAND/CHAIN/INVERT/PERSIST deliver a burst; a
-  shot with only flight modifiers (Pierce/Lifetime/Mining/Multishot/Spread)
-  delivers an empty payload and terminates quietly. A bare Pierce/Mining shot is
-  meant to feel kinetic, not explosive.
-- **Bounce** and **gravity** are modelled (fields + hook) but not yet wired — no
-  grenade/arc builds yet. Bolts fly straight. Cluster bomb (a payload that spawns
-  child projectiles) slots into the `Payload` effect list when built.
-- Old items tagged `REPEAT` (now `MULTISHOT`) or `DELAYED` (now `LIFETIME`) no
-  longer do anything — re-fuse to refresh.
+- **Burst is opt-in** and falls out of the model: no emitter → empty payload →
+  quiet terminus. Pierce/Mining/Multishot/Spread/Lifetime alone are kinetic, not
+  explosive.
+- **Bounce** and **gravity** are modelled (fields + hook) but not yet wired.
+  **Cluster bomb** (a payload effect that spawns child projectiles) slots into
+  the `Payload` list when built — the seam is there.
+- Old items tagged `NOVA`/`REPEAT`/`DELAYED` no longer do anything — re-fuse.

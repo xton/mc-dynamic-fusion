@@ -354,3 +354,52 @@ volleys, burst-on-land. Build green (35 tests); the flight/payload spec-building
 is unit-tested (`ProjectileModelTest` asserts mining/pierce deliver empty
 payloads), but the world interaction is not testable here. See
 `docs/uat/projectile-model.md`.
+
+---
+
+## Emitter/transform model — RPN compile (2026-07-01)
+
+Reworked the modifier model per feedback: modifiers were conflating two roles.
+Now they split cleanly, and the stack **compiles** (it is no longer a flat fold
+over one shared context).
+
+- **Emitters** add a concrete element: `PUSH` and `DAMAGE` bursts (and, seamed,
+  a future spawn-projectile). **Transforms** modify the nearest preceding
+  element: AOE transforms (`EXPAND` ×radius, `AMPLIFY` ×power/damage, `CHAIN`,
+  `INVERT`, `PERSIST`) scale/decorate the last burst; flight transforms
+  (`MULTISHOT`, `SPREAD`, `PIERCE`, `LIFETIME`, `MINING`) shape the projectile.
+- ↳ **Binding is RPN / apply-to-previous** (user's call): a transform binds to
+  the nearest *preceding* emitter, because fusion appends the ingredient's
+  latents — so you build by adding an emitter, then piling transforms on it. A
+  transform with no matching preceding emitter is **inert** (Expand alone does
+  nothing). This is exactly the "burst is opt-in" property, now falling out of
+  the model instead of a special flag.
+- ↳ **Scope = nearest previous only** (user's call): `PUSH PUSH EXPAND` widens
+  only the second push. AOE transforms bind to the top AOE element; flight
+  transforms bind to the (single, implicit) current projectile.
+- The stack compiles to a `ProjectileSpec` (flight + a `List<AoeSpec>` payload)
+  via `WeaponBuilder`. `Modifier.apply(WeaponBuilder)` replaces the old
+  `apply(ModifierContext)`; `ModifierContext` is deleted. Emitter vs transform
+  is tagged by `Modifier.Category`.
+- ↳ **NOVA retired, split into `PUSH` + Expand/Amplify.** The monolithic Nova
+  (radius 4 / power 1.4 baked in) becomes the recipe `PUSH · EXPAND · EXPAND`.
+  Smaller primitives, more to build with. Added `DAMAGE` (a real damaging burst)
+  and `AMPLIFY` (×power/damage) so there's something to scale. `EXPAND` is now
+  **multiplicative** (×1.6/apply) rather than additive.
+- ↳ **Hybrid ingredient roster** (user: "go nuts"). `latent_registry.yml` now
+  has *reagents* (one atomic attribute each) for composing, plus *bundles* —
+  curated multi-attribute "spells" (TNT = `DAMAGE·EXPAND·EXPAND`, Firework Star =
+  `DAMAGE·MULTISHOT·SPREAD`, End Crystal = the works). The engine already
+  appended multi-value latent lists, so this was pure content.
+- ↳ **Pierce contact impulse is now a fixed constant** (`CONTACT_IMPULSE`) — a
+  piercing shot nudges entities along the line; the real damage/push is the
+  payload at the terminus. There's no longer a single projectile "power" to
+  derive it from (power lives per-AOE).
+- Old items tagged `NOVA`/`REPEAT`/`DELAYED` resolve to nothing now — re-fuse.
+
+### Verification gap (please UAT)
+The compile is fully unit-tested (`WeaponCompileTest` covers emitter/transform
+binding, RPN scope, inert transforms, flight; `ProjectileModelTest` covers
+payload building). Damage bursts, the bundle ingredients, and all flight/world
+behaviour still need a live client. Build green (32 tests). See
+`docs/uat/projectile-model.md`.

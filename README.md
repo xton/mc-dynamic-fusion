@@ -11,30 +11,36 @@ Admins can spawn any combination for testing with
 `/fusion give <player> <base> <MODIFIER...>`.
 
 Fuse a weapon (Target) with an ingredient (Ingredient → consumed), then swing
-to unleash an effect. **Everything is a projectile** (Noita-style): a swing
-launches one or more short, fast bolts that fly (the **flight**) and deliver
-their **payload** where they land. Some modifiers shape the flight (multishot,
-spread, pierce, lifetime, mining); others are the payload — a **burst** that's
-delivered only when you add one (so a bare mining ray just carves, no pop).
-**Re-fusing stacks** them (duplicates compound):
+to unleash it. **A weapon is a projectile (flight) + a payload (bursts)**,
+Noita-style. Modifiers come in two kinds:
 
-| Modifier | Ingredients | Effect |
-|---|---|---|
-| **Nova** | Nether Star | all-directions shove burst where the shot triggers |
-| **Expand** | Heart of the Sea, Magma Cream | widens the burst (stacks bigger) |
-| **Chain** | String, Echo Shard | hops to nearby entities after the burst |
-| **Multishot** | Rabbit's Foot, Slime Ball, Chorus Fruit | launches extra projectiles |
-| **Spread** | Feather, Sugar | scatters the aim (Multishot + Spread = shotgun) |
-| **Pierce** | Arrow, Quartz | punches through soft blocks & every entity in its path |
-| **Lifetime** | Gunpowder | longer lifetime — the shot flies farther before it triggers |
-| **Mining** | Amethyst Shard | a short, fast piercing ray that bores soft blocks |
-| **Invert** | Fermented Spider Eye | implodes (pulls inward) — two cancel |
-| **Persist** | Blaze Rod, Dragon's Breath | leaves a lingering pulsing field |
+- **Emitters** add a concrete element — a burst delivered where the shot lands.
+- **Transforms** modify the *nearest preceding* element (RPN, apply-to-previous):
+  they scale a burst, or shape the projectile's flight. A transform with nothing
+  before it does nothing.
 
-Because these are primitives, builds **compose**: a ray gun is Pierce + Lifetime;
-a shotgun is Multishot + Spread; a mining laser is Mining (Pierce + a very short
-expiry). Bounce and gravity are seamed in the model for later builds (grenades,
-cluster bombs).
+| | Modifier | Sample ingredients | Effect |
+|---|---|---|---|
+| **emit** | **Push** | Nether Star, Piston | a knockback burst where it lands |
+| **emit** | **Damage** | Fire Charge, Flint | a damaging burst where it lands |
+| *xf (aoe)* | **Expand** | Heart of the Sea, Magma Cream | ×radius of the previous burst |
+| *xf (aoe)* | **Amplify** | Glowstone Dust, Blaze Powder | ×force/damage of the previous burst |
+| *xf (aoe)* | **Chain** | String, Echo Shard | previous burst hops to more entities |
+| *xf (aoe)* | **Invert** | Fermented Spider Eye | previous push implodes — two cancel |
+| *xf (aoe)* | **Persist** | Blaze Rod, Dragon's Breath | previous burst lingers and re-pulses |
+| *xf (fly)* | **Multishot** | Rabbit's Foot, Slime Ball | launches extra projectiles |
+| *xf (fly)* | **Spread** | Feather, Sugar | scatters the aim |
+| *xf (fly)* | **Pierce** | Arrow, Quartz | punches through blocks & every entity in its path |
+| *xf (fly)* | **Lifetime** | Gunpowder, Redstone | flies farther before it expires |
+| *xf (fly)* | **Mining** | Amethyst Shard | a short, fast piercing ray that bores soft blocks |
+
+Because these are small primitives, weapons **compose**: a nova is
+`Push · Expand · Expand`; a fireball is `Damage · Amplify`; a shotgun is
+`Damage · Multishot · Spread`; a ray gun is `Pierce · Lifetime`; a mining laser
+is `Mining`. Many ingredients are **bundles** — a ready-made recipe in one item
+(TNT = `Damage · Expand · Expand`, End Crystal = the works). See
+[`latent_registry.yml`](src/main/resources/latent_registry.yml) for the roster.
+Bounce and gravity are seamed for later builds (grenades, cluster bombs).
 
 **Fused bows** become wands: releasing fires the same projectiles downrange,
 their speed scaled by draw force (so a Multishot bow fans a volley). Fusing can

@@ -1,15 +1,13 @@
 package com.xton.fusion.modifier.impl;
 
 import com.xton.fusion.modifier.Modifier;
-import com.xton.fusion.modifier.ModifierContext;
+import com.xton.fusion.modifier.WeaponBuilder;
 
 /**
- * Makes the shot pierce: instead of stopping at the first block or entity, it
- * passes through everything it can (hitting every entity along the way) and only
- * stops at a block too hard to punch through. Pair a piercing shot with a short
- * LIFETIME for a ray gun, or with MINING to bore a tunnel.
- *
- * <p>Pure: only sets a flag. The hardness cutoff comes from config.
+ * Flight transform: makes the projectile pierce — instead of stopping at the
+ * first block or entity, it passes through everything it can (hitting every
+ * entity along the way) and stops only at a block too hard to punch through.
+ * Pair with a short LIFETIME for a ray gun, or MINING to bore a tunnel.
  */
 public final class PierceModifier implements Modifier {
 
@@ -36,7 +34,12 @@ public final class PierceModifier implements Modifier {
     }
 
     @Override
-    public ModifierContext apply(ModifierContext ctx) {
-        return ctx.setPierce(true);
+    public Category category() {
+        return Category.TRANSFORM;
+    }
+
+    @Override
+    public void apply(WeaponBuilder builder) {
+        builder.projectile().setPierce(true);
     }
 }

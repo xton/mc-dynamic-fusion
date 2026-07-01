@@ -8,7 +8,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import com.xton.fusion.modifier.ModifierRegistry;
-import com.xton.fusion.modifier.impl.NovaModifier;
+import com.xton.fusion.modifier.impl.PushModifier;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
@@ -22,26 +22,26 @@ class LoreGeneratorTest {
 
     @Test
     void rendersHeaderModifierAndProvenance() {
-        ModifierRegistry registry = new ModifierRegistry().register(new NovaModifier());
+        ModifierRegistry registry = new ModifierRegistry().register(new PushModifier());
         LoreGenerator lore = new LoreGenerator(registry);
 
-        List<Component> lines = lore.generate(List.of("NOVA"), 1, "Diamond Sword + Nether Star");
+        List<Component> lines = lore.generate(List.of("PUSH"), 1, "Diamond Sword + Nether Star");
         List<String> text = lines.stream().map(this::plain).toList();
 
         assertTrue(text.stream().anyMatch(s -> s.contains("Gen 1")), text.toString());
-        assertTrue(text.stream().anyMatch(s -> s.contains("Nova")), text.toString());
+        assertTrue(text.stream().anyMatch(s -> s.contains("Push")), text.toString());
         assertTrue(text.stream().anyMatch(s -> s.contains("Fused from: Diamond Sword + Nether Star")),
                 text.toString());
     }
 
     @Test
     void unknownModifierIdsAreSkipped() {
-        ModifierRegistry registry = new ModifierRegistry().register(new NovaModifier());
+        ModifierRegistry registry = new ModifierRegistry().register(new PushModifier());
         LoreGenerator lore = new LoreGenerator(registry);
 
-        List<Component> lines = lore.generate(List.of("NOVA", "MYSTERY"), 2, "A + B");
-        long novaLines = lines.stream().map(this::plain).filter(s -> s.contains("Nova")).count();
+        List<Component> lines = lore.generate(List.of("PUSH", "MYSTERY"), 2, "A + B");
+        long pushLines = lines.stream().map(this::plain).filter(s -> s.contains("Push")).count();
 
-        assertEquals(1, novaLines);
+        assertEquals(1, pushLines);
     }
 }

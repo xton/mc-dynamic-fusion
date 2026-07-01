@@ -18,7 +18,7 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
-import com.xton.fusion.modifier.ModifierContext;
+import com.xton.fusion.modifier.ProjectileSpec;
 
 /**
  * A custom, particle-rendered projectile ticked entirely by us — no Bukkit
@@ -50,10 +50,12 @@ public final class FusionProjectile extends BukkitRunnable {
     private static final double HIT_RADIUS = 0.65;
     /** Downward acceleration per tick when gravity is on (matches a light arrow). */
     private static final double GRAVITY_PER_TICK = 0.05;
+    /** Fixed nudge a piercing shot gives each entity it passes through. */
+    private static final double CONTACT_IMPULSE = 0.35;
 
     private final Plugin plugin;
     private final Payload payload;
-    private final ModifierContext ctx;
+    private final ProjectileSpec spec;
     private final World world;
     private final Player caster;
     private final int generation;
@@ -64,12 +66,12 @@ public final class FusionProjectile extends BukkitRunnable {
 
     private int age;
 
-    public FusionProjectile(Plugin plugin, Payload payload, ModifierContext ctx,
+    public FusionProjectile(Plugin plugin, Payload payload, ProjectileSpec spec,
                             World world, Location origin, Vector velocity,
                             Player caster, int generation) {
         this.plugin = plugin;
         this.payload = payload;
-        this.ctx = ctx;
+        this.spec = spec;
         this.world = world;
         this.position = origin.toVector();
         this.velocity = velocity.clone();
@@ -88,7 +90,7 @@ public final class FusionProjectile extends BukkitRunnable {
             stop(null);
             return;
         }
-        if (ctx.hasGravity()) {
+        if (spec.hasGravity()) {
             velocity.setY(velocity.getY() - GRAVITY_PER_TICK);
         }
 
@@ -116,8 +118,8 @@ public final class FusionProjectile extends BukkitRunnable {
             }
         }
 
-        if (++age >= Math.max(1, ctx.getLifetimeTicks())) {
-            stop(position.toLocation(world)); // expired: trigger where it is
+        if (++age >= Math.max(1, spec.lifetimeTicks())) {
+            stop(position.toLocation(world)); // expired: terminate where it is
         }
     }
 
@@ -140,9 +142,9 @@ public final class FusionProjectile extends BukkitRunnable {
             return false; // nothing to collide with
         }
         double hardness = type.getHardness();
-        boolean breakable = hardness >= 0 && hardness <= ctx.getPierceMaxHardness();
+        boolean breakable = hardness >= 0 && hardness <= spec.pierceMaxHardness();
 
-        if (ctx.isMining() && breakable) {
+        if (spec.isMining() && breakable) {
             ItemStack tool = caster != null ? caster.getInventory().getItemInMainHand() : null;
             // breakNaturally already plays the vanilla break particles/sound; a
             // little extra spark/crack sells the ray boring through.
@@ -155,10 +157,10 @@ public final class FusionProjectile extends BukkitRunnable {
             }
             return false; // bored through
         }
-        if (ctx.isPierce() && breakable) {
+        if (spec.isPierce() && breakable) {
             return false; // ghost through a soft block
         }
-        // TODO(bounce seam): with ctx.getBounces() > 0, reflect off the block
+        // TODO(bounce seam): with spec.bounces() > 0, reflect off the block
         // face here and decrement instead of stopping.
         return true;
     }
@@ -176,8 +178,8 @@ public final class FusionProjectile extends BukkitRunnable {
             if (!contacted.add(living.getUniqueId())) {
                 continue; // already hit this one
             }
-            if (!ctx.isPierce()) {
-                return true; // stop at the first entity; burst pushes it
+            if (!spec.isPierce()) {
+                return true; // stop at the first entity; the payload acts here
             }
             contactShove(living, travel); // pierce: nudge and continue
         }
@@ -190,14 +192,14 @@ public final class FusionProjectile extends BukkitRunnable {
         if (push.lengthSquared() < 1.0e-6) {
             return;
         }
-        push.normalize().multiply(ctx.getPower() * 0.6);
+        push.normalize().multiply(CONTACT_IMPULSE);
         push.setY(Math.max(push.getY(), 0.2));
         target.setVelocity(target.getVelocity().add(push));
     }
 
     private void trail(Location here) {
         world.spawnParticle(Particle.CRIT, here, 1, 0.02, 0.02, 0.02, 0.0);
-        if (ctx.isMining()) {
+        if (spec.isMining()) {
             world.spawnParticle(Particle.ELECTRIC_SPARK, here, 1, 0.02, 0.02, 0.02, 0.0);
         }
     }

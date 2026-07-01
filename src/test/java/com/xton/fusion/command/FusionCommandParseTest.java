@@ -8,33 +8,33 @@ import org.junit.jupiter.api.Test;
 
 import com.xton.fusion.modifier.ModifierRegistry;
 import com.xton.fusion.modifier.impl.ChainModifier;
-import com.xton.fusion.modifier.impl.NovaModifier;
+import com.xton.fusion.modifier.impl.PushModifier;
 
 /** Pure: argument → known-modifier-id parsing, no server needed. */
 class FusionCommandParseTest {
 
     private ModifierRegistry registry() {
         return new ModifierRegistry()
-                .register(new NovaModifier())
-                .register(new ChainModifier(3));
+                .register(new PushModifier())
+                .register(new ChainModifier(2));
     }
 
     @Test
     void keepsKnownIdsUpcasedAndSkipsUnknown() {
         ModifierRegistry registry = registry();
-        // args: give <player> <base> nova MYSTERY chain
-        String[] args = {"give", "Steve", "DIAMOND_SWORD", "nova", "MYSTERY", "chain"};
+        // args: give <player> <base> push MYSTERY chain
+        String[] args = {"give", "Steve", "DIAMOND_SWORD", "push", "MYSTERY", "chain"};
         List<String> ids = FusionCommand.knownIds(registry, args, 3);
 
-        assertEquals(List.of("NOVA", "CHAIN"), ids);
+        assertEquals(List.of("PUSH", "CHAIN"), ids);
     }
 
     @Test
     void preservesOrderAndDuplicates() {
         ModifierRegistry registry = registry();
-        String[] args = {"give", "Steve", "BOW", "nova", "nova", "chain"};
+        String[] args = {"give", "Steve", "BOW", "push", "push", "chain"};
         List<String> ids = FusionCommand.knownIds(registry, args, 3);
 
-        assertEquals(List.of("NOVA", "NOVA", "CHAIN"), ids);
+        assertEquals(List.of("PUSH", "PUSH", "CHAIN"), ids);
     }
 }

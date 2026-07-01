@@ -5,63 +5,54 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.bukkit.Location;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.util.Vector;
 
-import com.xton.fusion.modifier.ModifierContext;
+import com.xton.fusion.modifier.AoeSpec;
 import com.xton.fusion.modifier.ModifierStack;
+import com.xton.fusion.modifier.ProjectileSpec;
+import com.xton.fusion.modifier.WeaponBuilder;
 
 /**
  * Turns a weapon's modifier stack into flying {@link FusionProjectile}s. A swing
- * or bow shot calls {@link #launch}: the stack resolves into a
- * {@link ModifierContext} (starting from the configured base spec), and one
- * projectile per MULTISHOT count is spawned, each aimed with the SPREAD cone.
+ * or bow shot calls {@link #launch}: the stack compiles into a
+ * {@link ProjectileSpec} (flight + payload), and one projectile per MULTISHOT
+ * count is spawned, each aimed with the SPREAD cone and carrying a
+ * {@link Payload} built from the spec's AOE emitters.
  *
- * <p>{@link #buildContext} is pure (no world), so the spec a stack produces is
- * unit-testable without a server.
+ * <p>{@link #compile} and {@link #buildPayload} are pure (no world), so what a
+ * stack produces is unit-testable without a server.
  */
 public final class ProjectileLauncher {
 
-    /** Base spec every shot starts from before modifiers apply. */
-    public record Settings(double baseRadius, double basePower, double baseSpeed,
-                           int baseLifetimeTicks, double pierceMaxHardness) {
-    }
-
     private final Plugin plugin;
     private final AoeBurst burst;
-    private final Settings settings;
+    private final WeaponBuilder.Defaults defaults;
 
-    public ProjectileLauncher(Plugin plugin, AoeBurst burst, Settings settings) {
+    public ProjectileLauncher(Plugin plugin, AoeBurst burst, WeaponBuilder.Defaults defaults) {
         this.plugin = plugin;
         this.burst = burst;
-        this.settings = settings;
+        this.defaults = defaults;
     }
 
-    /** Resolve the base spec + stack into a context. Pure; safe to unit-test. */
-    public ModifierContext buildContext(ModifierStack stack) {
-        ModifierContext ctx = new ModifierContext()
-                .setRadius(settings.baseRadius())
-                .setPower(settings.basePower())
-                .setSpeed(settings.baseSpeed())
-                .setLifetimeTicks(settings.baseLifetimeTicks())
-                .setPierceMaxHardness(settings.pierceMaxHardness());
-        stack.applyTo(ctx);
-        return ctx;
+    /** Compile the stack into a projectile spec (flight + payload). Pure. */
+    public ProjectileSpec compile(ModifierStack stack) {
+        return new WeaponBuilder(defaults).compile(stack);
     }
 
     /**
-     * Build the payload for a resolved context: the effects delivered where a
-     * projectile terminates. Empty unless the stack opted a burst in — so a
-     * mining ray or kinetic lance delivers nothing at its terminus. Pure.
+     * Build the payload for a compiled spec: one {@link BurstEffect} per AOE
+     * emitter. Empty when the stack had no emitters — so a mining ray or kinetic
+     * lance delivers nothing at its terminus. Pure.
      *
-     * <p>Seam: a future spawn effect (cluster bomb) would be added here, gated
-     * on a spawn request in the context and the projectile's generation.
+     * <p>Seam: a future spawn effect (cluster bomb) would be added here from a
+     * spawn emitter in the spec, gated by the projectile's generation.
      */
-    public Payload buildPayload(ModifierContext ctx) {
+    public Payload buildPayload(ProjectileSpec spec) {
         List<PayloadEffect> effects = new ArrayList<>();
-        if (ctx.hasBurst()) {
-            effects.add(new BurstEffect(burst, ctx));
+        for (AoeSpec aoe : spec.payload()) {
+            effects.add(new BurstEffect(burst, aoe));
         }
         return effects.isEmpty() ? Payload.empty() : new Payload(effects);
     }
@@ -72,17 +63,17 @@ public final class ProjectileLauncher {
      * swing).
      */
     public void launch(Player caster, ModifierStack stack, double speedScale) {
-        ModifierContext ctx = buildContext(stack).setCaster(caster);
-        Payload payload = buildPayload(ctx);
+        ProjectileSpec spec = compile(stack);
+        Payload payload = buildPayload(spec);
         Location origin = caster.getEyeLocation();
         Vector aim = origin.getDirection().normalize();
-        double speed = Math.max(0.05, ctx.getSpeed() * speedScale);
-        int count = Math.max(1, ctx.getCount());
+        double speed = Math.max(0.05, spec.speed() * speedScale);
+        int count = Math.max(1, spec.count());
 
         for (int i = 0; i < count; i++) {
-            Vector dir = scatter(aim, ctx.getSpreadDegrees());
+            Vector dir = scatter(aim, spec.spreadDegrees());
             Vector velocity = dir.multiply(speed);
-            new FusionProjectile(plugin, payload, ctx, caster.getWorld(),
+            new FusionProjectile(plugin, payload, spec, caster.getWorld(),
                     origin.clone(), velocity, caster, 0).start();
         }
     }

@@ -5,21 +5,21 @@ import com.xton.fusion.modifier.Modifier;
 import com.xton.fusion.modifier.WeaponBuilder;
 
 /**
- * Transform: multiplies the radius of the nearest preceding burst (×N per
- * copy), so EXPAND×2 makes a much wider blast. Inert on its own — it needs a
- * PUSH or DAMAGE emitter before it to widen.
+ * Transform: multiplies the power of the nearest preceding burst (×N per copy)
+ * — knockback force for a PUSH, damage for a DAMAGE. Inert on its own; it needs
+ * an emitter before it to amplify.
  */
-public final class ExpandModifier implements Modifier {
+public final class AmplifyModifier implements Modifier {
 
-    public static final String ID = "EXPAND";
+    public static final String ID = "AMPLIFY";
 
     private final double factorPerApply;
 
-    public ExpandModifier(double factorPerApply) {
+    public AmplifyModifier(double factorPerApply) {
         this.factorPerApply = factorPerApply;
     }
 
-    public ExpandModifier() {
+    public AmplifyModifier() {
         this(1.6);
     }
 
@@ -30,17 +30,17 @@ public final class ExpandModifier implements Modifier {
 
     @Override
     public String displayName() {
-        return "Expand";
+        return "Amplify";
     }
 
     @Override
     public String description() {
-        return "widens the previous burst";
+        return "strengthens the previous burst";
     }
 
     @Override
     public String detailedDescription() {
-        return "Multiplies the radius of the burst before it. Stacks — fuse again for a bigger blast.";
+        return "Multiplies the force (or damage) of the burst before it. Stacks — we allow OP.";
     }
 
     @Override
@@ -52,7 +52,7 @@ public final class ExpandModifier implements Modifier {
     public void apply(WeaponBuilder builder) {
         AoeSpec target = builder.topAoe();
         if (target != null) {
-            target.scaleRadius(factorPerApply);
+            target.scalePower(factorPerApply);
         }
     }
 }

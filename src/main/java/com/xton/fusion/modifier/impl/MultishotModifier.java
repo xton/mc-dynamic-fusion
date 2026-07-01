@@ -1,14 +1,12 @@
 package com.xton.fusion.modifier.impl;
 
 import com.xton.fusion.modifier.Modifier;
-import com.xton.fusion.modifier.ModifierContext;
+import com.xton.fusion.modifier.WeaponBuilder;
 
 /**
- * Launches more projectiles per shot. Stacks: each copy adds
- * {@code countPerApply} extra projectiles (base is one). Pair it with SPREAD
+ * Flight transform: launches more copies of the projectile. Stacks: each copy
+ * adds {@code countPerApply} extra projectiles (base is one). Pair with SPREAD
  * for a shotgun, or leave spread at zero for a tight volley.
- *
- * <p>Pure: only mutates context. The launcher spawns the projectiles.
  */
 public final class MultishotModifier implements Modifier {
 
@@ -41,11 +39,16 @@ public final class MultishotModifier implements Modifier {
 
     @Override
     public String detailedDescription() {
-        return "Fires additional projectiles per shot. Stacks — add SPREAD to fan them into a shotgun blast.";
+        return "Fires additional projectiles per shot. Stacks — add Spread to fan them into a shotgun blast.";
     }
 
     @Override
-    public ModifierContext apply(ModifierContext ctx) {
-        return ctx.addCount(countPerApply);
+    public Category category() {
+        return Category.TRANSFORM;
+    }
+
+    @Override
+    public void apply(WeaponBuilder builder) {
+        builder.projectile().addCount(countPerApply);
     }
 }

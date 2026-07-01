@@ -1,15 +1,13 @@
 package com.xton.fusion.modifier.impl;
 
 import com.xton.fusion.modifier.Modifier;
-import com.xton.fusion.modifier.ModifierContext;
+import com.xton.fusion.modifier.WeaponBuilder;
 
 /**
- * Scatters aim: each projectile is nudged off the pointing direction by a random
- * angle within a widening cone. Stacks: each copy adds {@code degreesPerApply}
- * to the cone half-angle. On its own it makes a shot inaccurate; with MULTISHOT
- * it fans the volley into a spray.
- *
- * <p>Pure: only mutates context. The launcher applies the random offset.
+ * Flight transform: scatters aim — each projectile is nudged off the pointing
+ * direction by a random angle within a widening cone. Stacks: each copy adds
+ * {@code degreesPerApply} to the cone half-angle. With MULTISHOT it fans the
+ * volley into a spray.
  */
 public final class SpreadModifier implements Modifier {
 
@@ -46,7 +44,12 @@ public final class SpreadModifier implements Modifier {
     }
 
     @Override
-    public ModifierContext apply(ModifierContext ctx) {
-        return ctx.addSpreadDegrees(degreesPerApply);
+    public Category category() {
+        return Category.TRANSFORM;
+    }
+
+    @Override
+    public void apply(WeaponBuilder builder) {
+        builder.projectile().addSpreadDegrees(degreesPerApply);
     }
 }

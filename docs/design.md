@@ -61,43 +61,48 @@ Within that guarantee there are three outcome classes:
 
 ## Architecture Overview
 
+Current layout (the emitter/transform compile model — see *The Modifier System*):
+
 ```
 plugin/
-├── FusionPlugin.java               # Main class, lifecycle, scheduler setup
+├── FusionPlugin.java               # Main class, lifecycle, wiring
 ├── command/
-│   └── FuseCommand.java            # Phase Zero: main-hand + off-hand fusion via /fuse
+│   └── FusionCommand.java          # /fusion machine | fuse | give (op-only)
 ├── fusion/
 │   ├── FusionEngine.java           # Core merge logic
-│   ├── FusionRecipe.java           # Target + Ingredient → output resolution
-│   └── FusionMachineListener.java  # GUI events (Phase 2)
+│   └── FusionResult.java           # Success/refusal + output
+├── machine/
+│   ├── FusionMachineMenu.java      # Anvil-based fusion GUI (enchanting-table block)
+│   └── MachineListener.java        # Place/break/right-click/GUI events
 ├── modifier/
-│   ├── Modifier.java               # Interface
-│   ├── ModifierContext.java        # Mutable state passed through pipeline
+│   ├── Modifier.java               # Interface: id/name + Category + apply(WeaponBuilder)
+│   ├── WeaponBuilder.java          # RPN compile: stack → ProjectileSpec
+│   ├── ProjectileSpec.java         # Compiled flight + payload (List<AoeSpec>)
+│   ├── AoeSpec.java / AoeKind.java  # One burst element (PUSH/DAMAGE) + its transforms
 │   ├── ModifierRegistry.java       # ID → Modifier implementation map
-│   ├── ModifierStack.java          # Ordered list + merge/dedup logic
+│   ├── ModifierStack.java          # Ordered list (no dedupe)
 │   └── impl/                       # One class per modifier
-│       ├── NovaModifier.java
-│       ├── ExpandModifier.java
-│       ├── RepeatModifier.java
-│       └── ...
+│       ├── PushModifier.java  DamageModifier.java          # emitters
+│       ├── ExpandModifier.java  AmplifyModifier.java  ...  # AOE transforms
+│       └── MultishotModifier.java  PierceModifier.java  …  # flight transforms
 ├── item/
 │   ├── LatentRegistry.java         # Material → List<ModifierId>
-│   ├── FusedItemFactory.java       # Creates output ItemStack
-│   ├── FusedItemReader.java        # Reads PDC from existing item
+│   ├── FusedItemFactory.java / FusedItemReader.java        # PDC write/read
+│   ├── FusionKeys.java             # NamespacedKeys
 │   └── LoreGenerator.java          # Builds Adventure API lore lines
+├── projectile/
+│   ├── ProjectileLauncher.java     # compile(stack) + buildPayload(spec) + launch (pure core)
+│   ├── FusionProjectile.java       # Custom self-ticked projectile (pierce/mining/lifetime)
+│   ├── Payload.java / PayloadEffect.java / BurstEffect.java # terminal effects
+│   └── AoeBurst.java               # Fires one AoeSpec (shove or damage, chain/persist)
 ├── weapon/
-│   ├── WeaponEventListener.java    # Swing, hit, interact events
-│   ├── ShedParticleTask.java       # Repeating task for particle trails
-│   └── behaviors/                  # Special weapon types
-│       ├── NovaBehavior.java
-│       ├── BowBehavior.java
-│       ├── MiningRayBehavior.java
-│       └── PortalGunBehavior.java
+│   ├── WeaponEventListener.java    # Swing → launch projectiles
+│   ├── ProjectileListener.java     # Fused bow → launch projectiles (draw-scaled)
+│   └── ShedParticleTask.java       # Cosmetic particle trail
 └── util/
-    ├── VectorUtil.java             # Arc calculation, velocity transforms (pure)
-    ├── RaycastUtil.java            # Block raycasting helpers
-    ├── CooldownMap.java            # Per-player cooldown tracking (injected time source)
-    └── Scheduler.java              # Thin wrapper over Bukkit scheduler (injectable)
+    ├── CooldownMap.java            # Per-player cooldown (injected time source)
+    ├── Scheduler.java              # Thin wrapper over Bukkit scheduler (injectable)
+    └── BukkitTaskScheduler.java
 ```
 
 ### Key design principle: draw the test boundary where it's free
@@ -130,7 +135,70 @@ Not worth it: wrapping `ItemStack`/PDC or `Entity`/`Block` behind abstractions. 
 
 ## The Modifier System
 
-### Modifier Interface
+> **Implemented model (2026-07 — supersedes the catalog in the rest of this
+> chapter, which records the original design intent).** The sections below on
+> `ModifierContext`, the NOVA/REPEAT catalog, and AMPLIFY-doubling describe the
+> first cut; the shipped model is the emitter/transform compile described here.
+
+### Weapon = projectile (flight) + payload (bursts)
+
+Everything is a projectile, Noita-style. A swing or bow shot launches one or
+more projectiles; each has a **flight** (how it travels) and a **payload** (what
+it delivers where it terminates). Both can be empty — a zero-length flight
+detonates at the origin; an empty payload delivers nothing (a mining ray carves
+and stops, no pop).
+
+Modifiers come in two categories (`Modifier.Category`):
+
+- **Emitters** add a concrete element. `PUSH` and `DAMAGE` append an `AoeSpec`
+  burst to the current projectile's payload. (A spawn-projectile emitter is the
+  seam for cluster bombs — the payload is a `List<PayloadEffect>`, so a spawn
+  effect that re-launches child projectiles with a decremented generation drops
+  in with no special-casing.)
+- **Transforms** modify the **nearest preceding emitter** (RPN, apply-to-previous).
+  *AOE transforms* (`EXPAND` ×radius, `AMPLIFY` ×power/damage, `CHAIN`, `INVERT`,
+  `PERSIST`) mutate the top `AoeSpec`; *flight transforms* (`MULTISHOT`, `SPREAD`,
+  `PIERCE`, `LIFETIME`, `MINING`) mutate the projectile. A transform with no
+  matching preceding emitter is **inert** — so a burst is opt-in (Expand alone
+  does nothing), and it binds to the *nearest* element only (`PUSH PUSH EXPAND`
+  widens just the second push).
+
+Because the primitives are small, weapons compose:
+`PUSH·EXPAND·EXPAND` = a nova · `DAMAGE·AMPLIFY` = a fireball ·
+`DAMAGE·MULTISHOT·SPREAD` = a shotgun · `PIERCE·LIFETIME` = a ray gun ·
+`MINING` = a mining laser. Ingredients are a hybrid roster: atomic *reagents*
+(one attribute) plus curated *bundles* (a ready-made spell in one item).
+
+### Compile pipeline
+
+The stack **compiles** — it is no longer a flat fold over a shared context:
+
+```
+ModifierStack ──(WeaponBuilder, RPN)──▶ ProjectileSpec
+                                          ├─ flight: count, spread, speed,
+                                          │   pierce, lifetime, gravity, mining…
+                                          └─ payload: List<AoeSpec>  (PUSH/DAMAGE,
+                                              each radius/power/chain/invert/persist)
+```
+
+- `Modifier.apply(WeaponBuilder)` acts on the compile state: an emitter calls
+  `emitPush()`/`emitDamage()`; a transform mutates `topAoe()` (AOE) or
+  `projectile()` (flight).
+- `ProjectileLauncher.compile(stack)` → `ProjectileSpec` and `buildPayload(spec)`
+  → `Payload` (one `BurstEffect` per emitter) are **pure** (no world), so the
+  whole model is unit-tested in `WeaponCompileTest` / `ProjectileModelTest`.
+- `FusionProjectile` is a custom, particle-rendered, self-ticked projectile (no
+  Bukkit entity) that sub-steps each tick so we own pierce/mining/lifetime, then
+  delivers the `Payload` at its terminus. `AoeBurst` fires one `AoeSpec` (shove
+  or damage, with chain/persist).
+
+Class map: `modifier/{Modifier, WeaponBuilder, ProjectileSpec, AoeSpec, AoeKind}`
+and `modifier/impl/*` (one per modifier); `projectile/{ProjectileLauncher,
+FusionProjectile, Payload, PayloadEffect, BurstEffect, AoeBurst}`.
+
+---
+
+### Modifier Interface (original design — superseded)
 
 ```java
 public interface Modifier {

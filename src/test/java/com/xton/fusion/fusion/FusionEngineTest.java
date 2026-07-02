@@ -21,7 +21,7 @@ import com.xton.fusion.item.FusionKeys;
 import com.xton.fusion.item.LatentRegistry;
 import com.xton.fusion.item.LoreGenerator;
 import com.xton.fusion.modifier.ModifierRegistry;
-import com.xton.fusion.modifier.impl.NovaModifier;
+import com.xton.fusion.modifier.impl.PushModifier;
 
 /**
  * Needs MockBukkit because it round-trips ItemStack meta / PDC, which requires
@@ -39,10 +39,10 @@ class FusionEngineTest {
         Plugin plugin = MockBukkit.createMockPlugin();
 
         FusionKeys keys = new FusionKeys(plugin);
-        ModifierRegistry registry = new ModifierRegistry().register(new NovaModifier());
+        ModifierRegistry registry = new ModifierRegistry().register(new PushModifier());
         reader = new FusedItemReader(keys);
         factory = new FusedItemFactory(keys, new LoreGenerator(registry));
-        latent = new LatentRegistry(Map.of(Material.NETHER_STAR, List.of("NOVA")));
+        latent = new LatentRegistry(Map.of(Material.NETHER_STAR, List.of("PUSH")));
     }
 
     @AfterEach
@@ -55,7 +55,7 @@ class FusionEngineTest {
     }
 
     @Test
-    void firstFusionProducesNovaSword() {
+    void firstFusionProducesPushSword() {
         FusionResult result = engine(8, 5)
                 .fuse(new ItemStack(Material.DIAMOND_SWORD), new ItemStack(Material.NETHER_STAR));
 
@@ -63,7 +63,7 @@ class FusionEngineTest {
         ItemStack out = result.output();
         assertEquals(Material.DIAMOND_SWORD, out.getType());
         assertTrue(reader.isFused(out));
-        assertEquals(List.of("NOVA"), reader.readModifierIds(out));
+        assertEquals(List.of("PUSH"), reader.readModifierIds(out));
         assertEquals(1, reader.generation(out));
     }
 
@@ -85,7 +85,7 @@ class FusionEngineTest {
         ItemStack out = engine.fuse(new ItemStack(Material.DIAMOND_AXE), fusedSword).output();
         // Diamond Sword has no latent modifiers, so the axe gains exactly the
         // ingredient's fused stack.
-        assertEquals(List.of("NOVA"), reader.readModifierIds(out));
+        assertEquals(List.of("PUSH"), reader.readModifierIds(out));
     }
 
     @Test
@@ -101,7 +101,7 @@ class FusionEngineTest {
                 new ItemStack(Material.NETHER_STAR)).output();
         ItemStack twice = engine.fuse(once, new ItemStack(Material.NETHER_STAR)).output();
 
-        assertEquals(List.of("NOVA", "NOVA"), reader.readModifierIds(twice));
+        assertEquals(List.of("PUSH", "PUSH"), reader.readModifierIds(twice));
         assertEquals(2, reader.generation(twice));
     }
 

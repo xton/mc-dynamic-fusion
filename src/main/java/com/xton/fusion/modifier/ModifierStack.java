@@ -39,13 +39,4 @@ public final class ModifierStack {
     public boolean isEmpty() {
         return modifiers.isEmpty();
     }
-
-    /** Apply every modifier in order, threading the context through each. */
-    public ModifierContext applyTo(ModifierContext ctx) {
-        ModifierContext current = ctx;
-        for (Modifier m : modifiers) {
-            current = m.apply(current);
-        }
-        return current;
-    }
 }

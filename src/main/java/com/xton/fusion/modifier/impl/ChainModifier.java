@@ -1,13 +1,13 @@
 package com.xton.fusion.modifier.impl;
 
+import com.xton.fusion.modifier.AoeSpec;
 import com.xton.fusion.modifier.Modifier;
-import com.xton.fusion.modifier.ModifierContext;
+import com.xton.fusion.modifier.WeaponBuilder;
 
 /**
- * Lets the effect hop to additional nearby entities beyond the main burst.
- * Stacks: each copy adds {@code countPerApply} more hops.
- *
- * <p>Pure: only mutates context.
+ * Transform: lets the nearest preceding burst hop to additional nearby entities
+ * beyond its main area. Stacks: each copy adds {@code countPerApply} more hops.
+ * Inert without an emitter before it.
  */
 public final class ChainModifier implements Modifier {
 
@@ -20,7 +20,7 @@ public final class ChainModifier implements Modifier {
     }
 
     public ChainModifier() {
-        this(3);
+        this(2);
     }
 
     @Override
@@ -35,16 +35,24 @@ public final class ChainModifier implements Modifier {
 
     @Override
     public String description() {
-        return "jumps to nearby entities";
+        return "burst jumps to more entities";
     }
 
     @Override
     public String detailedDescription() {
-        return "After the burst, the effect leaps to the nearest entities one after another.";
+        return "After the burst before it lands, the effect leaps to the nearest entities one after another.";
     }
 
     @Override
-    public ModifierContext apply(ModifierContext ctx) {
-        return ctx.addChainCount(countPerApply);
+    public Category category() {
+        return Category.TRANSFORM;
+    }
+
+    @Override
+    public void apply(WeaponBuilder builder) {
+        AoeSpec target = builder.topAoe();
+        if (target != null) {
+            target.addChain(countPerApply);
+        }
     }
 }

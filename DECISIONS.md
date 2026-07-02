@@ -264,3 +264,142 @@ the renamed taken item). Build green, 29 tests.
 Placing/right-clicking/breaking the enchanting-table machine, and that a normal
 enchanting table still enchants, need a live client. Build green, 27 tests
 (the MachineStore persistence test was removed with the file store).
+
+---
+
+## Projectile model refactor — everything is a projectile (2026-07-01)
+
+Reworked the effect model to be Noita-like: instead of hooking swing/bow effects
+directly, a swing or bow shot now **launches one or more projectiles carrying
+the modifier stack**, and each projectile **triggers its burst where it lands**.
+This turns the old special-cased behaviors into composable primitives.
+
+**Model (all live in `ModifierContext`):**
+- Projectile spec — `count` (MULTISHOT), `spreadDegrees` (SPREAD), `speed`,
+  `pierce` (PIERCE) + `pierceMaxHardness`, `lifetimeTicks` (LIFETIME = the expiry
+  primitive), plus `mining`. Seams present but not yet wired: `gravity`,
+  `bounces`.
+- Burst spec — the old `radius/power/expandBonus/chainCount/inverted/persist`
+  fields, unchanged; NOVA/EXPAND/CHAIN/INVERT/PERSIST still feed them.
+
+**New classes (`com.xton.fusion.projectile`):**
+- `AoeBurst` — the on-trigger payload; the old `SwingEffectBehavior.applyBurst`
+  (shove/chain/persist/particles) extracted verbatim.
+- `FusionProjectile` — a custom, particle-rendered projectile ticked by us (no
+  Bukkit entity), sub-stepping each tick so we own pierce/mining/lifetime. Not a
+  Bukkit `Projectile`, because Bukkit projectile physics can't express
+  pierce/no-gravity/custom-lifetime cleanly.
+- `ProjectileLauncher` — builds the context from base config + stack (pure,
+  unit-tested) and spawns `count` projectiles with the SPREAD cone.
+
+**Primitive mapping / ↳ calls:**
+- ↳ **REPEAT dropped, replaced by MULTISHOT** (`addCount`). Per the design
+  refinement, repeat isn't a useful projectile primitive; number-of-projectiles
+  is. Old items tagged `REPEAT` simply resolve to nothing now (harmless; they
+  lose that one effect). Ingredients remapped (Rabbit's Foot/Slime/Chorus →
+  MULTISHOT).
+- ↳ **DELAYED renamed to LIFETIME and repurposed** (`addLifetimeTicks`) rather
+  than a pre-fire delay — the user noted "Delayed already IS the expiry
+  primitive," and "Delayed" wrongly implied the shot waits to be *fired* instead
+  of waiting to *trigger*. A longer lifetime now means the shot flies farther
+  before it goes off. (Ingredient unchanged: Gunpowder → LIFETIME.)
+- ↳ **MINING rebuilt from primitives**: it sets `pierce` + `mining` + a short
+  lifetime + fast speed (config `mining.lifetime-ticks/speed/max-hardness`). A
+  "true mining ray" is pierce + very short expiry, exactly as described. Retired
+  the arc-raycast `MiningRayBehavior`.
+- ↳ **New PIERCE and SPREAD modifiers** with new ingredients (Arrow/Quartz →
+  PIERCE; Feather/Sugar → SPREAD).
+- ↳ **Melee = a short fast bolt that triggers where it lands.** Non-piercing
+  shots stop at the first block/entity and burst there; base lifetime (30t) is
+  the fallback when they hit open air.
+- ↳ **Pierce + AOE = contact-hits along the line, one burst at the end.** A
+  piercing shot applies a light along-travel shove to each entity it passes
+  (`contactShove`), then fires the full `AoeBurst` once where it finally stops.
+- ↳ **Fused bows now cancel the vanilla arrow** and launch our projectiles
+  instead, speed scaled by draw force (`0.35 + 0.65·force`). A fused bow is a
+  wand; Multishot bows fan a volley. (Previously we stamped PDC on the vanilla
+  arrow and burst on its natural hit — removed.)
+- ↳ **Bounce/gravity left as documented seams** (fields + a `TODO(bounce seam)`
+  branch in `FusionProjectile`), per "we don't need to implement all these from
+  the start, but the model needs the seams." Grenade/cluster-bomb (spawn-children
+  on trigger, carrying a decremented `generation`) are the next builds on top.
+
+### Flight + payload model (follow-up, same day)
+
+Corrected the model per feedback: a projectile is a **flight** (how it travels)
+plus a **payload** (a list of effects delivered where it terminates). Both can be
+empty — a zero-length flight detonates at the origin; an empty payload delivers
+nothing. This replaces the earlier "every triggered shot fires the base burst"
+call (which made a Mining-only ray pop at its terminus — unwanted).
+
+- **`Payload` = `List<PayloadEffect>`**, delivered at termination. Today the only
+  effect is `BurstEffect` (the AOE). The list *is* the extensibility seam: a
+  future spawn effect (cluster bomb) re-launches child projectiles from the
+  terminus carrying a decremented `generation`, with no special-casing elsewhere.
+- ↳ **Burst is opt-in, not a base default.** A burst is delivered only if a burst
+  modifier asked for it (`ModifierContext#enableBurst()`, set by NOVA / EXPAND /
+  CHAIN / INVERT / PERSIST). The flight modifiers (MULTISHOT / SPREAD / PIERCE /
+  LIFETIME / MINING) don't. So a **mining ray delivers an empty payload — no pop
+  at its terminus** — while Mining + Nova still bursts. Base radius/power still
+  seed the burst, but only when one is enabled.
+- ↳ **Mining does its work along the flight, not at the end.** Each block it
+  bores plays a break sound + block particles (on top of `breakNaturally`'s own
+  effects); the terminus is silent. Removed the unconditional arrow-hit sound
+  from `stop()` — the burst plays its own sound, an empty payload none.
+
+### Verification gap (please UAT)
+All flight/collision behaviour needs a live client — pierce through walls,
+mining tunnels (and that they *don't* pop at the end), multishot spread, bow
+volleys, burst-on-land. Build green (35 tests); the flight/payload spec-building
+is unit-tested (`ProjectileModelTest` asserts mining/pierce deliver empty
+payloads), but the world interaction is not testable here. See
+`docs/uat/projectile-model.md`.
+
+---
+
+## Emitter/transform model — RPN compile (2026-07-01)
+
+Reworked the modifier model per feedback: modifiers were conflating two roles.
+Now they split cleanly, and the stack **compiles** (it is no longer a flat fold
+over one shared context).
+
+- **Emitters** add a concrete element: `PUSH` and `DAMAGE` bursts (and, seamed,
+  a future spawn-projectile). **Transforms** modify the nearest preceding
+  element: AOE transforms (`EXPAND` ×radius, `AMPLIFY` ×power/damage, `CHAIN`,
+  `INVERT`, `PERSIST`) scale/decorate the last burst; flight transforms
+  (`MULTISHOT`, `SPREAD`, `PIERCE`, `LIFETIME`, `MINING`) shape the projectile.
+- ↳ **Binding is RPN / apply-to-previous** (user's call): a transform binds to
+  the nearest *preceding* emitter, because fusion appends the ingredient's
+  latents — so you build by adding an emitter, then piling transforms on it. A
+  transform with no matching preceding emitter is **inert** (Expand alone does
+  nothing). This is exactly the "burst is opt-in" property, now falling out of
+  the model instead of a special flag.
+- ↳ **Scope = nearest previous only** (user's call): `PUSH PUSH EXPAND` widens
+  only the second push. AOE transforms bind to the top AOE element; flight
+  transforms bind to the (single, implicit) current projectile.
+- The stack compiles to a `ProjectileSpec` (flight + a `List<AoeSpec>` payload)
+  via `WeaponBuilder`. `Modifier.apply(WeaponBuilder)` replaces the old
+  `apply(ModifierContext)`; `ModifierContext` is deleted. Emitter vs transform
+  is tagged by `Modifier.Category`.
+- ↳ **NOVA retired, split into `PUSH` + Expand/Amplify.** The monolithic Nova
+  (radius 4 / power 1.4 baked in) becomes the recipe `PUSH · EXPAND · EXPAND`.
+  Smaller primitives, more to build with. Added `DAMAGE` (a real damaging burst)
+  and `AMPLIFY` (×power/damage) so there's something to scale. `EXPAND` is now
+  **multiplicative** (×1.6/apply) rather than additive.
+- ↳ **Hybrid ingredient roster** (user: "go nuts"). `latent_registry.yml` now
+  has *reagents* (one atomic attribute each) for composing, plus *bundles* —
+  curated multi-attribute "spells" (TNT = `DAMAGE·EXPAND·EXPAND`, Firework Star =
+  `DAMAGE·MULTISHOT·SPREAD`, End Crystal = the works). The engine already
+  appended multi-value latent lists, so this was pure content.
+- ↳ **Pierce contact impulse is now a fixed constant** (`CONTACT_IMPULSE`) — a
+  piercing shot nudges entities along the line; the real damage/push is the
+  payload at the terminus. There's no longer a single projectile "power" to
+  derive it from (power lives per-AOE).
+- Old items tagged `NOVA`/`REPEAT`/`DELAYED` resolve to nothing now — re-fuse.
+
+### Verification gap (please UAT)
+The compile is fully unit-tested (`WeaponCompileTest` covers emitter/transform
+binding, RPN scope, inert transforms, flight; `ProjectileModelTest` covers
+payload building). Damage bursts, the bundle ingredients, and all flight/world
+behaviour still need a live client. Build green (32 tests). See
+`docs/uat/projectile-model.md`.

@@ -1,0 +1,152 @@
+package com.xton.fusion.modifier;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
+import com.xton.fusion.modifier.impl.AmplifyModifier;
+import com.xton.fusion.modifier.impl.ChainModifier;
+import com.xton.fusion.modifier.impl.DamageModifier;
+import com.xton.fusion.modifier.impl.ExpandModifier;
+import com.xton.fusion.modifier.impl.InvertModifier;
+import com.xton.fusion.modifier.impl.LifetimeModifier;
+import com.xton.fusion.modifier.impl.MiningModifier;
+import com.xton.fusion.modifier.impl.MultishotModifier;
+import com.xton.fusion.modifier.impl.PersistModifier;
+import com.xton.fusion.modifier.impl.PierceModifier;
+import com.xton.fusion.modifier.impl.PushModifier;
+import com.xton.fusion.modifier.impl.SpreadModifier;
+
+/**
+ * The stack compiles into a {@link ProjectileSpec} purely (no server), so the
+ * RPN emitter/transform model is fully unit-testable: emitters add bursts,
+ * transforms bind to the nearest preceding emitter, and a transform with nothing
+ * before it is inert.
+ */
+class WeaponCompileTest {
+
+    private static final WeaponBuilder.Defaults DEFAULTS = new WeaponBuilder.Defaults(
+            1.6, 30, 3.0, 2.0, 1.0, 2.5, 4.0);
+
+    private ModifierRegistry registry() {
+        return new ModifierRegistry()
+                .register(new PushModifier())
+                .register(new DamageModifier())
+                .register(new ExpandModifier(1.6))
+                .register(new AmplifyModifier(1.6))
+                .register(new ChainModifier(2))
+                .register(new InvertModifier())
+                .register(new PersistModifier(60))
+                .register(new MultishotModifier(2))
+                .register(new SpreadModifier(12.0))
+                .register(new PierceModifier())
+                .register(new LifetimeModifier(30))
+                .register(new MiningModifier(6, 2.5, 3.0));
+    }
+
+    private ProjectileSpec compile(String... ids) {
+        return new WeaponBuilder(DEFAULTS).compile(registry().resolve(List.of(ids)));
+    }
+
+    @Test
+    void bareShotHasBaseFlightAndNoPayload() {
+        ProjectileSpec p = compile();
+        assertEquals(1, p.count());
+        assertEquals(1.6, p.speed(), 1.0e-9);
+        assertEquals(30, p.lifetimeTicks());
+        assertTrue(p.payload().isEmpty(), "no emitter, no burst");
+    }
+
+    @Test
+    void emitterAddsBurstFromDefaults() {
+        ProjectileSpec p = compile("PUSH");
+        assertEquals(1, p.payload().size());
+        AoeSpec push = p.topAoe();
+        assertEquals(AoeKind.PUSH, push.kind());
+        assertEquals(2.0, push.radius(), 1.0e-9);
+        assertEquals(1.0, push.power(), 1.0e-9);
+    }
+
+    @Test
+    void expandMultipliesRadiusOfPreviousBurst() {
+        AoeSpec push = compile("PUSH", "EXPAND", "EXPAND").topAoe();
+        assertEquals(2.0 * 1.6 * 1.6, push.radius(), 1.0e-9);
+    }
+
+    @Test
+    void amplifyMultipliesPowerOfPreviousBurst() {
+        AoeSpec dmg = compile("DAMAGE", "AMPLIFY").topAoe();
+        assertEquals(4.0 * 1.6, dmg.power(), 1.0e-9);
+    }
+
+    @Test
+    void transformBindsToNearestPrecedingEmitterOnly() {
+        // PUSH, PUSH, EXPAND → only the second push is widened.
+        ProjectileSpec p = compile("PUSH", "PUSH", "EXPAND");
+        assertEquals(2.0, p.payload().get(0).radius(), 1.0e-9);
+        assertEquals(2.0 * 1.6, p.payload().get(1).radius(), 1.0e-9);
+    }
+
+    @Test
+    void rpnComposesTwoDistinctBursts() {
+        // PUSH EXPAND  DAMAGE AMPLIFY → a widened push and a stronger damage.
+        ProjectileSpec p = compile("PUSH", "EXPAND", "DAMAGE", "AMPLIFY");
+        assertEquals(2, p.payload().size());
+        assertEquals(AoeKind.PUSH, p.payload().get(0).kind());
+        assertEquals(2.0 * 1.6, p.payload().get(0).radius(), 1.0e-9);
+        assertEquals(AoeKind.DAMAGE, p.payload().get(1).kind());
+        assertEquals(4.0 * 1.6, p.payload().get(1).power(), 1.0e-9);
+    }
+
+    @Test
+    void transformsAreInertWithoutAnEmitter() {
+        ProjectileSpec p = compile("EXPAND", "AMPLIFY", "CHAIN", "INVERT", "PERSIST");
+        assertTrue(p.payload().isEmpty(), "nothing to modify → no bursts appear");
+        assertNull(p.topAoe());
+    }
+
+    @Test
+    void invertTogglesAndTwoCancel() {
+        assertTrue(compile("PUSH", "INVERT").topAoe().inverted());
+        assertFalse(compile("PUSH", "INVERT", "INVERT").topAoe().inverted());
+    }
+
+    @Test
+    void chainAndPersistAccumulateOnPreviousBurst() {
+        AoeSpec push = compile("PUSH", "CHAIN", "CHAIN", "PERSIST").topAoe();
+        assertEquals(4, push.chainCount());
+        assertEquals(60, push.persistTicks());
+    }
+
+    @Test
+    void flightTransformsShapeTheProjectile() {
+        ProjectileSpec p = compile("MULTISHOT", "MULTISHOT", "SPREAD", "PIERCE", "LIFETIME");
+        assertEquals(5, p.count());               // 1 + 2 + 2
+        assertEquals(12.0, p.spreadDegrees(), 1.0e-9);
+        assertTrue(p.isPierce());
+        assertEquals(60, p.lifetimeTicks());      // 30 base + 30
+        assertTrue(p.payload().isEmpty(), "flight-only weapon delivers no burst");
+    }
+
+    @Test
+    void miningIsAShortFastPierce() {
+        ProjectileSpec p = compile("MINING");
+        assertTrue(p.isMining());
+        assertTrue(p.isPierce());
+        assertEquals(6, p.lifetimeTicks());
+        assertEquals(2.5, p.speed(), 1.0e-9);
+        assertTrue(p.payload().isEmpty(), "a bare mining ray delivers nothing at its terminus");
+    }
+
+    @Test
+    void miningPlusPushStillBursts() {
+        ProjectileSpec p = compile("PUSH", "MINING");
+        assertTrue(p.isMining());
+        assertEquals(1, p.payload().size(), "the push burst survives the mining flight");
+    }
+}

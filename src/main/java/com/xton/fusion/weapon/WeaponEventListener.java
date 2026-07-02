@@ -18,18 +18,20 @@ import org.bukkit.inventory.ItemStack;
 import com.xton.fusion.item.FusedItemReader;
 import com.xton.fusion.modifier.ModifierRegistry;
 import com.xton.fusion.modifier.ModifierStack;
-import com.xton.fusion.modifier.impl.MiningModifier;
+import com.xton.fusion.projectile.ProjectileLauncher;
 import com.xton.fusion.util.CooldownMap;
-import com.xton.fusion.weapon.behaviors.MiningRayBehavior;
-import com.xton.fusion.weapon.behaviors.SwingEffectBehavior;
 
-/** Routes melee swings of fused weapons to the swing-effect and mining behaviours. */
+/**
+ * Routes melee swings of fused weapons into launched projectiles. A swing fires
+ * the weapon's stack as one or more {@link com.xton.fusion.projectile.FusionProjectile}
+ * bolts — a short, fast shot that triggers where it lands (Noita-style), so the
+ * melee and bow paths share the same projectile model.
+ */
 public final class WeaponEventListener implements Listener {
 
     private final FusedItemReader reader;
     private final ModifierRegistry registry;
-    private final SwingEffectBehavior swingEffect;
-    private final MiningRayBehavior miningRay;
+    private final ProjectileLauncher launcher;
     private final CooldownMap cooldown;
 
     /** Tick of each player's last right-click, to filter out the arm-swing that
@@ -38,13 +40,11 @@ public final class WeaponEventListener implements Listener {
 
     public WeaponEventListener(FusedItemReader reader,
                                ModifierRegistry registry,
-                               SwingEffectBehavior swingEffect,
-                               MiningRayBehavior miningRay,
+                               ProjectileLauncher launcher,
                                CooldownMap cooldown) {
         this.reader = reader;
         this.registry = registry;
-        this.swingEffect = swingEffect;
-        this.miningRay = miningRay;
+        this.launcher = launcher;
         this.cooldown = cooldown;
     }
 
@@ -62,8 +62,8 @@ public final class WeaponEventListener implements Listener {
             return;
         }
         Player player = event.getPlayer();
-        // Right-clicking an interactive block (like the machine anvil) also fires
-        // an arm swing — ignore that so opening the GUI doesn't trigger the weapon.
+        // Right-clicking an interactive block (like the machine) also fires an
+        // arm swing — ignore that so opening the GUI doesn't trigger the weapon.
         Integer rightClick = lastRightClickTick.get(player.getUniqueId());
         if (rightClick != null && Bukkit.getCurrentTick() - rightClick <= 1) {
             return;
@@ -80,9 +80,6 @@ public final class WeaponEventListener implements Listener {
         if (!cooldown.tryUse(player.getUniqueId())) {
             return;
         }
-        swingEffect.execute(player, stack);
-        if (stack.contains(MiningModifier.ID)) {
-            miningRay.mine(player);
-        }
+        launcher.launch(player, stack, 1.0);
     }
 }

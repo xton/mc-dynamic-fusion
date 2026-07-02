@@ -1,39 +1,113 @@
 # Latent modifier identities for ingredient items.
-# Only special/rare items carry latent modifiers; common items contribute nothing.
-# Re-fusing stacks modifiers (duplicates are kept), so combining ingredients
-# compounds their effects.
+#
+# A weapon is a projectile (flight) + a payload (bursts). Modifiers are either
+# EMITTERS (PUSH/DAMAGE — add a burst) or TRANSFORMS (scale/alter the nearest
+# preceding emitter, or shape the flight). Order matters: transforms apply to
+# what came before them (RPN). Re-fusing appends, so you build a weapon by
+# adding an emitter, then piling transforms onto it.
+#
+# Ingredients come in two flavours:
+#   * reagents — a single atomic attribute, for composing your own weapons;
+#   * bundles  — a curated list (a ready-made "spell"), useful with fewer fusions.
+# Only special/rare items carry latents; common items contribute nothing.
 latent_modifiers:
-  # NOVA — all-directions burst
-  NETHER_STAR:
-    - NOVA
-  # EXPAND — widen the area
-  HEART_OF_THE_SEA:
+
+  # ---- Emitters (reagents) ----
+  NETHER_STAR:            # PUSH
+    - PUSH
+  PISTON:
+    - PUSH
+  FIRE_CHARGE:            # DAMAGE
+    - DAMAGE
+  FLINT:
+    - DAMAGE
+
+  # ---- AOE transforms (reagents) ----
+  HEART_OF_THE_SEA:       # EXPAND — ×radius
     - EXPAND
   MAGMA_CREAM:
     - EXPAND
-  # CHAIN — hop to nearby entities
-  STRING:
+  GLOWSTONE_DUST:         # AMPLIFY — ×power/damage
+    - AMPLIFY
+  BLAZE_POWDER:
+    - AMPLIFY
+  STRING:                 # CHAIN — hop to more entities
     - CHAIN
   ECHO_SHARD:
     - CHAIN
-  # REPEAT — fire several times
-  RABBIT_FOOT:
-    - REPEAT
-  SLIME_BALL:
-    - REPEAT
-  CHORUS_FRUIT:
-    - REPEAT
-  # DELAYED — short fuse before the effect
-  GUNPOWDER:
-    - DELAYED
-  # MINING — mining ray (carves soft blocks ahead on swing)
-  AMETHYST_SHARD:
-    - MINING
-  # INVERT — implode (pull inward) instead of shoving out
-  FERMENTED_SPIDER_EYE:
+  FERMENTED_SPIDER_EYE:   # INVERT — implode a push
     - INVERT
-  # PERSIST — lingering field that keeps pulsing
-  BLAZE_ROD:
+  BLAZE_ROD:              # PERSIST — lingering re-pulse
     - PERSIST
   DRAGON_BREATH:
+    - PERSIST
+
+  # ---- Flight transforms (reagents) ----
+  RABBIT_FOOT:            # MULTISHOT — extra projectiles
+    - MULTISHOT
+  SLIME_BALL:
+    - MULTISHOT
+  FEATHER:                # SPREAD — scatter the aim
+    - SPREAD
+  SUGAR:
+    - SPREAD
+  ARROW:                  # PIERCE — punch through
+    - PIERCE
+  QUARTZ:
+    - PIERCE
+  GUNPOWDER:              # LIFETIME — fly farther
+    - LIFETIME
+  REDSTONE:
+    - LIFETIME
+  AMETHYST_SHARD:         # MINING — short piercing mining ray
+    - MINING
+
+  # ---- Bundles (curated multi-attribute "spells") ----
+  TNT:                    # a big boom
+    - DAMAGE
+    - EXPAND
+    - EXPAND
+  FIREWORK_STAR:          # flak: a damaging spray
+    - DAMAGE
+    - MULTISHOT
+    - SPREAD
+  WITHER_SKELETON_SKULL:  # a hard-hitting sniper bolt
+    - DAMAGE
+    - AMPLIFY
+    - AMPLIFY
+  GHAST_TEAR:             # a repelling zone
+    - PUSH
+    - EXPAND
+    - PERSIST
+  WIND_CHARGE:            # gusts — a wide shove volley
+    - PUSH
+    - MULTISHOT
+    - SPREAD
+  HONEY_BLOCK:            # a vacuum that drags things in
+    - PUSH
+    - INVERT
+  SHULKER_SHELL:          # a bouncing shove that chains
+    - PUSH
+    - CHAIN
+  SPECTRAL_ARROW:         # a piercing lance
+    - PIERCE
+    - LIFETIME
+  CRYING_OBSIDIAN:        # a boring damage beam
+    - DAMAGE
+    - PIERCE
+    - LIFETIME
+  PHANTOM_MEMBRANE:       # a long, scattering flight
+    - LIFETIME
+    - SPREAD
+  CHORUS_FRUIT:           # a chaotic multishot spray
+    - MULTISHOT
+    - SPREAD
+  DRAGON_HEAD:            # a devastating wide blast
+    - DAMAGE
+    - EXPAND
+    - AMPLIFY
+  END_CRYSTAL:            # everything, because OP is welcome
+    - DAMAGE
+    - EXPAND
+    - AMPLIFY
     - PERSIST

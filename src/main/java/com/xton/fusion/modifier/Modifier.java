@@ -1,20 +1,26 @@
 package com.xton.fusion.modifier;
 
 /**
- * A single composable weapon property. Implementations mutate the
- * {@link ModifierContext} they are handed and return it.
+ * A single composable weapon property. There are two flavours (see
+ * {@link Category}): <b>emitters</b> add a concrete element to the weapon (a
+ * PUSH/DAMAGE burst, or — later — a spawned projectile); <b>transforms</b>
+ * modify the nearest preceding emitter (scale it, pierce it, extend its life).
  *
- * <p>Modifiers should stay free of Bukkit world interaction where possible:
- * they compute effect parameters into the context, and the weapon behaviour
- * layer reads the resolved context and acts on the world. The {@code NOVA}
- * modifier in Phase Zero is fully server-free and unit-testable.
+ * <p>Implementations act on a {@link WeaponBuilder}, which threads the RPN
+ * compile state (current projectile + its payload). They stay free of Bukkit
+ * world interaction, so the whole compile is server-free and unit-testable; the
+ * projectile/burst layer reads the compiled {@link ProjectileSpec} and acts on
+ * the world.
  */
 public interface Modifier {
 
-    /** Stable identifier baked into PDC (e.g. {@code "NOVA"}). */
+    /** Whether this modifier adds an element or transforms the previous one. */
+    enum Category { EMITTER, TRANSFORM }
+
+    /** Stable identifier baked into PDC (e.g. {@code "PUSH"}). */
     String id();
 
-    /** Short human-readable name shown in lore (e.g. {@code "Nova"}). */
+    /** Short human-readable name shown in lore (e.g. {@code "Push"}). */
     String displayName();
 
     /** One-line description shown next to the name in lore. */
@@ -23,6 +29,9 @@ public interface Modifier {
     /** Longer description for hover text. */
     String detailedDescription();
 
-    /** Transform the context and return it. */
-    ModifierContext apply(ModifierContext ctx);
+    /** Emitter or transform — used for lore grouping and clarity. */
+    Category category();
+
+    /** Act on the compile state (add an emitter, or transform the previous one). */
+    void apply(WeaponBuilder builder);
 }

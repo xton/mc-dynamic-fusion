@@ -1,13 +1,13 @@
 package com.xton.fusion.modifier.impl;
 
+import com.xton.fusion.modifier.AoeSpec;
 import com.xton.fusion.modifier.Modifier;
-import com.xton.fusion.modifier.ModifierContext;
+import com.xton.fusion.modifier.WeaponBuilder;
 
 /**
- * Leaves a lingering field at the burst point that re-applies the effect on a
- * pulse for a while. Stacks: each copy adds {@code ticksPerApply} of duration.
- *
- * <p>Pure: only accumulates a duration. The behaviour layer schedules pulses.
+ * Transform: leaves the nearest preceding burst lingering, re-pulsing on a timer
+ * for a while. Stacks: each copy adds {@code ticksPerApply} of duration. Inert
+ * without an emitter before it.
  */
 public final class PersistModifier implements Modifier {
 
@@ -35,16 +35,24 @@ public final class PersistModifier implements Modifier {
 
     @Override
     public String description() {
-        return "leaves a lingering field";
+        return "burst lingers and re-pulses";
     }
 
     @Override
     public String detailedDescription() {
-        return "Drops a zone at the burst point that keeps pulsing the effect. Stacks for a longer-lasting field.";
+        return "Drops a zone at the burst point that keeps re-firing the effect. Stacks for a longer-lasting field.";
     }
 
     @Override
-    public ModifierContext apply(ModifierContext ctx) {
-        return ctx.addPersistTicks(ticksPerApply);
+    public Category category() {
+        return Category.TRANSFORM;
+    }
+
+    @Override
+    public void apply(WeaponBuilder builder) {
+        AoeSpec target = builder.topAoe();
+        if (target != null) {
+            target.addPersist(ticksPerApply);
+        }
     }
 }

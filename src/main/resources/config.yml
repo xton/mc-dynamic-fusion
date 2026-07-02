@@ -13,49 +13,84 @@ fusion:
   # XP-level cost to fuse. Free to start; raise later to add cost.
   cost: 0
 
-# Base swing effect every active fused weapon produces (a shove burst).
+# A weapon = a projectile (flight) + a payload (a list of bursts). Modifiers
+# are either EMITTERS (add a burst) or TRANSFORMS (scale/alter the nearest
+# preceding one — RPN, apply-to-previous). Nothing is implicit: a shot with no
+# emitter delivers no burst.
 effect:
-  base-radius: 2.5
-  base-power: 1.0
-  # Whether the burst affects other players (it's knockback only, no damage).
+  # Whether bursts affect other players (knockback; DAMAGE bursts also hurt).
   affect-players: false
   # Ambient particles shed by a held fused weapon (cosmetic).
   particle-shedding: true
   shed-period-ticks: 4
 
-# NOVA — the canonical all-directions burst.
-nova:
-  radius: 4.0
-  power: 1.4
+# Flight defaults every projectile starts from before flight transforms apply.
+projectile:
+  # Launch speed in blocks/tick for a full-power shot (melee = a short fast bolt).
+  base-speed: 1.6
+  # Ticks a shot lives before it expires and terminates if it hits nothing.
+  # LIFETIME lengthens this (more range); MINING shortens it.
+  base-lifetime-ticks: 30
+  # A piercing shot ghosts through blocks up to this hardness and stops at
+  # anything harder (stone is 1.5, obsidian 50, bedrock -1/unbreakable).
+  pierce-max-hardness: 3.0
 
-# EXPAND — widens the radius; stacks per copy.
+# --- Emitters (add a burst to the payload) ---
+
+# PUSH — a knockback burst. Base size; scale with EXPAND/AMPLIFY.
+push:
+  radius: 2.0
+  power: 1.0        # knockback strength
+
+# DAMAGE — a damaging burst. Base size; scale with EXPAND/AMPLIFY.
+damage:
+  radius: 2.5
+  power: 4.0        # damage in half-hearts (4 = 2 hearts)
+
+# --- AOE transforms (modify the nearest preceding emitter) ---
+
+# EXPAND — multiplies the previous burst's radius; stacks (×N per copy).
 expand:
-  bonus-per-apply: 3.0
+  factor-per-apply: 1.6
 
-# CHAIN — hops to nearby entities beyond the burst; stacks per copy.
+# AMPLIFY — multiplies the previous burst's power/damage; stacks (×N per copy).
+amplify:
+  factor-per-apply: 1.6
+
+# CHAIN — the previous burst hops to more nearby entities; stacks per copy.
 chain:
-  count-per-apply: 3
+  count-per-apply: 2
   range: 6.0
 
-# REPEAT — fires the effect extra times; stacks per copy.
-repeat:
-  count-per-apply: 2
-  delay-ticks: 4
-
-# DELAYED — holds the effect for a fuse before firing; stacks per copy.
-delayed:
-  ticks-per-apply: 30
-
-# PERSIST — lingering field that re-pulses the burst; stacks duration.
+# PERSIST — the previous burst lingers and re-pulses; stacks duration.
 persist:
   ticks-per-apply: 60
   interval-ticks: 20
 
-# MINING — mining ray that carves an arc of soft blocks ahead on swing.
+# --- Flight transforms (modify the projectile) ---
+
+# MULTISHOT — launches extra projectiles per shot; stacks per copy.
+multishot:
+  count-per-apply: 2
+
+# SPREAD — widens the random aim cone (half-angle in degrees); stacks per copy.
+spread:
+  degrees-per-apply: 12.0
+
+# PIERCE — passes through soft blocks/entities (no tunables; uses
+# projectile.pierce-max-hardness as the cutoff).
+
+# LIFETIME — lengthens a shot's lifetime so it flies farther; stacks per copy.
+lifetime:
+  ticks-per-apply: 30
+
+# MINING — a short, fast piercing ray that breaks the soft blocks it bores
+# through. Built from pierce + a very short expiry.
 mining:
-  range: 4.0
-  arc-degrees: 45.0
-  step-degrees: 15.0
+  # How long the ray lives (short = short tunnel). Stack LIFETIME to reach farther.
+  lifetime-ticks: 6
+  # Launch speed in blocks/tick (fast, so it reads as a ray).
+  speed: 2.5
   # Blocks harder than this resist (stone is 1.5, obsidian 50, bedrock -1).
   max-hardness: 3.0
 

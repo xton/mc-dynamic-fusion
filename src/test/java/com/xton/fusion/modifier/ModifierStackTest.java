@@ -8,25 +8,25 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import com.xton.fusion.modifier.impl.NovaModifier;
+import com.xton.fusion.modifier.impl.PushModifier;
 
 class ModifierStackTest {
 
     @Test
     void preservesOrderAndDuplicates() {
-        NovaModifier nova = new NovaModifier();
-        ModifierStack stack = new ModifierStack(List.of(nova, nova));
+        PushModifier push = new PushModifier();
+        ModifierStack stack = new ModifierStack(List.of(push, push));
 
-        assertEquals(List.of("NOVA", "NOVA"), stack.ids());
-        assertTrue(stack.contains("NOVA"));
+        assertEquals(List.of("PUSH", "PUSH"), stack.ids());
+        assertTrue(stack.contains("PUSH"));
         assertFalse(stack.contains("AMPLIFY"));
     }
 
     @Test
     void resolveSkipsUnknownIdsButKeepsOrderAndDuplicates() {
-        ModifierRegistry registry = new ModifierRegistry().register(new NovaModifier());
-        ModifierStack stack = registry.resolve(List.of("NOVA", "MYSTERY", "NOVA"));
+        ModifierRegistry registry = new ModifierRegistry().register(new PushModifier());
+        ModifierStack stack = registry.resolve(List.of("PUSH", "MYSTERY", "PUSH"));
 
-        assertEquals(List.of("NOVA", "NOVA"), stack.ids());
+        assertEquals(List.of("PUSH", "PUSH"), stack.ids());
     }
 }

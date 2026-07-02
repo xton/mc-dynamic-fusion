@@ -1,16 +1,16 @@
 package com.xton.fusion.modifier.impl;
 
+import com.xton.fusion.modifier.AoeSpec;
 import com.xton.fusion.modifier.Modifier;
-import com.xton.fusion.modifier.ModifierContext;
+import com.xton.fusion.modifier.WeaponBuilder;
 
 /**
- * Inverts the effect: instead of shoving entities outward, the burst pulls them
- * inward toward its centre (an implosion). Toggles — two INVERTs cancel.
+ * Transform: inverts the nearest preceding PUSH burst so it pulls entities
+ * inward (an implosion) instead of shoving them out. Toggles — two INVERTs
+ * cancel. Inert without a burst before it (and harmless on a DAMAGE burst).
  *
- * <p>Backfire by design: an inverted NOVA on your own swing yanks mobs onto you
+ * <p>Backfire by design: an inverted push on your own swing yanks mobs onto you
  * (a mob magnet). Faithful to what you built, not a malfunction.
- *
- * <p>Pure: only toggles a flag.
  */
 public final class InvertModifier implements Modifier {
 
@@ -28,16 +28,24 @@ public final class InvertModifier implements Modifier {
 
     @Override
     public String description() {
-        return "pulls inward instead of out";
+        return "pulls the burst inward";
     }
 
     @Override
     public String detailedDescription() {
-        return "Turns the shove into an implosion that drags entities toward the centre. Careful — that centre might be you.";
+        return "Turns the shove before it into an implosion that drags entities toward the centre. Careful — that centre might be you.";
     }
 
     @Override
-    public ModifierContext apply(ModifierContext ctx) {
-        return ctx.toggleInverted();
+    public Category category() {
+        return Category.TRANSFORM;
+    }
+
+    @Override
+    public void apply(WeaponBuilder builder) {
+        AoeSpec target = builder.topAoe();
+        if (target != null) {
+            target.toggleInvert();
+        }
     }
 }

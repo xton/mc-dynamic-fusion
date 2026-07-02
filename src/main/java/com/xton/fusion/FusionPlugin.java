@@ -20,22 +20,27 @@ import com.xton.fusion.item.LoreGenerator;
 import com.xton.fusion.machine.FusionMachineMenu;
 import com.xton.fusion.machine.MachineListener;
 import com.xton.fusion.modifier.ModifierRegistry;
+import com.xton.fusion.modifier.WeaponBuilder;
+import com.xton.fusion.modifier.impl.AmplifyModifier;
 import com.xton.fusion.modifier.impl.ChainModifier;
-import com.xton.fusion.modifier.impl.DelayedModifier;
+import com.xton.fusion.modifier.impl.DamageModifier;
 import com.xton.fusion.modifier.impl.ExpandModifier;
 import com.xton.fusion.modifier.impl.InvertModifier;
+import com.xton.fusion.modifier.impl.LifetimeModifier;
 import com.xton.fusion.modifier.impl.MiningModifier;
-import com.xton.fusion.modifier.impl.NovaModifier;
+import com.xton.fusion.modifier.impl.MultishotModifier;
 import com.xton.fusion.modifier.impl.PersistModifier;
-import com.xton.fusion.modifier.impl.RepeatModifier;
+import com.xton.fusion.modifier.impl.PierceModifier;
+import com.xton.fusion.modifier.impl.PushModifier;
+import com.xton.fusion.modifier.impl.SpreadModifier;
+import com.xton.fusion.projectile.AoeBurst;
+import com.xton.fusion.projectile.ProjectileLauncher;
 import com.xton.fusion.util.BukkitTaskScheduler;
 import com.xton.fusion.util.CooldownMap;
 import com.xton.fusion.util.Scheduler;
 import com.xton.fusion.weapon.ProjectileListener;
 import com.xton.fusion.weapon.ShedParticleTask;
 import com.xton.fusion.weapon.WeaponEventListener;
-import com.xton.fusion.weapon.behaviors.MiningRayBehavior;
-import com.xton.fusion.weapon.behaviors.SwingEffectBehavior;
 
 /** Entry point — wires up the fusion loop and registered modifiers. */
 public final class FusionPlugin extends JavaPlugin {
@@ -51,21 +56,31 @@ public final class FusionPlugin extends JavaPlugin {
         boolean debug = getConfig().getBoolean("debug-logging", true);
 
         ModifierRegistry registry = new ModifierRegistry()
-                .register(new NovaModifier(
-                        getConfig().getDouble("nova.radius", 4.0),
-                        getConfig().getDouble("nova.power", 1.4)))
+                // Emitters (concrete elements).
+                .register(new PushModifier())
+                .register(new DamageModifier())
+                // AOE transforms (modify the nearest preceding emitter).
                 .register(new ExpandModifier(
-                        getConfig().getDouble("expand.bonus-per-apply", 3.0)))
+                        getConfig().getDouble("expand.factor-per-apply", 1.6)))
+                .register(new AmplifyModifier(
+                        getConfig().getDouble("amplify.factor-per-apply", 1.6)))
                 .register(new ChainModifier(
-                        getConfig().getInt("chain.count-per-apply", 3)))
-                .register(new RepeatModifier(
-                        getConfig().getInt("repeat.count-per-apply", 2)))
-                .register(new DelayedModifier(
-                        getConfig().getInt("delayed.ticks-per-apply", 30)))
-                .register(new MiningModifier())
+                        getConfig().getInt("chain.count-per-apply", 2)))
                 .register(new InvertModifier())
                 .register(new PersistModifier(
-                        getConfig().getInt("persist.ticks-per-apply", 60)));
+                        getConfig().getInt("persist.ticks-per-apply", 60)))
+                // Flight transforms (modify the projectile).
+                .register(new MultishotModifier(
+                        getConfig().getInt("multishot.count-per-apply", 2)))
+                .register(new SpreadModifier(
+                        getConfig().getDouble("spread.degrees-per-apply", 12.0)))
+                .register(new PierceModifier())
+                .register(new LifetimeModifier(
+                        getConfig().getInt("lifetime.ticks-per-apply", 30)))
+                .register(new MiningModifier(
+                        getConfig().getInt("mining.lifetime-ticks", 6),
+                        getConfig().getDouble("mining.speed", 2.5),
+                        getConfig().getDouble("mining.max-hardness", 3.0)));
 
         LatentRegistry latent = loadLatentRegistry();
 
@@ -76,26 +91,25 @@ public final class FusionPlugin extends JavaPlugin {
         FusionEngine engine = new FusionEngine(latent, reader, factory, maxModifiers, maxGeneration);
 
         Scheduler scheduler = new BukkitTaskScheduler(this);
-        SwingEffectBehavior.Settings settings = new SwingEffectBehavior.Settings(
-                getConfig().getDouble("effect.base-radius", 2.5),
-                getConfig().getDouble("effect.base-power", 1.0),
+        AoeBurst burst = new AoeBurst(scheduler, new AoeBurst.Settings(
                 getConfig().getDouble("chain.range", 6.0),
-                getConfig().getLong("repeat.delay-ticks", 4),
                 getConfig().getLong("persist.interval-ticks", 20),
-                getConfig().getBoolean("effect.affect-players", false));
-        SwingEffectBehavior swingEffect = new SwingEffectBehavior(scheduler, settings);
-
-        MiningRayBehavior miningRay = new MiningRayBehavior(new MiningRayBehavior.Settings(
-                getConfig().getDouble("mining.range", 4.0),
-                getConfig().getDouble("mining.arc-degrees", 45.0),
-                getConfig().getDouble("mining.step-degrees", 15.0),
-                getConfig().getDouble("mining.max-hardness", 3.0)));
+                getConfig().getBoolean("effect.affect-players", false)));
+        ProjectileLauncher launcher = new ProjectileLauncher(this, burst,
+                new WeaponBuilder.Defaults(
+                        getConfig().getDouble("projectile.base-speed", 1.6),
+                        getConfig().getInt("projectile.base-lifetime-ticks", 30),
+                        getConfig().getDouble("projectile.pierce-max-hardness", 3.0),
+                        getConfig().getDouble("push.radius", 2.0),
+                        getConfig().getDouble("push.power", 1.0),
+                        getConfig().getDouble("damage.radius", 2.5),
+                        getConfig().getDouble("damage.power", 4.0)));
 
         CooldownMap cooldown = new CooldownMap(swingCooldownMs);
         getServer().getPluginManager().registerEvents(
-                new WeaponEventListener(reader, registry, swingEffect, miningRay, cooldown), this);
+                new WeaponEventListener(reader, registry, launcher, cooldown), this);
         getServer().getPluginManager().registerEvents(
-                new ProjectileListener(reader, registry, swingEffect, keys), this);
+                new ProjectileListener(reader, registry, launcher), this);
 
         // Fusion Machine: placeable enchanting table, tagged via block-entity PDC
         // (no side file), opening the anvil-style fusion GUI on right-click.

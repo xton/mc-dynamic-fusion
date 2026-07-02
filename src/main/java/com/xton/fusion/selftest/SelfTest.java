@@ -78,6 +78,14 @@ public final class SelfTest {
         sender.sendMessage(Component.text("Running fusion self-test — results in the server log ("
                 + TAG + ").", NamedTextColor.YELLOW));
 
+        // A headless CI server has no player, and modern Paper does not keep
+        // spawn chunks loaded by default — so the working chunks would unload,
+        // invalidating our dummies and stopping the projectile (its inBounds
+        // check trips). Pin a 3x3 around the work area for the test's duration.
+        final int ccx = base.getBlockX() >> 4;
+        final int ccz = base.getBlockZ() >> 4;
+        forceLoad(world, ccx, ccz, true);
+
         List<Result> results = new ArrayList<>();
         List<Zombie> spawned = new ArrayList<>();
 
@@ -109,7 +117,21 @@ public final class SelfTest {
                 results.add(miningResult(world, bx, by, bz, firstDirt, lastDirt));
             }
             finish(results, spawned, sender);
+            forceLoad(world, ccx, ccz, false); // release the chunk tickets
         }, SETTLE + MINING_WAIT);
+    }
+
+    /** Add or remove plugin chunk tickets over a 3x3 area around a chunk. */
+    private void forceLoad(World world, int ccx, int ccz, boolean load) {
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                if (load) {
+                    world.addPluginChunkTicket(ccx + dx, ccz + dz, launcher.plugin());
+                } else {
+                    world.removePluginChunkTicket(ccx + dx, ccz + dz, launcher.plugin());
+                }
+            }
+        }
     }
 
     /** PUSH burst imparts outward knockback to the (now-registered) dummy. */

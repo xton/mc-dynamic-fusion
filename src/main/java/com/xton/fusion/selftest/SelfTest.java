@@ -28,13 +28,13 @@ import net.kyori.adventure.text.format.NamedTextColor;
 /**
  * In-process functional self-test (invoked by {@code /fusion test}, op/console
  * only). It exercises the <em>real</em> projectile and burst code against a live
- * world — the layer MockBukkit can't reach — so the mechanics that human UAT
- * would check can be verified headlessly, including from the CI smoke boot.
+ * world — the gameplay layer MockBukkit can't reach — so the mechanics a human
+ * UAT would check can be verified headlessly, including from the CI smoke boot.
  *
- * <p>Each scenario spawns a disposable mob (or a scratch corridor of blocks),
- * runs an effect, and asserts the world changed as expected: PUSH imparts
- * knockback, DAMAGE lowers health, a MINING ray breaks blocks, and a flight-only
- * shot delivers an empty payload. Results are logged with the sentinel
+ * <p>The scenarios are <b>phased across ticks</b>: freshly spawned entities are
+ * not returned by {@code getNearbyEntities} until a later tick, so we spawn on
+ * tick 0, act on the dummies a few ticks later, and assert after the async
+ * mining ray has flown. Each result is logged with the sentinel
  * {@code [fusion-selftest] RESULT: PASS|FAIL} that the smoke test greps for.
  *
  * <p>Never runs on its own — it only mutates the world when explicitly invoked,
@@ -43,6 +43,10 @@ import net.kyori.adventure.text.format.NamedTextColor;
 public final class SelfTest {
 
     private static final String TAG = "[fusion-selftest]";
+    /** Ticks to let a spawned entity / placed block register before we act. */
+    private static final long SETTLE = 3;
+    /** Ticks to let the mining ray finish flying before we assert. */
+    private static final long MINING_WAIT = 30;
 
     private final Scheduler scheduler;
     private final ModifierRegistry registry;
@@ -62,7 +66,6 @@ public final class SelfTest {
     private record Result(String name, boolean pass, String detail) {
     }
 
-    /** Run all scenarios; report synchronously where possible, finalize after the async mining ray. */
     public void run(CommandSender sender) {
         World world = sender instanceof Player p ? p.getWorld()
                 : (Bukkit.getWorlds().isEmpty() ? null : Bukkit.getWorlds().get(0));
@@ -71,52 +74,65 @@ public final class SelfTest {
             sender.sendMessage(Component.text("Self-test: no world available.", NamedTextColor.RED));
             return;
         }
-        Location base = sender instanceof Player p ? p.getLocation() : world.getSpawnLocation();
+        Location base = (sender instanceof Player p ? p.getLocation() : world.getSpawnLocation()).clone();
         sender.sendMessage(Component.text("Running fusion self-test — results in the server log ("
                 + TAG + ").", NamedTextColor.YELLOW));
 
         List<Result> results = new ArrayList<>();
         List<Zombie> spawned = new ArrayList<>();
-        try {
-            results.add(pushKnockback(world, base, spawned));
-            results.add(damageHurts(world, base, spawned));
-            results.add(payloadOptIn());
-        } catch (Exception e) {
-            results.add(new Result("setup", false, "exception: " + e));
-        }
 
-        // The mining ray flies over several ticks; assert after it has expired,
-        // then finalize (this is the single reporting point).
-        miningBreaksBlocksAsync(world, base, results, spawned, sender);
+        // --- tick 0: spawn dummies and lay the mining corridor ---
+        Zombie pushMob = spawnDummy(world, base.clone().add(3, 0, 0), spawned);
+        Zombie dmgMob = spawnDummy(world, base.clone().add(3, 0, 2), spawned);
+        results.add(payloadOptIn()); // pure; safe to record immediately
+
+        int bx = base.getBlockX();
+        int by = base.getBlockY() + 1;
+        int bz = base.getBlockZ();
+        final int firstDirt = 3;
+        final int lastDirt = 7;
+        boolean corridorOk = layCorridor(world, bx, by, bz, firstDirt, lastDirt, results);
+
+        // --- tick SETTLE: dummies + blocks are registered now; act on them ---
+        final boolean fireMining = corridorOk;
+        scheduler.runLater(() -> {
+            results.add(pushKnockback(world, pushMob));
+            results.add(damageHurts(world, dmgMob));
+            if (fireMining) {
+                fireMiningRay(world, bx, by, bz);
+            }
+        }, SETTLE);
+
+        // --- after the ray has flown: assert blocks, then finalize ---
+        scheduler.runLater(() -> {
+            if (fireMining) {
+                results.add(miningResult(world, bx, by, bz, firstDirt, lastDirt));
+            }
+            finish(results, spawned, sender);
+        }, SETTLE + MINING_WAIT);
     }
 
-    /** PUSH burst imparts outward knockback to a nearby mob. */
-    private Result pushKnockback(World world, Location base, List<Zombie> spawned) {
-        Location mobLoc = base.clone().add(3, 0, 0);
-        Zombie mob = spawnDummy(world, mobLoc, spawned);
-        if (mob == null) {
-            return new Result("push-knockback", false, "could not spawn mob");
+    /** PUSH burst imparts outward knockback to the (now-registered) dummy. */
+    private Result pushKnockback(World world, Zombie mob) {
+        if (mob == null || !mob.isValid()) {
+            return new Result("push-knockback", false, "no mob");
         }
-        AoeSpec push = firstAoe("PUSH");
-        // Fire the burst offset from the mob so the shove is horizontal.
-        burst.fire(world, mobLoc.clone().add(-1.5, 0, 0), push, null);
+        // Fire offset from the mob so the shove is horizontal, and it is well
+        // inside the burst radius.
+        burst.fire(world, mob.getLocation().clone().add(-1.0, 0, 0), firstAoe("PUSH"), null);
         double speed = mob.getVelocity().length();
-        return new Result("push-knockback", speed > 0.1,
-                "velocity=" + String.format("%.3f", speed));
+        return new Result("push-knockback", speed > 0.1, "velocity=" + String.format("%.3f", speed));
     }
 
-    /** DAMAGE burst lowers a mob's health. */
-    private Result damageHurts(World world, Location base, List<Zombie> spawned) {
-        Location mobLoc = base.clone().add(3, 0, 2);
-        Zombie mob = spawnDummy(world, mobLoc, spawned);
-        if (mob == null) {
-            return new Result("damage-hurts", false, "could not spawn mob");
+    /** DAMAGE burst lowers the dummy's health. */
+    private Result damageHurts(World world, Zombie mob) {
+        if (mob == null || !mob.isValid()) {
+            return new Result("damage-hurts", false, "no mob");
         }
         double before = mob.getHealth();
-        burst.fire(world, mobLoc, firstAoe("DAMAGE"), null);
+        burst.fire(world, mob.getLocation(), firstAoe("DAMAGE"), null);
         double after = mob.getHealth();
-        return new Result("damage-hurts", after < before,
-                "health " + before + " -> " + after);
+        return new Result("damage-hurts", after < before, "health " + before + " -> " + after);
     }
 
     /** A flight-only stack (MINING) delivers an empty payload; an emitter does not. */
@@ -128,55 +144,60 @@ public final class SelfTest {
                 "mining.empty=" + mining.isEmpty() + " push.empty=" + push.isEmpty());
     }
 
-    /** A MINING ray breaks a scratch corridor of dirt; asserted after it expires. */
-    private void miningBreaksBlocksAsync(World world, Location base, List<Result> results,
-                                         List<Zombie> spawned, CommandSender sender) {
-        int bx = base.getBlockX();
-        int by = base.getBlockY() + 1;
-        int bz = base.getBlockZ();
-        final int firstDirt = 3;
-        final int lastDirt = 7;
-        boolean setupOk = true;
+    /** Lay a known dirt run in front along +X, with a clear approach before it. */
+    private boolean layCorridor(World world, int bx, int by, int bz,
+                                int firstDirt, int lastDirt, List<Result> results) {
         try {
-            // Clear the approach and set a known dirt run in front along +X.
             for (int dx = 0; dx <= lastDirt + 1; dx++) {
                 world.getBlockAt(bx + dx, by, bz).setType(Material.AIR, false);
             }
+            int placed = 0;
             for (int dx = firstDirt; dx <= lastDirt; dx++) {
                 world.getBlockAt(bx + dx, by, bz).setType(Material.DIRT, false);
-            }
-            ProjectileSpec spec = compile("MINING");
-            Payload payload = launcher.buildPayload(spec);
-            Location origin = new Location(world, bx + 0.5, by + 0.5, bz + 0.5);
-            Vector velocity = new Vector(1, 0, 0).multiply(spec.speed());
-            new FusionProjectile(launcher.plugin(), payload, spec, world, origin, velocity, null, 0)
-                    .start();
-        } catch (Exception e) {
-            setupOk = false;
-            results.add(new Result("mining-breaks-blocks", false, "setup exception: " + e));
-        }
-
-        final boolean fireable = setupOk;
-        // Mining lifetime is short (~6t); assert well after it has expired.
-        scheduler.runLater(() -> {
-            if (fireable) {
-                int broken = 0;
-                for (int dx = firstDirt; dx <= lastDirt; dx++) {
-                    if (world.getBlockAt(bx + dx, by, bz).getType() == Material.AIR) {
-                        broken++;
-                    }
+                if (world.getBlockAt(bx + dx, by, bz).getType() == Material.DIRT) {
+                    placed++;
                 }
-                int total = lastDirt - firstDirt + 1;
-                results.add(new Result("mining-breaks-blocks", broken == total,
-                        broken + "/" + total + " blocks broken"));
             }
-            finish(results, spawned, sender);
-        }, 25);
+            log.info(TAG + " mining: placed " + placed + " dirt blocks in the corridor");
+            return true;
+        } catch (Exception e) {
+            results.add(new Result("mining-breaks-blocks", false, "setup exception: " + e));
+            return false;
+        }
+    }
+
+    /** Launch a MINING ray down the corridor from just before the dirt run. */
+    private void fireMiningRay(World world, int bx, int by, int bz) {
+        ProjectileSpec spec = compile("MINING");
+        Payload payload = launcher.buildPayload(spec);
+        Location origin = new Location(world, bx + 0.5, by + 0.5, bz + 0.5);
+        Vector velocity = new Vector(1, 0, 0).multiply(spec.speed());
+        new FusionProjectile(launcher.plugin(), payload, spec, world, origin, velocity, null, 0).start();
+        log.info(TAG + " mining: fired ray speed=" + spec.speed()
+                + " life=" + spec.lifetimeTicks() + " mining=" + spec.isMining()
+                + " pierce=" + spec.isPierce());
+    }
+
+    private Result miningResult(World world, int bx, int by, int bz, int firstDirt, int lastDirt) {
+        int broken = 0;
+        StringBuilder cells = new StringBuilder();
+        for (int dx = firstDirt; dx <= lastDirt; dx++) {
+            Material m = world.getBlockAt(bx + dx, by, bz).getType();
+            if (m == Material.AIR) {
+                broken++;
+            }
+            cells.append(dx == firstDirt ? "" : ",").append(m);
+        }
+        int total = lastDirt - firstDirt + 1;
+        return new Result("mining-breaks-blocks", broken == total,
+                broken + "/" + total + " broken [" + cells + "]");
     }
 
     private void finish(List<Result> results, List<Zombie> spawned, CommandSender sender) {
         for (Zombie z : spawned) {
-            z.remove();
+            if (z != null) {
+                z.remove();
+            }
         }
         int passed = 0;
         for (Result r : results) {
@@ -198,18 +219,23 @@ public final class SelfTest {
         return launcher.compile(registry.resolve(List.of(ids)));
     }
 
-    /** The first AOE element a single-emitter stack produces. */
     private AoeSpec firstAoe(String id) {
         return compile(id).payload().get(0);
     }
 
     private Zombie spawnDummy(World world, Location loc, List<Zombie> spawned) {
-        Zombie mob = world.spawn(loc, Zombie.class, z -> {
-            z.setAI(false);         // stay put; velocity/health still respond
-            z.setSilent(true);
-            z.setRemoveWhenFarAway(false);
-        });
-        spawned.add(mob);
-        return mob;
+        try {
+            Zombie mob = world.spawn(loc, Zombie.class, z -> {
+                z.setAI(false);
+                z.setGravity(false);   // stay exactly put so the burst geometry is deterministic
+                z.setSilent(true);
+                z.setRemoveWhenFarAway(false);
+            });
+            spawned.add(mob);
+            return mob;
+        } catch (Exception e) {
+            log.warning(TAG + " could not spawn dummy: " + e);
+            return null;
+        }
     }
 }

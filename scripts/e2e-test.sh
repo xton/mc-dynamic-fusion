@@ -68,12 +68,28 @@ sleep 3 # let the world settle a beat before the bot joins
 echo "==> Installing bot deps"
 ( cd mineflayer && npm install --no-audit --no-fund --silent )
 
+# Op the bot via RCON. The OPS env op's the wrong (online) UUID in offline mode,
+# so op by name over RCON instead — that resolves to the bot's offline UUID.
+# Retry in the background until it lands (the bot waits on spawn for this).
+echo "==> Opping $BOT_USER via RCON (background retry until it connects)"
+(
+  for _ in $(seq 1 40); do
+    out="$(docker exec "$NAME" rcon-cli op "$BOT_USER" 2>&1 || true)"
+    if echo "$out" | grep -qiE "Made .*operator|already .*operator"; then
+      echo "    opped: $out"; break
+    fi
+    sleep 1
+  done
+) &
+OP_PID=$!
+
 echo "==> Running Mineflayer end-to-end scenarios"
 set +e
 ( cd mineflayer && MC_HOST=localhost MC_PORT=25565 MC_BOT_USER="$BOT_USER" \
     timeout 150 node e2e.js )
 rc=$?
 set -e
+kill "$OP_PID" >/dev/null 2>&1 || true
 
 if [ $rc -ne 0 ]; then
   echo "E2E TEST FAILED (exit $rc)"

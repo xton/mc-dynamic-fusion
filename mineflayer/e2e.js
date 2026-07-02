@@ -159,7 +159,11 @@ async function main() {
 
   bot.once('spawn', async () => {
     try {
-      record('connect', true, 'bot spawned (ViaVersion bridge OK)');
+      record('connect', true, 'bot spawned (Via bridge OK)');
+      // The runner ops us by name over RCON once we connect (the OPS env grants
+      // the wrong UUID in offline mode). Wait for that to land before running
+      // any op-only command.
+      await sleep(7000);
       // Deterministic sandbox: no wandering mobs, no damage, daylight, creative
       // so the bow draws without arrows.
       await cmd(bot, 'gamerule doMobSpawning false');

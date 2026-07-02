@@ -14,8 +14,12 @@ VERSION="${MC_VERSION:-26.1.2}"
 BOT_USER="${MC_BOT_USER:-FusionBot}"
 NAME="fusion-e2e-$$"
 TIMEOUT="${E2E_TIMEOUT:-360}"
+PLUGINS_DIR=""
 
-cleanup() { docker rm -f "$NAME" >/dev/null 2>&1 || true; }
+cleanup() {
+  docker rm -f "$NAME" >/dev/null 2>&1 || true
+  [ -n "$PLUGINS_DIR" ] && rm -rf "$PLUGINS_DIR" || true
+}
 trap cleanup EXIT
 
 echo "==> Building plugin jar"
@@ -23,6 +27,13 @@ echo "==> Building plugin jar"
 JAR="$(ls -1 build/libs/*.jar 2>/dev/null | head -1 || true)"
 [ -n "$JAR" ] || { echo "FAIL: no jar produced in build/libs"; exit 1; }
 echo "    jar: $JAR"
+
+# Stage the plugin in a writable dir mounted as /data/plugins. (Mounting the jar
+# as a bare file makes Docker create /data/plugins owned by root, so the itzg
+# user can't write the ViaVersion download into it.)
+PLUGINS_DIR="$(mktemp -d)"
+cp "$JAR" "$PLUGINS_DIR/DynamicFusion.jar"
+chmod -R 777 "$PLUGINS_DIR"
 
 echo "==> Starting Paper $VERSION with the plugin + ViaVersion (offline, creative, $BOT_USER opped)"
 # node-minecraft-protocol can't speak the server's protocol directly, so the bot
@@ -35,7 +46,7 @@ docker run -d --name "$NAME" \
   -e SPAWN_PROTECTION=0 \
   -e MODRINTH_PROJECTS="${MC_MODRINTH_PROJECTS:-viaversion}" \
   -p 25565:25565 \
-  -v "$(cd "$(dirname "$JAR")" && pwd)/$(basename "$JAR")":/data/plugins/DynamicFusion.jar:ro \
+  -v "$PLUGINS_DIR":/data/plugins \
   "$IMAGE" >/dev/null
 
 echo "==> Waiting for server ready (up to ${TIMEOUT}s)"

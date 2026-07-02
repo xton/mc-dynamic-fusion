@@ -35,6 +35,7 @@ import com.xton.fusion.modifier.impl.PushModifier;
 import com.xton.fusion.modifier.impl.SpreadModifier;
 import com.xton.fusion.projectile.AoeBurst;
 import com.xton.fusion.projectile.ProjectileLauncher;
+import com.xton.fusion.selftest.SelfTest;
 import com.xton.fusion.util.BukkitTaskScheduler;
 import com.xton.fusion.util.CooldownMap;
 import com.xton.fusion.util.Scheduler;
@@ -122,9 +123,13 @@ public final class FusionPlugin extends JavaPlugin {
                     getConfig().getLong("effect.shed-period-ticks", 4));
         }
 
+        // Headless functional self-test (`/fusion test`), driving the real
+        // projectile/burst code against a live world — used by the smoke boot.
+        SelfTest selfTest = new SelfTest(scheduler, registry, launcher, burst, getLogger());
+
         if (getCommand("fusion") != null) {
             FusionCommand fusionCmd = new FusionCommand(menu, registry, factory, engine, fusionCost,
-                    getLogger(), debug);
+                    getLogger(), debug, selfTest);
             getCommand("fusion").setExecutor(fusionCmd);
             getCommand("fusion").setTabCompleter(fusionCmd);
         }

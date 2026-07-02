@@ -403,3 +403,38 @@ binding, RPN scope, inert transforms, flight; `ProjectileModelTest` covers
 payload building). Damage bursts, the bundle ingredients, and all flight/world
 behaviour still need a live client. Build green (32 tests). See
 `docs/uat/projectile-model.md`.
+
+---
+
+## In-process functional self-test (2026-07-02)
+
+Added `/fusion test` (console/op only) + a `SelfTest` runner that exercises the
+**real** projectile/burst code against a live world — the gameplay layer neither
+MockBukkit (no world/entities) nor the smoke boot (only checks clean load) could
+reach. Motivated by wanting functional coverage while UAT-by-hand wasn't
+possible.
+
+- ↳ **In-process command over an external bot.** Researched Mineflayer (a real
+  player-bot; viable here only via the ViaVersion bridge already on the UAT
+  image) and Scenamatica (purpose-built PaperMC YAML scenarios, but last release
+  Mar 2025 and, being a plugin, can't be version-bridged to our Paper build). An
+  in-process command sidesteps the protocol/version problem entirely, runs
+  headless in the smoke boot we already have, and tests the real Bukkit-world
+  effects. It does **not** cover the input path (a real swing/bow-draw event) —
+  a Mineflayer end-to-end pass remains the follow-on for that.
+- Scenarios: PUSH burst imparts knockback (`getVelocity()` non-zero), DAMAGE
+  burst lowers health, a MINING ray breaks a scratch dirt corridor (asserted
+  ~25t after firing, since flight is async), and payload opt-in (MINING → empty,
+  PUSH → non-empty). Spawns AI-off zombies as dummies and removes them after.
+- Reports `[fusion-selftest] RESULT: PASS|FAIL (k/n)` to the server log;
+  `scripts/smoke-test.sh` runs `rcon-cli fusion test`, waits, and fails the
+  build unless it sees PASS. The command never runs on its own — normal servers
+  are untouched unless someone invokes it.
+- ↳ **Assert velocity/health synchronously** in the same tick as the burst, so
+  no game tick elapses to introduce AI/fire/gravity noise; only the mining ray
+  (inherently multi-tick flight) is asserted on a delay.
+
+### Verification gap
+Can't run the smoke boot here (no Docker in this sandbox), so the self-test is
+written and wired but **unrun** — CI's smoke job is its first real execution.
+The pure compile remains unit-tested; this adds the live-world layer in CI.

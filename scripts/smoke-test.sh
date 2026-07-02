@@ -62,6 +62,20 @@ if grep -E "Could not load 'plugins.*DynamicFusion|Error occurred while enabling
   echo "  FOUND: plugin error in log"; fail=1
 fi
 
+echo "==> Functional self-test: run '/fusion test' (real projectile/burst vs. live world)"
+docker exec "$NAME" rcon-cli fusion test >/dev/null 2>&1 || true
+# The mining-ray scenario asserts asynchronously (~25 ticks after firing); give
+# it a moment before reading the result sentinel from the log.
+sleep 6
+LOG="$(docker logs "$NAME" 2>&1)"
+selftest="$(grep -F '[fusion-selftest] RESULT:' <<<"$LOG" | tail -1 || true)"
+echo "  ${selftest:-<no self-test result line found>}"
+if ! grep -qF '[fusion-selftest] RESULT: PASS' <<<"$LOG"; then
+  echo "  FAIL: self-test did not report PASS"
+  grep -F '[fusion-selftest]' <<<"$LOG" || true
+  fail=1
+fi
+
 if [ "$fail" -ne 0 ]; then
   echo "SMOKE TEST FAILED"; docker logs "$NAME" 2>&1 | tail -60; exit 1
 fi

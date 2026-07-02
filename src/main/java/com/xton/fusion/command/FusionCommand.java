@@ -24,6 +24,7 @@ import com.xton.fusion.fusion.FusionResult;
 import com.xton.fusion.item.FusedItemFactory;
 import com.xton.fusion.machine.FusionMachineMenu;
 import com.xton.fusion.modifier.ModifierRegistry;
+import com.xton.fusion.selftest.SelfTest;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -38,7 +39,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
  */
 public final class FusionCommand implements CommandExecutor, TabCompleter {
 
-    private static final List<String> SUBCOMMANDS = List.of("machine", "fuse", "give");
+    private static final List<String> SUBCOMMANDS = List.of("machine", "fuse", "give", "test");
     private static final List<String> BASE_HINTS =
             List.of("DIAMOND_SWORD", "NETHERITE_SWORD", "BOW", "DIAMOND_AXE", "TRIDENT");
 
@@ -49,10 +50,11 @@ public final class FusionCommand implements CommandExecutor, TabCompleter {
     private final int cost;
     private final Logger log;
     private final boolean debug;
+    private final SelfTest selfTest;
 
     public FusionCommand(FusionMachineMenu menu, ModifierRegistry registry,
                          FusedItemFactory factory, FusionEngine engine, int cost,
-                         Logger log, boolean debug) {
+                         Logger log, boolean debug, SelfTest selfTest) {
         this.menu = menu;
         this.registry = registry;
         this.factory = factory;
@@ -60,6 +62,7 @@ public final class FusionCommand implements CommandExecutor, TabCompleter {
         this.cost = cost;
         this.log = log;
         this.debug = debug;
+        this.selfTest = selfTest;
     }
 
     private void logFuse(Player player, ItemStack target, ItemStack ingredient, String outcome) {
@@ -99,8 +102,13 @@ public final class FusionCommand implements CommandExecutor, TabCompleter {
         if (args.length >= 1 && args[0].equalsIgnoreCase("give")) {
             return give(sender, args);
         }
+        if (args.length >= 1 && args[0].equalsIgnoreCase("test")) {
+            selfTest.run(sender);
+            return true;
+        }
         sender.sendMessage(Component.text(
-                "Usage: /fusion machine | /fusion fuse | /fusion give <player> <base> <MODIFIER...>",
+                "Usage: /fusion machine | /fusion fuse | /fusion give <player> <base> <MODIFIER...>"
+                        + " | /fusion test",
                 NamedTextColor.GRAY));
         return true;
     }

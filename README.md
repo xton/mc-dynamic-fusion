@@ -100,6 +100,15 @@ locally:
 make smoke
 ```
 
+It then runs an **in-process functional self-test** — `/fusion test`
+(console/op only) drives the *real* projectile and burst code against the live
+world and asserts the mechanics MockBukkit can't reach: a PUSH burst knocks a
+mob back, a DAMAGE burst lowers its health, a MINING ray breaks a run of blocks,
+and a flight-only shot delivers an empty payload. Results are logged as
+`[fusion-selftest] RESULT: PASS|FAIL`; the smoke script fails the build unless it
+sees PASS. You can run it by hand on any server too (`/fusion test`) — it spawns
+a couple of disposable mobs, so use it on a scratch world.
+
 ## Local UAT — play it yourself
 
 Spin up a real Paper server with the plugin, joinable from your own Minecraft

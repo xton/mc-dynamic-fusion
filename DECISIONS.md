@@ -448,11 +448,12 @@ bot connects to a Paper server and drives the **player input path** the
 in-process `/fusion test` bypasses — a real held fused item plus real client
 events (arm-swing, bow draw/release) flowing through our Bukkit listeners.
 
-- ↳ **Native connection, no ViaVersion.** `minecraft-data` (via mineflayer
-  4.37) already ships protocol data for `26.1.2`, so the bot speaks the server's
-  own version directly. The earlier research assumed we'd need the ViaVersion
-  bridge on the UAT image; turns out we don't for CI, which removes the biggest
-  risk. (Version is overridable via `MC_BOT_VERSION`.)
+- ↳ **1.21.x client + ViaVersion bridge.** `minecraft-data` lists `26.1.2`, but
+  the lower-level `node-minecraft-protocol` only speaks a curated set of protocol
+  versions (newest 1.21.11) — a native connect throws "unsupported protocol
+  version" (first CI run). So the bot joins as **1.21.4** and ViaVersion on the
+  server (auto-resolved from Modrinth) bridges it up — older-client→newer-server
+  is ViaVersion's core job. (Version overridable via `MC_BOT_VERSION`.)
 - ↳ **Assert on block changes, not entity state.** A bot observes world blocks
   far more reliably than mob health/knockback (which lean on entity metadata and
   physics). Both scenarios point a **MINING** weapon at a `/fill` dirt wall and

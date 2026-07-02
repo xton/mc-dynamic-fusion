@@ -24,12 +24,16 @@ JAR="$(ls -1 build/libs/*.jar 2>/dev/null | head -1 || true)"
 [ -n "$JAR" ] || { echo "FAIL: no jar produced in build/libs"; exit 1; }
 echo "    jar: $JAR"
 
-echo "==> Starting Paper $VERSION with the plugin (offline, creative, $BOT_USER opped)"
+echo "==> Starting Paper $VERSION with the plugin + ViaVersion (offline, creative, $BOT_USER opped)"
+# node-minecraft-protocol can't speak the server's protocol directly, so the bot
+# joins as 1.21.x and ViaVersion (auto-resolved from Modrinth for this server
+# version) bridges it up.
 docker run -d --name "$NAME" \
   -e EULA=TRUE -e TYPE=PAPER -e VERSION="$VERSION" \
   -e ONLINE_MODE=FALSE -e MEMORY=2G \
   -e MODE=creative -e DIFFICULTY=peaceful -e OPS="$BOT_USER" \
   -e SPAWN_PROTECTION=0 \
+  -e MODRINTH_PROJECTS="${MC_MODRINTH_PROJECTS:-viaversion}" \
   -p 25565:25565 \
   -v "$(cd "$(dirname "$JAR")" && pwd)/$(basename "$JAR")":/data/plugins/DynamicFusion.jar:ro \
   "$IMAGE" >/dev/null

@@ -7,9 +7,10 @@
 // thing a bot observes — by pointing a MINING weapon at a dirt wall and checking
 // the wall gets carved.
 //
-// minecraft-data ships protocol data for the server version, so the bot
-// connects natively (no ViaVersion needed). Env: MC_HOST, MC_PORT, MC_BOT_USER,
-// MC_BOT_VERSION (defaults to the server's own version).
+// node-minecraft-protocol only speaks a curated set of protocol versions (up to
+// 1.21.x), not the server's newer build — so the bot connects as 1.21.x and
+// ViaVersion on the server bridges it up (older-client -> newer-server is
+// ViaVersion's core job). Env: MC_HOST, MC_PORT, MC_BOT_USER, MC_BOT_VERSION.
 
 const mineflayer = require('mineflayer');
 const { Vec3 } = require('vec3');
@@ -17,7 +18,9 @@ const { Vec3 } = require('vec3');
 const HOST = process.env.MC_HOST || 'localhost';
 const PORT = parseInt(process.env.MC_PORT || '25565', 10);
 const USER = process.env.MC_BOT_USER || 'FusionBot';
-const VERSION = process.env.MC_BOT_VERSION || '26.1.2';
+// A 1.21.x protocol node-minecraft-protocol supports; ViaVersion bridges it to
+// the server's newer version. Override with MC_BOT_VERSION if Via needs another.
+const VERSION = process.env.MC_BOT_VERSION || '1.21.4';
 const WALL_DZ = -4; // wall is 4 blocks north of the bot
 
 const results = [];
@@ -134,7 +137,7 @@ async function main() {
 
   bot.once('spawn', async () => {
     try {
-      record('connect', true, 'bot spawned');
+      record('connect', true, 'bot spawned (ViaVersion bridge OK)');
       // Deterministic sandbox: no wandering mobs, no damage, daylight, creative
       // so the bow draws without arrows.
       await cmd(bot, 'gamerule doMobSpawning false');

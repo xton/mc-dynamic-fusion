@@ -205,7 +205,10 @@ public final class SelfTest {
         StringBuilder cells = new StringBuilder();
         for (int dx = firstDirt; dx <= lastDirt; dx++) {
             Material m = world.getBlockAt(bx + dx, by, bz).getType();
-            if (m == Material.AIR) {
+            // "Broken" = the dirt is gone. Usually that leaves AIR, but if the
+            // corridor spawned next to water/lava the fluid can flow into the
+            // cleared cell — still broken, so anything that isn't DIRT counts.
+            if (m != Material.DIRT) {
                 broken++;
             }
             cells.append(dx == firstDirt ? "" : ",").append(m);

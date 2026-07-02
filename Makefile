@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 COMPOSE := docker compose -f docker/docker-compose.yml
 
-.PHONY: help build jar test smoke e2e uat uat-fresh rebuild down logs clean
+.PHONY: help build jar test smoke e2e docker-up cloud-setup uat uat-fresh rebuild down logs clean
 
 help:
 	@echo "Targets:"
@@ -10,6 +10,8 @@ help:
 	@echo "  test     - run unit tests"
 	@echo "  smoke    - functional smoke test (boots Paper + plugin in Docker)"
 	@echo "  e2e      - end-to-end test (Mineflayer bot drives swing/bow input path)"
+	@echo "  docker-up   - start the Docker daemon (cloud sandbox; auto on session start)"
+	@echo "  cloud-setup - one-time cache warm for running the harness in the cloud sandbox"
 	@echo "  uat       - rebuild the jar and bounce the server (fast restart), then follow logs"
 	@echo "  uat-fresh - rebuild the jar and fully recreate the container, then follow logs"
 	@echo "  rebuild   - rebuild the jar and restart the server in place (no log follow)"
@@ -30,6 +32,12 @@ smoke:
 
 e2e:
 	./scripts/e2e-test.sh
+
+docker-up:
+	./scripts/docker-up.sh
+
+cloud-setup:
+	./scripts/cloud-setup.sh
 
 # Stage the freshly built jar into the server's plugins dir, removing any
 # stale build so only the current version is loaded.

@@ -37,6 +37,9 @@ PLUGINS_DIR="$(mktemp -d)"
 cp "$JAR" "$PLUGINS_DIR/DynamicFusion.jar"
 chmod -R 777 "$PLUGINS_DIR"
 
+# In the Claude Code sandbox, add flags so the container trusts the egress CA.
+source "$ROOT/scripts/sandbox-ca.sh"
+
 echo "==> Starting Paper $VERSION with the plugin + Via (offline, creative, $BOT_USER opped)"
 # node-minecraft-protocol can't speak the server's protocol directly, so the bot
 # joins as 1.21.x. An OLDER client joining a NEWER server needs *ViaBackwards*
@@ -48,6 +51,7 @@ docker run -d --name "$NAME" \
   -e MODE=creative -e DIFFICULTY=peaceful -e OPS="$BOT_USER" \
   -e SPAWN_PROTECTION=0 \
   -e MODRINTH_PROJECTS="${MC_MODRINTH_PROJECTS:-viaversion,viabackwards}" \
+  "${SANDBOX_DOCKER_ARGS[@]}" \
   -p 25565:25565 \
   -v "$PLUGINS_DIR":/data/plugins \
   "$IMAGE" >/dev/null

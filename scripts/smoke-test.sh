@@ -25,11 +25,15 @@ JAR="$(ls -1 build/libs/*.jar 2>/dev/null | head -1 || true)"
 [ -n "$JAR" ] || { echo "FAIL: no jar produced in build/libs"; exit 1; }
 echo "    jar: $JAR"
 
+# In the Claude Code sandbox, add flags so the container trusts the egress CA.
+source "$ROOT/scripts/sandbox-ca.sh"
+
 echo "==> Starting Paper $VERSION ($IMAGE) with the plugin"
 docker run -d --name "$NAME" \
   -e EULA=TRUE -e TYPE=PAPER -e VERSION="$VERSION" \
   -e ONLINE_MODE=FALSE -e MEMORY=2G \
   -e ENABLE_RCON=TRUE -e RCON_PASSWORD=smoke \
+  "${SANDBOX_DOCKER_ARGS[@]}" \
   -v "$(cd "$(dirname "$JAR")" && pwd)/$(basename "$JAR")":/data/plugins/DynamicFusion.jar:ro \
   "$IMAGE" >/dev/null
 

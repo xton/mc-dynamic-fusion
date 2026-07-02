@@ -512,3 +512,41 @@ take, the result slot snapping back). The bot now drives the whole thing.
 Block placement + window interaction are the fiddliest bot operations; like the
 swing/bow pass, this may want a tuning round from CI feedback. The diagnostics
 (window slot names, chat dump) will pinpoint any step that stalls.
+
+---
+
+## Run the Docker harness in the Claude Code cloud sandbox (2026-07-02)
+
+Goal: run `make smoke` / `make e2e` in-session instead of only in GitHub CI, to
+drop the push-and-wait loop. Now possible because the web sandbox ships Docker.
+
+- ↳ **Daemon started per session via the SessionStart hook.** The sandbox has the
+  docker binary but doesn't start the daemon at boot, and a running daemon
+  doesn't survive across sessions — so `scripts/docker-up.sh` starts it each
+  session (idempotent, root-only, best-effort so it never blocks startup). The
+  hook's file writes (JDK, caches) persist; the daemon is the one thing that must
+  re-start, which the hook handles. Verified: cold start + the full hook both
+  bring the daemon up.
+- ↳ **No daemon proxy/CA config needed.** dockerd inherits the session env
+  (`HTTPS_PROXY` + the agent CA in the system trust store), so registry auth
+  already works through the policy proxy (verified: Docker Hub `registry-1`/`auth`
+  reachable). The dynamic proxy port is inherited live, not hardcoded.
+- ↳ **The real blocker is the network allowlist, not Docker.** The default
+  Trusted allowlist misses the Docker Hub blob CDN
+  (`production.cloudfront.docker.com` → 403) and the Mojang/Modrinth hosts the
+  server needs at boot. That's a claude.ai/settings change (full internet, or the
+  allowlist in `docs/cloud-sandbox.md`) — can't be set from the repo. Documented
+  the exact hosts, probed against the live policy.
+- ↳ **`scripts/cloud-setup.sh`** (`make cloud-setup`) is the one-time cache warm
+  (pull image + warm Gradle/npm); its disk writes cache across sessions. Kept
+  separate from the per-session hook so a big image pull doesn't slow every
+  session start.
+- ↳ **Named-volume for `uat` data deferred.** The compose binds `/data` to the
+  (re-cloned) `docker/data/`, so `make uat` re-downloads Paper each session; a
+  named volume would cache it. Left as a documented follow-up — the smoke/e2e
+  scripts already use ephemeral per-run containers, so it doesn't block the goal.
+
+### Verification gap
+Daemon start + Gradle build verified in-sandbox. `make smoke` / `make e2e`
+end-to-end need the network widening above (image pull currently 403s on the
+Docker Hub CDN), which is a per-environment settings action.

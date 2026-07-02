@@ -114,7 +114,8 @@ a couple of disposable mobs, so use it on a scratch world.
 Where the self-test drives the code directly, the end-to-end test drives the
 **real player input path** — a live bot with a real fused item in hand, sending
 real client events through our Bukkit listeners. It boots Paper (with
-ViaVersion, so a 1.21.x bot can bridge up to the newer server), connects a
+ViaVersion + ViaBackwards, so a 1.21.x bot — the newest protocol the bot library
+speaks — can bridge up to the newer server), connects a
 [Mineflayer](https://github.com/PrismarineJS/mineflayer) bot, and asserts:
 
 - **swing** — a fused mining sword, `swingArm` at a dirt wall → the wall gets

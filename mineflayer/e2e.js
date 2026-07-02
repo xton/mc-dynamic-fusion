@@ -9,8 +9,9 @@
 //
 // node-minecraft-protocol only speaks a curated set of protocol versions (up to
 // 1.21.x), not the server's newer build — so the bot connects as 1.21.x and
-// ViaVersion on the server bridges it up (older-client -> newer-server is
-// ViaVersion's core job). Env: MC_HOST, MC_PORT, MC_BOT_USER, MC_BOT_VERSION.
+// ViaBackwards on the server bridges it up (an older client joining a newer
+// server; ViaVersion alone only does the reverse). Env: MC_HOST, MC_PORT,
+// MC_BOT_USER, MC_BOT_VERSION.
 
 const mineflayer = require('mineflayer');
 const { Vec3 } = require('vec3');

@@ -37,16 +37,17 @@ PLUGINS_DIR="$(mktemp -d)"
 cp "$JAR" "$PLUGINS_DIR/DynamicFusion.jar"
 chmod -R 777 "$PLUGINS_DIR"
 
-echo "==> Starting Paper $VERSION with the plugin + ViaVersion (offline, creative, $BOT_USER opped)"
+echo "==> Starting Paper $VERSION with the plugin + Via (offline, creative, $BOT_USER opped)"
 # node-minecraft-protocol can't speak the server's protocol directly, so the bot
-# joins as 1.21.x and ViaVersion (auto-resolved from Modrinth for this server
-# version) bridges it up.
+# joins as 1.21.x. An OLDER client joining a NEWER server needs *ViaBackwards*
+# (ViaVersion alone only bridges newer clients to older servers); both are
+# auto-resolved from Modrinth for this server version.
 docker run -d --name "$NAME" \
   -e EULA=TRUE -e TYPE=PAPER -e VERSION="$VERSION" \
   -e ONLINE_MODE=FALSE -e MEMORY=2G \
   -e MODE=creative -e DIFFICULTY=peaceful -e OPS="$BOT_USER" \
   -e SPAWN_PROTECTION=0 \
-  -e MODRINTH_PROJECTS="${MC_MODRINTH_PROJECTS:-viaversion}" \
+  -e MODRINTH_PROJECTS="${MC_MODRINTH_PROJECTS:-viaversion,viabackwards}" \
   -p 25565:25565 \
   -v "$PLUGINS_DIR":/data/plugins \
   "$IMAGE" >/dev/null

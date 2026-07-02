@@ -101,13 +101,24 @@ make smoke
 ```
 
 It then runs an **in-process functional self-test** — `/fusion test`
-(console/op only) drives the *real* projectile and burst code against the live
-world and asserts the mechanics MockBukkit can't reach: a PUSH burst knocks a
-mob back, a DAMAGE burst lowers its health, a MINING ray breaks a run of blocks,
-and a flight-only shot delivers an empty payload. Results are logged as
-`[fusion-selftest] RESULT: PASS|FAIL`; the smoke script fails the build unless it
-sees PASS. You can run it by hand on any server too (`/fusion test`) — it spawns
-a couple of disposable mobs, so use it on a scratch world.
+(console/op only) drives the *real* modifier compiler, projectile, and burst
+code against the live world and asserts the mechanics MockBukkit can't reach. It
+has two kinds of check (18 in total):
+
+- **compile checks** pin the emitter/transform RPN semantics on the compiled
+  spec — EXPAND/AMPLIFY scaling, MULTISHOT/SPREAD/LIFETIME stacking, INVERT
+  toggling, CHAIN/PERSIST accumulation, the flight flags, and the
+  *nearest-previous binding* (a transform touches only the last emitter) that's
+  nearly impossible to eyeball in-world;
+- **runtime checks** fire real bursts/projectiles at dummies and blocks: PUSH
+  knockback, DAMAGE health loss, an inverted PUSH pulling inward, a CHAIN hop to
+  a second mob, a MINING ray carving a run of blocks and *stopping at obsidian*,
+  and a PIERCE bolt passing through two mobs.
+
+Results are logged as `[fusion-selftest] RESULT: PASS|FAIL`; the smoke script
+fails the build unless it sees PASS. You can run it by hand on any server too
+(`/fusion test`) — it spawns a handful of disposable mobs, so use it on a scratch
+world.
 
 ## End-to-end test (Mineflayer bot)
 
@@ -125,7 +136,11 @@ speaks — can bridge up to the newer server), connects a
 - **machine GUI** — place a Fusion Machine, open the anvil, load Target +
   Ingredient, and take the fused result (proves the whole GUI flow, and guards
   the bugs it hit in the past: dead untagged machines, missing result preview,
-  "Too Expensive" blocking the take, and the result snapping back).
+  "Too Expensive" blocking the take, and the result snapping back);
+- **machine rejects junk** — a no-magic ingredient (dirt) yields the
+  non-takeable red-barrier "can't fuse" marker, never a weapon;
+- **machine item-safety** — closing the anvil with items still in the inputs
+  returns them to the player (nothing lost).
 
 Requires Docker + Node. Runs in CI and locally:
 
@@ -157,7 +172,7 @@ Then:
 Iterate after code changes with `make rebuild` (rebuilds the jar and restarts
 the server), `make logs` to tail output, and `make down` to stop it.
 
-> Automated *gameplay* assertions (a bot that joins and fuses) aren't included
-> yet: headless clients like mineflayer don't speak the 26.x protocol at the
-> time of writing. The smoke test covers clean loading; human UAT covers the
-> fun part.
+Most of the weapon model is now covered by `make smoke` + `make e2e`, so a manual
+pass only needs the cosmetics/feel/config items a harness can't judge. That short
+list lives in **[`docs/uat/manual-checklist.md`](docs/uat/manual-checklist.md)**;
+older pre-refactor UAT plans are kept under `docs/uat/archived/`.

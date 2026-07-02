@@ -18,9 +18,11 @@ const { Vec3 } = require('vec3');
 const HOST = process.env.MC_HOST || 'localhost';
 const PORT = parseInt(process.env.MC_PORT || '25565', 10);
 const USER = process.env.MC_BOT_USER || 'FusionBot';
-// A 1.21.x protocol node-minecraft-protocol supports; ViaVersion bridges it to
-// the server's newer version. Override with MC_BOT_VERSION if Via needs another.
-const VERSION = process.env.MC_BOT_VERSION || '1.21.4';
+// The newest version node-minecraft-protocol speaks (protocol ~773) — as close
+// to the server (775) as we can get, so ViaVersion has the smallest gap to
+// bridge and the client stays inside Via's supported range. Override with
+// MC_BOT_VERSION if needed.
+const VERSION = process.env.MC_BOT_VERSION || '1.21.11';
 const WALL_DZ = -4; // wall is 4 blocks north of the bot
 
 const results = [];

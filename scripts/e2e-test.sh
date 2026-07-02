@@ -18,7 +18,9 @@ PLUGINS_DIR=""
 
 cleanup() {
   docker rm -f "$NAME" >/dev/null 2>&1 || true
-  [ -n "$PLUGINS_DIR" ] && rm -rf "$PLUGINS_DIR" || true
+  # itzg writes root/UID-1000-owned config files into the mount; ignore the
+  # resulting permission noise (CI's /tmp is ephemeral anyway).
+  [ -n "$PLUGINS_DIR" ] && rm -rf "$PLUGINS_DIR" 2>/dev/null || true
 }
 trap cleanup EXIT
 

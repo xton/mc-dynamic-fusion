@@ -27,7 +27,22 @@ const VERSION = process.env.MC_BOT_VERSION || '1.21.11';
 const WALL_DZ = -4; // wall is 4 blocks north of the bot
 
 const results = [];
+const recentChat = []; // last few server/system messages, for diagnostics
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Poll the bot's inventory until an item matches or we time out.
+function waitForItem(bot, matcher, timeoutMs = 6000) {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    const tick = () => {
+      const item = bot.inventory.items().find(matcher);
+      if (item) return resolve(item);
+      if (Date.now() - start >= timeoutMs) return resolve(null);
+      setTimeout(tick, 200);
+    };
+    tick();
+  });
+}
 
 function record(name, pass, detail) {
   results.push({ name, pass, detail });
@@ -75,10 +90,10 @@ async function aimAtWall(bot, p) {
 
 async function giveAndEquip(bot, base, mods, matcher, label) {
   await cmd(bot, `fusion give ${USER} ${base} ${mods}`);
-  await sleep(700);
-  const item = bot.inventory.items().find(matcher);
+  const item = await waitForItem(bot, matcher);
   if (!item) {
-    record(label, false, `no ${base} in inventory after /fusion give`);
+    const inv = bot.inventory.items().map((i) => i.name).join(', ') || '(empty)';
+    record(label, false, `no ${base} after give; inv=[${inv}]; chat=[${recentChat.join(' | ')}]`);
     return null;
   }
   await bot.equip(item, 'hand');
@@ -137,6 +152,10 @@ async function main() {
   bot.on('kicked', (reason) => console.error('[e2e] kicked:', JSON.stringify(reason)));
   bot.on('error', (err) => console.error('[e2e] error:', err && err.message));
   bot.on('end', (reason) => console.error('[e2e] disconnected:', reason));
+  bot.on('messagestr', (m) => {
+    recentChat.push(m);
+    if (recentChat.length > 8) recentChat.shift();
+  });
 
   bot.once('spawn', async () => {
     try {

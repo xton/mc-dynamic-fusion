@@ -1,0 +1,14 @@
+{
+  "name": "fusion-e2e",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Mineflayer end-to-end tests for the DynamicFusion plugin — drives the real player input path (swing, bow) a headless in-process test can't reach.",
+  "type": "commonjs",
+  "scripts": {
+    "test": "node e2e.js"
+  },
+  "dependencies": {
+    "mineflayer": "^4.20.0",
+    "vec3": "^0.1.10"
+  }
+}

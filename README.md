@@ -109,6 +109,25 @@ and a flight-only shot delivers an empty payload. Results are logged as
 sees PASS. You can run it by hand on any server too (`/fusion test`) — it spawns
 a couple of disposable mobs, so use it on a scratch world.
 
+## End-to-end test (Mineflayer bot)
+
+Where the self-test drives the code directly, the end-to-end test drives the
+**real player input path** — a live bot with a real fused item in hand, sending
+real client events through our Bukkit listeners. It boots Paper, connects a
+[Mineflayer](https://github.com/PrismarineJS/mineflayer) bot (natively — the
+server's protocol ships in `minecraft-data`, no ViaVersion needed), and asserts:
+
+- **swing** — a fused mining sword, `swingArm` at a dirt wall → the wall gets
+  carved (proves `PlayerAnimationEvent` → weapon fires a projectile);
+- **bow** — a fused mining bow, draw + release → the wall gets carved **and** no
+  vanilla arrow entity spawns (proves the bow override replaces the arrow).
+
+Requires Docker + Node. Runs in CI and locally:
+
+```bash
+make e2e
+```
+
 ## Local UAT — play it yourself
 
 Spin up a real Paper server with the plugin, joinable from your own Minecraft

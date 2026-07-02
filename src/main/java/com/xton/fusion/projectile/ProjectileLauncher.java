@@ -36,6 +36,11 @@ public final class ProjectileLauncher {
         this.defaults = defaults;
     }
 
+    /** The owning plugin — used to schedule projectiles (e.g. by the self-test). */
+    public Plugin plugin() {
+        return plugin;
+    }
+
     /** Compile the stack into a projectile spec (flight + payload). Pure. */
     public ProjectileSpec compile(ModifierStack stack) {
         return new WeaponBuilder(defaults).compile(stack);

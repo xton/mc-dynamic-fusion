@@ -72,3 +72,32 @@ jobs:
         env:
           JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
         run: ./scripts/smoke-test.sh
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            21
+            25
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Register JDK 25 toolchain
+        run: |
+          mkdir -p ~/.gradle
+          echo "org.gradle.java.installations.paths=${{ env.JAVA_HOME_25_X64 }}" >> ~/.gradle/gradle.properties
+
+      # Mineflayer bot drives the real player input path (swing, bow) — the
+      # end-to-end coverage the in-process /fusion test can't reach.
+      - name: End-to-end test (Mineflayer bot vs. Paper + plugin)
+        env:
+          JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
+        run: ./scripts/e2e-test.sh

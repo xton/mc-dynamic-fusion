@@ -438,3 +438,47 @@ possible.
 Can't run the smoke boot here (no Docker in this sandbox), so the self-test is
 written and wired but **unrun** — CI's smoke job is its first real execution.
 The pure compile remains unit-tested; this adds the live-world layer in CI.
+
+---
+
+## Mineflayer end-to-end pass (2026-07-02)
+
+Added an end-to-end test layer: a real [Mineflayer](https://github.com/PrismarineJS/mineflayer)
+bot connects to a Paper server and drives the **player input path** the
+in-process `/fusion test` bypasses — a real held fused item plus real client
+events (arm-swing, bow draw/release) flowing through our Bukkit listeners.
+
+- ↳ **1.21.11 client + ViaBackwards bridge.** `minecraft-data` lists `26.1.2`,
+  but the lower-level `node-minecraft-protocol` only speaks a curated set of
+  protocol versions (newest 1.21.11) — a native connect throws "unsupported
+  protocol version". So the bot joins as **1.21.11** (closest nmp supports) and
+  the server bridges it up. The bridge took a few CI rounds to get right:
+  ViaVersion alone bridges *newer* clients to *older* servers; an **older** client
+  (1.21.x) joining a **newer** server (26.x) needs **ViaBackwards** — without it
+  the vanilla server just kicks "Outdated client". So the e2e server loads
+  `viaversion,viabackwards`. (Version overridable via `MC_BOT_VERSION`.)
+- ↳ **Assert on block changes, not entity state.** A bot observes world blocks
+  far more reliably than mob health/knockback (which lean on entity metadata and
+  physics). Both scenarios point a **MINING** weapon at a `/fill` dirt wall and
+  check it gets carved:
+  - `swing-mining` — `bot.swingArm()` fires `PlayerAnimationEvent(ARM_SWING)` →
+    `WeaponEventListener` → projectile → wall carved. This is the real event the
+    self-test skips (it calls the launcher directly).
+  - `bow-mining` — `activateItem`/`deactivateItem` → `EntityShootBowEvent` →
+    the vanilla arrow is cancelled and a fusion projectile launched. Asserts the
+    wall is carved **and** no `arrow` entity exists (proves the override).
+- ↳ **Creative + peaceful + no mob spawning + fixed daylight** for a
+  deterministic sandbox: creative lets the bow draw without arrows and spares the
+  bot damage; the gamerules keep stray mobs/among out of the scene.
+- New `e2e` CI job (`needs: build`) runs `scripts/e2e-test.sh` (boots Paper with
+  the bot opped, then `node mineflayer/e2e.js`). `make e2e` runs it locally.
+  Overall + per-connection watchdogs fail fast instead of hanging.
+- **Not covered yet (follow-on):** the fusion-machine GUI flow (open the anvil,
+  place items, take the result) — higher mineflayer effort (window handling), so
+  deferred. The swing/bow input paths were the clearest can't-test-in-process win.
+
+### Verification gap
+No Docker in this sandbox, so the e2e job is written and wired but **first runs
+in CI**. Node install + `node --check` pass locally, and `minecraft-data`
+confirms native `26.1.2` support. Bot timing/aim may need a tuning pass from CI
+feedback (as the self-test did).

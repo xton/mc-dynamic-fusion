@@ -482,3 +482,33 @@ No Docker in this sandbox, so the e2e job is written and wired but **first runs
 in CI**. Node install + `node --check` pass locally, and `minecraft-data`
 confirms native `26.1.2` support. Bot timing/aim may need a tuning pass from CI
 feedback (as the self-test did).
+
+---
+
+## Mineflayer e2e: Fusion Machine (anvil) GUI scenario (2026-07-02)
+
+Added the deferred GUI scenario — the flow that historically had the most manual
+UAT failures (dead machines, no result preview, "Too Expensive" blocking the
+take, the result slot snapping back). The bot now drives the whole thing.
+
+- ↳ **The bot places the machine itself.** Only a real `BlockPlaceEvent` tags
+  the enchanting table as a machine, so `/setblock` won't do — the bot equips the
+  machine item and `placeBlock`s it against a `/setblock` stone reference beside
+  it, then right-clicks (`openBlock`) to open the anvil.
+- ↳ **Low-level window driving.** mineflayer's high-level `anvil.combine()` bakes
+  in vanilla anvil cost logic and rejects a sword+nether-star as "not
+  anvil-able", so we drive slots directly: `moveSlotItem` the Target into slot 0
+  and the Ingredient into slot 1, poll slot 2 for the fused preview, then
+  `clickWindow(2)` to take it.
+- ↳ **Assert on the plugin's chat, not item NBT.** Taking the result makes our
+  `onClick` deliver the item and message "Fusion complete!"; the bot asserts it
+  received that message (robust across the ViaBackwards item translation, unlike
+  reading fused lore/components off the client). This is the assertion that
+  catches a "Too Expensive" or snap-back regression — no take, no message.
+- ↳ `/clear` at the scenario start so the earlier swing/bow items don't shadow
+  the plain `diamond_sword` we fuse.
+
+### Verification gap
+Block placement + window interaction are the fiddliest bot operations; like the
+swing/bow pass, this may want a tuning round from CI feedback. The diagnostics
+(window slot names, chat dump) will pinpoint any step that stalls.

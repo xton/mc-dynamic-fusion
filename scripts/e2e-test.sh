@@ -51,7 +51,7 @@ docker run -d --name "$NAME" \
   -e MODE=creative -e DIFFICULTY=peaceful -e OPS="$BOT_USER" \
   -e SPAWN_PROTECTION=0 \
   -e MODRINTH_PROJECTS="${MC_MODRINTH_PROJECTS:-viaversion,viabackwards}" \
-  "${SANDBOX_DOCKER_ARGS[@]}" \
+  ${SANDBOX_DOCKER_ARGS[@]:+"${SANDBOX_DOCKER_ARGS[@]}"} \
   -p 25565:25565 \
   -v "$PLUGINS_DIR":/data/plugins \
   "$IMAGE" >/dev/null

@@ -32,16 +32,29 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Poll the bot's inventory until an item matches or we time out.
 function waitForItem(bot, matcher, timeoutMs = 6000) {
+  return waitForCondition(() => bot.inventory.items().find(matcher) || null, timeoutMs);
+}
+
+// Poll fn() every 200ms until it returns truthy or we time out.
+function waitForCondition(fn, timeoutMs = 5000) {
   return new Promise((resolve) => {
     const start = Date.now();
     const tick = () => {
-      const item = bot.inventory.items().find(matcher);
-      if (item) return resolve(item);
-      if (Date.now() - start >= timeoutMs) return resolve(null);
+      const v = fn();
+      if (v) return resolve(v);
+      if (Date.now() - start >= timeoutMs) return resolve(v || null);
       setTimeout(tick, 200);
     };
     tick();
   });
+}
+
+// The slot index of the first item named `name` in an open window, or -1.
+function findWindowSlot(window, name) {
+  for (let i = 0; i < window.slots.length; i++) {
+    if (window.slots[i] && window.slots[i].name === name) return i;
+  }
+  return -1;
 }
 
 function record(name, pass, detail) {
@@ -137,6 +150,84 @@ async function bowMining(bot) {
   record('bow-no-vanilla-arrow', arrows.length === 0, `arrows=${arrows.length}`);
 }
 
+// Scenario C: the full Fusion Machine (anvil) GUI — place the machine, open it,
+// load Target + Ingredient, and take the fused result. Guards the historical
+// failure spots: dead (untagged) machines, no result preview, "Too Expensive"
+// blocking the take, and the result snapping back.
+async function machineFusion(bot) {
+  const label = 'machine-fusion';
+  await cmd(bot, `clear ${USER}`); // clean slate — earlier scenarios left items
+  await cmd(bot, 'fusion machine');
+  await cmd(bot, `give ${USER} minecraft:diamond_sword`);
+  await cmd(bot, `give ${USER} minecraft:nether_star`);
+
+  const machineItem = await waitForItem(bot, (i) => i.name === 'enchanting_table');
+  const haveSword = await waitForItem(bot, (i) => i.name === 'diamond_sword');
+  const haveStar = await waitForItem(bot, (i) => i.name === 'nether_star');
+  if (!machineItem || !haveSword || !haveStar) {
+    return record(label, false,
+      `missing items (machine=${!!machineItem} sword=${!!haveSword} star=${!!haveStar})`);
+  }
+
+  // Place the machine beside the bot. Only a real BlockPlaceEvent tags it as a
+  // machine — /setblock would leave a plain, "dead" enchanting table.
+  const p = bot.entity.position.floored();
+  const rx = p.x + 1;
+  const ry = p.y - 1;
+  const rz = p.z;
+  await cmd(bot, `setblock ${rx} ${ry} ${rz} minecraft:stone`);       // reference
+  await cmd(bot, `setblock ${rx} ${ry + 1} ${rz} minecraft:air`);     // clear target cell
+  await sleep(600);
+  await bot.equip(machineItem, 'hand');
+  await bot.lookAt(new Vec3(rx + 0.5, ry + 1.5, rz + 0.5), true);
+  await sleep(300);
+  try {
+    await bot.placeBlock(bot.blockAt(new Vec3(rx, ry, rz)), new Vec3(0, 1, 0));
+  } catch (e) {
+    return record(label, false, 'placeBlock failed: ' + (e && e.message));
+  }
+  await sleep(500);
+  const machineBlock = bot.blockAt(new Vec3(rx, ry + 1, rz));
+  if (!machineBlock || machineBlock.name !== 'enchanting_table') {
+    return record(label, false, `machine not placed (got ${machineBlock && machineBlock.name})`);
+  }
+
+  // Open the anvil GUI (right-click the machine).
+  let window;
+  try {
+    window = await bot.openBlock(machineBlock);
+  } catch (e) {
+    return record(label, false, 'openBlock (right-click machine) failed: ' + (e && e.message));
+  }
+
+  // Load Target (slot 0) + Ingredient (slot 1).
+  const swordSlot = findWindowSlot(window, 'diamond_sword');
+  const starSlot = findWindowSlot(window, 'nether_star');
+  if (swordSlot < 0 || starSlot < 0) {
+    return record(label, false, `inputs not in window (sword=${swordSlot} star=${starSlot})`);
+  }
+  await bot.moveSlotItem(swordSlot, 0);
+  await sleep(400);
+  await bot.moveSlotItem(starSlot, 1);
+
+  // The result slot should show the fused preview (dead machine / no-result bug).
+  const result = await waitForCondition(() => window.slots[2], 5000);
+  record('machine-shows-result', !!result, result ? `result=${result.name}` : 'result slot empty');
+
+  // Take it — our onClick delivers the fused item and messages "Fusion complete!".
+  // If "Too Expensive" (repair cost) or the snap-back bug regressed, no take, no message.
+  recentChat.length = 0;
+  try {
+    await bot.clickWindow(2, 0, 0);
+  } catch (_) { /* server may desync on our custom take; the chat check is authoritative */ }
+  const completed = await waitForCondition(
+    () => (recentChat.some((m) => m.includes('Fusion complete')) ? true : null), 5000);
+  record('machine-take-fusion', !!completed,
+    completed ? 'got "Fusion complete!"' : `chat=[${recentChat.join(' | ')}]`);
+
+  try { await bot.closeWindow(window); } catch (_) { /* best-effort */ }
+}
+
 async function main() {
   console.log(`[e2e] connecting to ${HOST}:${PORT} as ${USER} (protocol ${VERSION})`);
   const bot = mineflayer.createBot({
@@ -147,7 +238,7 @@ async function main() {
   const watchdog = setTimeout(() => {
     record('watchdog', false, 'timed out before scenarios finished');
     finish(1);
-  }, 90000);
+  }, 120000);
 
   bot.on('kicked', (reason) => console.error('[e2e] kicked:', JSON.stringify(reason)));
   bot.on('error', (err) => console.error('[e2e] error:', err && err.message));
@@ -175,6 +266,7 @@ async function main() {
 
       await swingMining(bot);
       await bowMining(bot);
+      await machineFusion(bot);
     } catch (err) {
       record('harness', false, 'exception: ' + (err && err.message));
     } finally {

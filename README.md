@@ -121,7 +121,11 @@ speaks — can bridge up to the newer server), connects a
 - **swing** — a fused mining sword, `swingArm` at a dirt wall → the wall gets
   carved (proves `PlayerAnimationEvent` → weapon fires a projectile);
 - **bow** — a fused mining bow, draw + release → the wall gets carved **and** no
-  vanilla arrow entity spawns (proves the bow override replaces the arrow).
+  vanilla arrow entity spawns (proves the bow override replaces the arrow);
+- **machine GUI** — place a Fusion Machine, open the anvil, load Target +
+  Ingredient, and take the fused result (proves the whole GUI flow, and guards
+  the bugs it hit in the past: dead untagged machines, missing result preview,
+  "Too Expensive" blocking the take, and the result snapping back).
 
 Requires Docker + Node. Runs in CI and locally:
 

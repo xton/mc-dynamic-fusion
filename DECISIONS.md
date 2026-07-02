@@ -48,7 +48,7 @@ direction where I picked what seemed best.
 The GUI's click/close behavior can't be exercised here (no client; CI only
 checks that the plugin loads + unit tests + a smoke boot). Item-handling logic
 is written defensively but is **unverified in a live client** — see
-`docs/uat/phase-2.md`. MachineStore persistence *is* unit-tested.
+`docs/uat/archived/phase-2.md`. MachineStore persistence *is* unit-tested.
 
 ## Phase 3 — Weapon Behaviors (2026-06-30)
 
@@ -78,7 +78,7 @@ is written defensively but is **unverified in a live client** — see
 ### Verification gap (please UAT)
 Mining (block breaking) and the bow projectile/impact burst need a live client;
 CI only confirms the plugin loads + units + smoke boot. The pure modifier logic
-(DELAYED accumulation, MINING flag) **is** unit-tested. See `docs/uat/phase-3.md`.
+(DELAYED accumulation, MINING flag) **is** unit-tested. See `docs/uat/archived/phase-3.md`.
 **Watch especially:** that the mining ray can't grief protected/valuable areas
 and that hardness-capping behaves as intended.
 
@@ -113,7 +113,7 @@ Implemented the highest-value, safe, testable subset; deferred the big toys.
 ### Verification gap (please UAT)
 INVERT pull direction, PERSIST field pulsing, XP deduction, and particle
 shedding all need a live client. Pure modifier logic (INVERT toggle, PERSIST
-accumulation) **is** unit-tested. See `docs/uat/phase-4.md`. **Watch:** that a
+accumulation) **is** unit-tested. See `docs/uat/archived/phase-4.md`. **Watch:** that a
 persistent field's pulses stop after its duration and don't pile up with heavy
 stacking.
 
@@ -134,7 +134,7 @@ stacking.
 
 ### Verification gap (please UAT)
 `/fusion give` item creation needs a live op to run the command; CI covers the
-pure parsing + load + smoke. See `docs/uat/phase-5.md`.
+pure parsing + load + smoke. See `docs/uat/archived/phase-5.md`.
 
 ---
 
@@ -146,13 +146,13 @@ multi-block machine, resource pack, and a sound-design polish pass. All flagged
 above. The big **verification caveat** across Phases 2–5: anything requiring a
 live client (GUIs, particles, projectiles, block-breaking, knockback feel) was
 implemented defensively and is **unverified in-game** — please run the
-`docs/uat/phase-*.md` plans before trusting gameplay.
+`docs/uat/archived/phase-*.md` plans before trusting gameplay.
 
 ---
 
 ## UAT round 1 — feedback fixes (2026-06-30)
 
-From hands-on UAT. See `docs/uat/uat-round-1.md` for validation steps.
+From hands-on UAT. See `docs/uat/archived/uat-round-1.md` for validation steps.
 
 - ↳ **Machine GUI rebuilt on the vanilla anvil** (was an illegible custom
   9-slot chest with glass panes + a confirm emerald). Now: machine block is an
@@ -183,7 +183,7 @@ From hands-on UAT. See `docs/uat/uat-round-1.md` for validation steps.
 The anvil GUI (preview, taking the result, input consumption, item safety on
 close) and the machine glow need a live client. The engine change (fused
 ingredient contributes its stack) and command parsing **are** unit-tested
-(29 tests). See `docs/uat/uat-round-1.md`.
+(29 tests). See `docs/uat/archived/uat-round-1.md`.
 
 ---
 
@@ -210,7 +210,7 @@ ingredient contributes its stack) and command parsing **are** unit-tested
 ### Verification gap (please UAT)
 Action-bar reason text and rename-to-name need a live client. The registry
 merge is a load-time fix; confirm sword + amethyst shard now fuses (MINING) and
-the other new ingredients work. See `docs/uat/uat-round-2.md`.
+the other new ingredients work. See `docs/uat/archived/uat-round-2.md`.
 
 ---
 
@@ -353,7 +353,7 @@ mining tunnels (and that they *don't* pop at the end), multishot spread, bow
 volleys, burst-on-land. Build green (35 tests); the flight/payload spec-building
 is unit-tested (`ProjectileModelTest` asserts mining/pierce deliver empty
 payloads), but the world interaction is not testable here. See
-`docs/uat/projectile-model.md`.
+`docs/uat/archived/projectile-model.md`.
 
 ---
 
@@ -402,7 +402,7 @@ The compile is fully unit-tested (`WeaponCompileTest` covers emitter/transform
 binding, RPN scope, inert transforms, flight; `ProjectileModelTest` covers
 payload building). Damage bursts, the bundle ingredients, and all flight/world
 behaviour still need a live client. Build green (32 tests). See
-`docs/uat/projectile-model.md`.
+`docs/uat/archived/projectile-model.md`.
 
 ---
 

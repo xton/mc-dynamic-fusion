@@ -1,10 +1,13 @@
 #!/bin/bash
-# SessionStart hook: make Claude Code on the web sessions able to build this
-# Paper 26.x plugin, which needs JDK 25 (not preinstalled in the web image).
+# SessionStart hook for Claude Code on the web. Two jobs:
+#   1. Install JDK 25 (cached) + register it as a Gradle toolchain, so this
+#      Paper 26.x plugin builds. Gradle itself still runs on the image's JDK 21.
+#   2. Start the Docker daemon, so the container test harness (make smoke/e2e/
+#      uat) can run in-session instead of only in GitHub CI.
 #
-# Strategy: install Temurin JDK 25 to a cached location and register it as a
-# Gradle toolchain, WITHOUT forcing Gradle itself to run on 25 (Gradle 8.14
-# runs fine on the image's JDK 21 and uses 25 only to compile/test).
+# File writes here are cached across sessions; a running daemon is not — so the
+# JDK install is idempotent/fast on cached sessions and dockerd starts fresh
+# each session. See docs/cloud-sandbox.md for the required network settings.
 set -euo pipefail
 
 # Only relevant in remote (web) sessions; local machines have their own JDKs.
@@ -50,5 +53,8 @@ echo "org.gradle.java.installations.paths=$JDK_DIR" >> "$PROP_FILE"
 cd "${CLAUDE_PROJECT_DIR:-$(dirname "$0")/../..}"
 ./gradlew --no-daemon testClasses >/dev/null 2>&1 || \
   echo "warm build skipped (will resolve on first ./gradlew build)"
+
+# Start the Docker daemon for the in-session test harness (best-effort).
+"${CLAUDE_PROJECT_DIR:-$(dirname "$0")/../..}/scripts/docker-up.sh" || true
 
 echo "Session ready: JDK 25 toolchain registered."

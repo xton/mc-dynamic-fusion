@@ -21,6 +21,10 @@ effect:
   # Ambient particles shed by a held fused weapon (cosmetic).
   particle-shedding: true
   shed-period-ticks: 4
+  # Ambient glow above placed Fusion Machines, so they stand out from a plain
+  # enchanting table (cosmetic).
+  machine-glow: true
+  machine-glow-period-ticks: 15
 
 # Flight defaults every projectile starts from before flight transforms apply.
 projectile:

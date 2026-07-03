@@ -22,6 +22,7 @@ import com.xton.fusion.item.FusionKeys;
 import com.xton.fusion.item.LatentRegistry;
 import com.xton.fusion.item.LoreGenerator;
 import com.xton.fusion.machine.FusionMachineMenu;
+import com.xton.fusion.machine.MachineGlowTask;
 import com.xton.fusion.machine.MachineListener;
 import com.xton.fusion.modifier.ModifierRegistry;
 import com.xton.fusion.modifier.WeaponBuilder;
@@ -123,6 +124,12 @@ public final class FusionPlugin extends JavaPlugin {
         if (getConfig().getBoolean("effect.particle-shedding", true)) {
             scheduler.runRepeating(new ShedParticleTask(reader), 40,
                     getConfig().getLong("effect.shed-period-ticks", 4));
+        }
+
+        // Ambient glow above placed Fusion Machines, so they stand out.
+        if (getConfig().getBoolean("effect.machine-glow", true)) {
+            scheduler.runRepeating(new MachineGlowTask(menu), 60,
+                    getConfig().getLong("effect.machine-glow-period-ticks", 15));
         }
 
         // Headless functional self-test (`/fusion test`), driving the real

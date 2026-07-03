@@ -102,7 +102,12 @@ public final class FusionMachineMenu {
     }
 
     public boolean isMachineBlock(Block block) {
-        if (block.getState() instanceof TileState tile) {
+        return isMachineState(block.getState());
+    }
+
+    /** True if a block-entity state carries the machine tag (used by the glow task). */
+    public boolean isMachineState(org.bukkit.block.BlockState state) {
+        if (state instanceof TileState tile) {
             Byte flag = tile.getPersistentDataContainer().get(keys.machine, PersistentDataType.BYTE);
             return flag != null && flag == (byte) 1;
         }

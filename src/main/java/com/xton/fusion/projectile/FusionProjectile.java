@@ -286,4 +286,9 @@ public final class FusionProjectile extends BukkitRunnable {
     public int generation() {
         return generation;
     }
+
+    /** Current (or, once stopped, final) Y — used by the self-test to observe gravity. */
+    public double positionY() {
+        return position.getY();
+    }
 }

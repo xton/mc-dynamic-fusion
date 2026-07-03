@@ -57,6 +57,10 @@ public final class SelfTest {
     private static final long SETTLE = 3;
     /** Ticks to let the mining ray / piercing bolt finish flying before we assert. */
     private static final long MINING_WAIT = 30;
+    /** Ticks to let the PERSIST field finish pulsing before the final assertions. */
+    private static final long FINAL_WAIT = 75;
+    /** Reusable +X aim for the self-test's straight-line bolts. */
+    private static final Vector PLUS_X = new Vector(1, 0, 0);
     /** Floating-point slop for compile-value comparisons. */
     private static final double EPS = 1.0e-6;
 
@@ -104,15 +108,20 @@ public final class SelfTest {
         // --- pure compile checks: no world, no timing; record immediately ---
         results.addAll(compileChecks());
 
-        // --- tick 0: spawn dummies and lay the mining corridors ---
+        // --- tick 0: spawn dummies and lay the corridors ---
         Zombie pushMob = spawnDummy(world, base.clone().add(3, 0, 0), spawned);
         Zombie dmgMob = spawnDummy(world, base.clone().add(3, 0, 4), spawned);
         Zombie invertMob = spawnDummy(world, base.clone().add(3, 0, 8), spawned);
         Zombie chainNear = spawnDummy(world, base.clone().add(3, 0, 12), spawned);
         Zombie chainFar = spawnDummy(world, base.clone().add(3, 0, 15), spawned);
-        // Two dummies in a line along +X, on their own cleared row, for PIERCE.
+        // Two dummies in a line along +X, on a cleared row, for DAMAGE PIERCE.
         Zombie pierceA = spawnDummy(world, base.clone().add(2, 0, -4), spawned);
         Zombie pierceB = spawnDummy(world, base.clone().add(5, 0, -4), spawned);
+        final double pierceA0 = health(pierceA);
+        final double pierceB0 = health(pierceB);
+        // An isolated dummy for a lingering DAMAGE PERSIST field.
+        Zombie persistMob = spawnDummy(world, base.clone().add(3, 0, -10), spawned);
+        final double persist0 = health(persistMob);
 
         int bx = base.getBlockX();
         int by = base.getBlockY() + 1;
@@ -124,32 +133,51 @@ public final class SelfTest {
         boolean hardOk = layHardCorridor(world, bx, by, bz - 2);
         // A cleared row for the piercing bolt to travel unobstructed to the mobs.
         clearRow(world, bx, by, bz - 4, 8);
+        // A two-block run: bare MINING should break the first and stop.
+        boolean aloneOk = layTwoBlockRun(world, bx, by, bz - 6);
+        // A plus of dirt (centre + above + beside) at dx 5: EXPAND should widen
+        // the bore enough to break the off-axis blocks.
+        final int plusCol = 5;
+        boolean plusOk = layPlusColumn(world, bx, by, bz - 8, plusCol);
+
+        final double gravityLaunchY = by + 20;
+        final FusionProjectile[] gravityBolt = new FusionProjectile[1];
 
         // --- tick SETTLE: dummies + blocks are registered now; act on them ---
         final boolean fireMining = corridorOk;
         final boolean fireHard = hardOk;
+        final boolean fireAlone = aloneOk;
+        final boolean firePlus = plusOk;
         scheduler.runLater(() -> {
             results.add(pushKnockback(world, pushMob));
             results.add(damageHurts(world, dmgMob));
             results.add(invertPullsInward(world, invertMob));
             results.add(chainHopsToSecond(world, chainNear, chainFar));
+            if (persistMob != null && persistMob.isValid()) {
+                burst.fire(world, persistMob.getLocation(), firstAoe("DAMAGE", "PERSIST"), null);
+            }
             if (fireMining) {
-                fireMiningRay(world, bx, by, bz);
+                fireBolt(world, at(world, bx, by, bz), PLUS_X, false, "MINING", "PIERCE");
             }
             if (fireHard) {
-                fireMiningRay(world, bx, by, bz - 2);
+                fireBolt(world, at(world, bx, by, bz - 2), PLUS_X, false, "MINING", "PIERCE");
             }
-            firePierceBolt(world, bx, by, bz - 4);
+            fireBolt(world, at(world, bx, by, bz - 4), PLUS_X, false, "DAMAGE", "PIERCE");
+            if (fireAlone) {
+                fireBolt(world, at(world, bx, by, bz - 6), PLUS_X, false, "MINING");
+            }
+            if (firePlus) {
+                fireBolt(world, at(world, bx, by, bz - 8), PLUS_X, false, "MINING", "PIERCE", "EXPAND");
+            }
+            gravityBolt[0] = fireBolt(world,
+                    new Location(world, bx + 0.5, gravityLaunchY, bz + 0.5), PLUS_X, true);
         }, SETTLE);
 
-        // A few ticks after firing, the piercing bolt has passed through both
-        // dummies and shoved each — capture that before drag bleeds it off. (The
-        // dummies are frozen for deterministic geometry, so they don't move; the
-        // imparted velocity is the observable that it did not stop at the first.)
-        scheduler.runLater(() -> results.add(piercePassesThroughBoth(pierceA, pierceB)),
+        // Shortly after firing: the piercing DAMAGE bolt has hit both dummies.
+        scheduler.runLater(() -> results.add(pierceDamagesBoth(pierceA, pierceB, pierceA0, pierceB0)),
                 SETTLE + 8);
 
-        // --- after the shots have flown: assert blocks, then finalize ---
+        // --- after the bolts have flown: assert blocks ---
         scheduler.runLater(() -> {
             if (fireMining) {
                 results.add(miningResult(world, bx, by, bz, firstDirt, lastDirt));
@@ -157,9 +185,22 @@ public final class SelfTest {
             if (fireHard) {
                 results.add(miningStopsAtHardBlock(world, bx, by, bz - 2));
             }
+            if (fireAlone) {
+                results.add(miningAloneStops(world, bx, by, bz - 6));
+            }
+            if (firePlus) {
+                results.add(expandWidensTunnel(world, bx, by, bz - 8, plusCol));
+            }
+        }, SETTLE + MINING_WAIT);
+
+        // --- last: the persist field has finished pulsing and the gravity bolt
+        // has expired; assert those, then finalize ---
+        scheduler.runLater(() -> {
+            results.add(persistPulsesMultipleTimes(persistMob, persist0));
+            results.add(gravityFalls(gravityBolt[0], gravityLaunchY));
             finish(results, spawned, sender);
             forceLoad(world, ccx, ccz, false); // release the chunk tickets
-        }, SETTLE + MINING_WAIT);
+        }, SETTLE + FINAL_WAIT);
     }
 
     // ===== compile checks (pure) =====
@@ -398,27 +439,62 @@ public final class SelfTest {
         }
     }
 
-    /** Launch a boring ray (MINING + PIERCE) down the corridor at row {@code bz}. */
-    private void fireMiningRay(World world, int bx, int by, int bz) {
-        ProjectileSpec spec = compile("MINING", "PIERCE");
-        Payload payload = launcher.buildPayload(spec);
-        Location origin = new Location(world, bx + 0.5, by + 0.5, bz + 0.5);
-        Vector velocity = new Vector(1, 0, 0).multiply(spec.speed());
-        new FusionProjectile(launcher.plugin(), payload, spec, world, origin, velocity, null, 0).start();
-        log.info(TAG + " mining: fired ray at z=" + bz + " speed=" + spec.speed()
-                + " life=" + spec.lifetimeTicks() + " mining=" + spec.isMining()
-                + " pierce=" + spec.isPierce());
+    /** The block-centre location for row/col {@code (bx,by,bz)}. */
+    private Location at(World world, int bx, int by, int bz) {
+        return new Location(world, bx + 0.5, by + 0.5, bz + 0.5);
     }
 
-    /** Launch a PIERCE bolt down row {@code bz}; it should pass through both dummies. */
-    private void firePierceBolt(World world, int bx, int by, int bz) {
-        ProjectileSpec spec = compile("PIERCE");
+    /** Compile {@code ids}, seed gravity, and launch a bolt; returns it so tests can observe it. */
+    private FusionProjectile fireBolt(World world, Location origin, Vector dir, boolean gravity, String... ids) {
+        ProjectileSpec spec = compile(ids);
+        spec.setGravity(gravity);
         Payload payload = launcher.buildPayload(spec);
-        Location origin = new Location(world, bx + 0.5, by + 0.5, bz + 0.5);
-        Vector velocity = new Vector(1, 0, 0).multiply(spec.speed());
-        new FusionProjectile(launcher.plugin(), payload, spec, world, origin, velocity, null, 0).start();
-        log.info(TAG + " pierce: fired bolt at z=" + bz + " speed=" + spec.speed()
-                + " pierce=" + spec.isPierce());
+        Vector velocity = dir.clone().normalize().multiply(spec.speed());
+        FusionProjectile bolt = new FusionProjectile(
+                launcher.plugin(), payload, spec, world, origin, velocity, null, 0);
+        bolt.start();
+        return bolt;
+    }
+
+    /** A two-block dirt run at dx 3-4; bare MINING should break only the first. */
+    private boolean layTwoBlockRun(World world, int bx, int by, int bz) {
+        try {
+            for (int dx = 0; dx <= 8; dx++) {
+                world.getBlockAt(bx + dx, by, bz).setType(Material.AIR, false);
+            }
+            world.getBlockAt(bx + 3, by, bz).setType(Material.DIRT, false);
+            world.getBlockAt(bx + 4, by, bz).setType(Material.DIRT, false);
+            return world.getBlockAt(bx + 3, by, bz).getType() == Material.DIRT
+                    && world.getBlockAt(bx + 4, by, bz).getType() == Material.DIRT;
+        } catch (Exception e) {
+            log.warning(TAG + " two-block-run setup failed: " + e);
+            return false;
+        }
+    }
+
+    /**
+     * A plus of dirt at column {@code col}: the centre (on the flight line), one
+     * above, and one beside. A radius-1 bore breaks only the centre; an
+     * EXPAND-widened bore reaches the off-axis blocks.
+     */
+    private boolean layPlusColumn(World world, int bx, int by, int bz, int col) {
+        try {
+            for (int dx = 0; dx <= 8; dx++) {
+                world.getBlockAt(bx + dx, by, bz).setType(Material.AIR, false);
+            }
+            world.getBlockAt(bx + col, by, bz).setType(Material.DIRT, false);      // centre
+            world.getBlockAt(bx + col, by + 1, bz).setType(Material.DIRT, false);  // above
+            world.getBlockAt(bx + col, by, bz + 1).setType(Material.DIRT, false);  // beside
+            return world.getBlockAt(bx + col, by + 1, bz).getType() == Material.DIRT
+                    && world.getBlockAt(bx + col, by, bz + 1).getType() == Material.DIRT;
+        } catch (Exception e) {
+            log.warning(TAG + " plus-column setup failed: " + e);
+            return false;
+        }
+    }
+
+    private double health(Zombie mob) {
+        return mob == null ? 0 : mob.getHealth();
     }
 
     private Result miningResult(World world, int bx, int by, int bz, int firstDirt, int lastDirt) {
@@ -454,19 +530,55 @@ public final class SelfTest {
     }
 
     /**
-     * Both dummies should carry a velocity from the piercing bolt's contact
-     * shove — proof it passed through the first and reached the second rather
-     * than stopping. (A non-piercing bolt would halt at the first and never
-     * touch the second.)
+     * A DAMAGE PIERCE bolt fires its burst at every entity it passes through, so
+     * <b>both</b> dummies in the line should lose health — not just the first
+     * (a non-piercing bolt would stop at the first, and the old shove-only pierce
+     * would leave both unharmed).
      */
-    private Result piercePassesThroughBoth(Zombie a, Zombie b) {
+    private Result pierceDamagesBoth(Zombie a, Zombie b, double a0, double b0) {
         if (a == null || !a.isValid() || b == null || !b.isValid()) {
-            return new Result("pierce-passes-through-both", false, "missing mobs");
+            return new Result("pierce-hits-each", false, "missing mobs");
         }
-        double va = a.getVelocity().length();
-        double vb = b.getVelocity().length();
-        return new Result("pierce-passes-through-both", va > 0.05 && vb > 0.05,
-                String.format("velocity a=%.3f b=%.3f", va, vb));
+        boolean ok = a.getHealth() < a0 && b.getHealth() < b0;
+        return new Result("pierce-hits-each", ok,
+                String.format("health a %.1f->%.1f b %.1f->%.1f", a0, a.getHealth(), b0, b.getHealth()));
+    }
+
+    /** Bare MINING (no PIERCE) breaks the first block it hits and stops. */
+    private Result miningAloneStops(World world, int bx, int by, int bz) {
+        Material first = world.getBlockAt(bx + 3, by, bz).getType();
+        Material second = world.getBlockAt(bx + 4, by, bz).getType();
+        boolean ok = first != Material.DIRT && second == Material.DIRT;
+        return new Result("mining-alone-stops", ok, "first=" + first + " second=" + second);
+    }
+
+    /** EXPAND widens the bore, so the off-axis blocks of the plus also break. */
+    private Result expandWidensTunnel(World world, int bx, int by, int bz, int col) {
+        Material above = world.getBlockAt(bx + col, by + 1, bz).getType();
+        Material beside = world.getBlockAt(bx + col, by, bz + 1).getType();
+        boolean ok = above != Material.DIRT && beside != Material.DIRT;
+        return new Result("expand-widens-tunnel", ok, "above=" + above + " beside=" + beside);
+    }
+
+    /** A PERSIST field re-pulses, so the dummy loses more than a single burst's worth. */
+    private Result persistPulsesMultipleTimes(Zombie mob, double before) {
+        if (mob == null || !mob.isValid()) {
+            return new Result("persist-pulses", false, "no mob");
+        }
+        double single = firstAoe("DAMAGE").power();
+        double taken = before - mob.getHealth();
+        return new Result("persist-pulses", taken > single + EPS,
+                String.format("took %.1f (single burst %.1f)", taken, single));
+    }
+
+    /** A gravity-on bolt fired horizontally should end up below where it launched. */
+    private Result gravityFalls(FusionProjectile bolt, double launchY) {
+        if (bolt == null) {
+            return new Result("gravity-falls", false, "no bolt");
+        }
+        double dropped = launchY - bolt.positionY();
+        return new Result("gravity-falls", dropped > 0.5,
+                String.format("dropped %.2f blocks", dropped));
     }
 
     private void finish(List<Result> results, List<Zombie> spawned, CommandSender sender) {
@@ -524,6 +636,11 @@ public final class SelfTest {
                 z.setGravity(false);   // stay exactly put so the burst geometry is deterministic
                 z.setSilent(true);
                 z.setRemoveWhenFarAway(false);
+                // Disable hurt-immunity frames so a PERSIST field's re-pulses each
+                // register — we're testing that the burst re-fires, not vanilla
+                // i-frames (whose 20-tick default equals the persist interval).
+                z.setMaximumNoDamageTicks(0);
+                z.setNoDamageTicks(0);
             });
             spawned.add(mob);
             return mob;

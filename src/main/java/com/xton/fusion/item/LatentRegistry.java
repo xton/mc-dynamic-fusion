@@ -32,6 +32,11 @@ public final class LatentRegistry {
         return !get(material).isEmpty();
     }
 
+    /** All ingredient→modifier mappings (immutable), for validation/diagnostics. */
+    public Map<Material, List<String>> entries() {
+        return byMaterial;
+    }
+
     /**
      * Build a registry from a {@code latent_modifiers} configuration section,
      * skipping unknown material names rather than failing the whole load.

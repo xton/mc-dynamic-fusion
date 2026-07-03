@@ -40,7 +40,7 @@ public final class LoreGenerator {
         }
 
         lore.add(separator());
-        lore.add(plain("Fused from: " + fusedFrom, NamedTextColor.GRAY));
+        lore.add(plain("Fused from: " + Lineage.render(fusedFrom), NamedTextColor.GRAY));
         return lore;
     }
 

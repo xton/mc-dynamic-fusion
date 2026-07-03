@@ -19,6 +19,7 @@ import com.xton.fusion.item.FusedItemFactory;
 import com.xton.fusion.item.FusedItemReader;
 import com.xton.fusion.item.FusionKeys;
 import com.xton.fusion.item.LatentRegistry;
+import com.xton.fusion.item.Lineage;
 import com.xton.fusion.item.LoreGenerator;
 import com.xton.fusion.modifier.ModifierRegistry;
 import com.xton.fusion.modifier.impl.PushModifier;
@@ -101,6 +102,16 @@ class FusionEngineTest {
         ItemStack twice = engine.fuse(once, new ItemStack(Material.NETHER_STAR)).output();
 
         assertEquals(List.of("PUSH", "PUSH"), reader.readModifierIds(twice));
+    }
+
+    @Test
+    void lineageAccumulatesAndCollapses() {
+        FusionEngine engine = engine(24);
+        ItemStack item = new ItemStack(Material.DIAMOND_SWORD);
+        for (int i = 0; i < 3; i++) {
+            item = engine.fuse(item, new ItemStack(Material.NETHER_STAR)).output();
+        }
+        assertEquals("Diamond Sword + 3× Nether Star", Lineage.render(reader.fusedFrom(item)));
     }
 
     @Test

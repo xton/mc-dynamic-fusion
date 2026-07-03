@@ -9,6 +9,7 @@ import org.bukkit.inventory.ItemStack;
 import com.xton.fusion.item.FusedItemFactory;
 import com.xton.fusion.item.FusedItemReader;
 import com.xton.fusion.item.LatentRegistry;
+import com.xton.fusion.item.Lineage;
 
 /**
  * Core merge logic. Fusion is asymmetric: the Target defines the output base
@@ -62,8 +63,19 @@ public final class FusionEngine {
             merged = new ArrayList<>(merged.subList(0, maxModifiers));
         }
 
-        String fusedFrom = pretty(target.getType()) + " + " + pretty(ingredient.getType());
-        ItemStack output = factory.create(target.getType(), merged, fusedFrom);
+        // Accumulate the provenance: the target's existing lineage (base +
+        // prior ingredients) plus this ingredient, so the "Fused from" line grows
+        // instead of only ever showing the last pair.
+        List<String> lineage = new ArrayList<>();
+        if (reader.isFused(target)) {
+            lineage.addAll(Lineage.split(reader.fusedFrom(target)));
+        }
+        if (lineage.isEmpty()) {
+            lineage.add(pretty(target.getType()));
+        }
+        lineage.add(pretty(ingredient.getType()));
+
+        ItemStack output = factory.create(target.getType(), merged, Lineage.join(lineage));
         return FusionResult.ok(output);
     }
 

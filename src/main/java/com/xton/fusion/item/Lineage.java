@@ -1,5 +1,6 @@
 package com.xton.fusion.item;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -38,25 +39,31 @@ public final class Lineage {
      * or the {@code /fusion give} sentinel) renders verbatim.
      */
     public static String render(String stored) {
+        return String.join(" + ", renderSegments(stored));
+    }
+
+    /**
+     * The display pieces of the lineage: the base, then each distinct ingredient
+     * with an {@code N×} count (first-appearance order). Callers join these with
+     * " + " — or pack them across lines to keep a long tooltip from overflowing.
+     */
+    public static List<String> renderSegments(String stored) {
         List<String> parts = split(stored);
         if (parts.isEmpty()) {
-            return "?";
+            return List.of("?");
         }
         if (parts.size() == 1) {
-            return parts.get(0);
+            return List.of(parts.get(0));
         }
+        List<String> segments = new ArrayList<>();
+        segments.add(parts.get(0));
         Map<String, Integer> counts = new LinkedHashMap<>();
         for (int i = 1; i < parts.size(); i++) {
             counts.merge(parts.get(i), 1, Integer::sum);
         }
-        StringBuilder sb = new StringBuilder(parts.get(0));
         for (Map.Entry<String, Integer> e : counts.entrySet()) {
-            sb.append(" + ");
-            if (e.getValue() > 1) {
-                sb.append(e.getValue()).append("× ");
-            }
-            sb.append(e.getKey());
+            segments.add((e.getValue() > 1 ? e.getValue() + "× " : "") + e.getKey());
         }
-        return sb.toString();
+        return segments;
     }
 }

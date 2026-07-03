@@ -139,6 +139,9 @@ public final class SelfTest {
         // the bore enough to break the off-axis blocks.
         final int plusCol = 5;
         boolean plusOk = layPlusColumn(world, bx, by, bz - 8, plusCol);
+        // A grass plant (non-solid) on the flight line with ground beneath: a
+        // mining ray should carve through the plant AND the ground it hides.
+        boolean vegOk = layVegetation(world, bx, by, bz - 12, plusCol);
 
         final double gravityLaunchY = by + 20;
         final FusionProjectile[] gravityBolt = new FusionProjectile[1];
@@ -148,6 +151,7 @@ public final class SelfTest {
         final boolean fireHard = hardOk;
         final boolean fireAlone = aloneOk;
         final boolean firePlus = plusOk;
+        final boolean fireVeg = vegOk;
         scheduler.runLater(() -> {
             results.add(pushKnockback(world, pushMob));
             results.add(damageHurts(world, dmgMob));
@@ -168,6 +172,9 @@ public final class SelfTest {
             }
             if (firePlus) {
                 fireBolt(world, at(world, bx, by, bz - 8), PLUS_X, false, "MINING", "PIERCE", "EXPAND");
+            }
+            if (fireVeg) {
+                fireBolt(world, at(world, bx, by, bz - 12), PLUS_X, false, "MINING", "PIERCE", "EXPAND");
             }
             gravityBolt[0] = fireBolt(world,
                     new Location(world, bx + 0.5, gravityLaunchY, bz + 0.5), PLUS_X, true);
@@ -190,6 +197,9 @@ public final class SelfTest {
             }
             if (firePlus) {
                 results.add(expandWidensTunnel(world, bx, by, bz - 8, plusCol));
+            }
+            if (fireVeg) {
+                results.add(miningClearsVegetation(world, bx, by, bz - 12, plusCol));
             }
         }, SETTLE + MINING_WAIT);
 
@@ -495,6 +505,29 @@ public final class SelfTest {
 
     private double health(Zombie mob) {
         return mob == null ? 0 : mob.getHealth();
+    }
+
+    /** A grass plant (non-solid) on the flight line at {@code col}, with ground beneath. */
+    private boolean layVegetation(World world, int bx, int by, int bz, int col) {
+        try {
+            for (int dx = 0; dx <= 8; dx++) {
+                world.getBlockAt(bx + dx, by, bz).setType(Material.AIR, false);
+            }
+            world.getBlockAt(bx + col, by - 1, bz).setType(Material.DIRT, false);        // ground it hides
+            world.getBlockAt(bx + col, by, bz).setType(Material.SHORT_GRASS, false);      // plant on the flight line
+            return world.getBlockAt(bx + col, by, bz).getType() == Material.SHORT_GRASS;
+        } catch (Exception e) {
+            log.warning(TAG + " vegetation setup failed: " + e);
+            return false;
+        }
+    }
+
+    /** A mining ray through a plant clears the plant AND carves the ground it hid. */
+    private Result miningClearsVegetation(World world, int bx, int by, int bz, int col) {
+        Material plant = world.getBlockAt(bx + col, by, bz).getType();
+        Material ground = world.getBlockAt(bx + col, by - 1, bz).getType();
+        boolean ok = plant != Material.SHORT_GRASS && ground != Material.DIRT;
+        return new Result("mining-clears-vegetation", ok, "plant=" + plant + " ground=" + ground);
     }
 
     private Result miningResult(World world, int bx, int by, int bz, int firstDirt, int lastDirt) {

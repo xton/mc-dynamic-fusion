@@ -24,7 +24,7 @@ const USER = process.env.MC_BOT_USER || 'FusionBot';
 // bridge and the client stays inside Via's supported range. Override with
 // MC_BOT_VERSION if needed.
 const VERSION = process.env.MC_BOT_VERSION || '1.21.11';
-const WALL_DZ = -4; // wall is 4 blocks north of the bot
+const WALL_DZ = -2; // wall is 2 blocks north — within a melee swing's arm's-length reach
 
 const results = [];
 const recentChat = []; // last few server/system messages, for diagnostics
@@ -211,6 +211,11 @@ async function machineFusion(bot) {
     return record(label, false, 'openBlock (right-click machine) failed: ' + (e && e.message));
   }
 
+  // The GUI is titled "✦ Fusion", not the vanilla "Repair & Name". The title
+  // arrives as a parsed NBT/JSON component, so match against its serialized form.
+  record('machine-anvil-title', JSON.stringify(window.title || '').includes('Fusion'),
+    `title=${JSON.stringify(window.title)}`);
+
   // Load Target (slot 0) + Ingredient (slot 1).
   const swordSlot = findWindowSlot(window, 'diamond_sword');
   const starSlot = findWindowSlot(window, 'nether_star');
@@ -312,6 +317,34 @@ async function machineCloseReturnsInputs(bot) {
     `after close: sword=${!!backSword} star=${!!backStar}`);
 }
 
+// Scenario F: rename-only — a Target with no Ingredient is a valid rename, so
+// the result slot echoes the item back (never a barrier, never empty) and is
+// takeable. Guards the "offer a rename field but no output" dead end.
+async function machineRenameOnly(bot) {
+  const label = 'machine-rename-only';
+  const block = await giveAndPlaceMachine(bot, label);
+  if (!block) return;
+  await cmd(bot, `give ${USER} minecraft:diamond_sword`);
+  const haveSword = await waitForItem(bot, (i) => i.name === 'diamond_sword');
+  if (!haveSword) return record(label, false, 'no sword');
+  let window;
+  try {
+    window = await bot.openBlock(block);
+  } catch (e) {
+    return record(label, false, 'openBlock failed: ' + (e && e.message));
+  }
+  const swordSlot = findWindowSlot(window, 'diamond_sword');
+  if (swordSlot < 0) return record(label, false, 'sword not in window');
+  await bot.moveSlotItem(swordSlot, 0); // Target only, no Ingredient
+  await sleep(600);
+  // The result should echo the item back (a takeable rename), not a barrier.
+  const res = await waitForCondition(
+    () => (window.slots[2] && window.slots[2].name === 'diamond_sword' ? window.slots[2] : null), 4000);
+  record(label, !!res,
+    res ? `result=${res.name}` : `result=${window.slots[2] && window.slots[2].name}`);
+  try { await bot.closeWindow(window); } catch (_) { /* best-effort */ }
+}
+
 async function main() {
   console.log(`[e2e] connecting to ${HOST}:${PORT} as ${USER} (protocol ${VERSION})`);
   const bot = mineflayer.createBot({
@@ -353,6 +386,7 @@ async function main() {
       await machineFusion(bot);
       await machineRejectsJunk(bot);
       await machineCloseReturnsInputs(bot);
+      await machineRenameOnly(bot);
     } catch (err) {
       record('harness', false, 'exception: ' + (err && err.message));
     } finally {

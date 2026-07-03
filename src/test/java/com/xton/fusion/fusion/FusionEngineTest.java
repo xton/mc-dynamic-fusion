@@ -19,6 +19,7 @@ import com.xton.fusion.item.FusedItemFactory;
 import com.xton.fusion.item.FusedItemReader;
 import com.xton.fusion.item.FusionKeys;
 import com.xton.fusion.item.LatentRegistry;
+import com.xton.fusion.item.Lineage;
 import com.xton.fusion.item.LoreGenerator;
 import com.xton.fusion.modifier.ModifierRegistry;
 import com.xton.fusion.modifier.impl.PushModifier;
@@ -50,13 +51,13 @@ class FusionEngineTest {
         MockBukkit.unmock();
     }
 
-    private FusionEngine engine(int maxModifiers, int maxGeneration) {
-        return new FusionEngine(latent, reader, factory, maxModifiers, maxGeneration);
+    private FusionEngine engine(int maxModifiers) {
+        return new FusionEngine(latent, reader, factory, maxModifiers);
     }
 
     @Test
     void firstFusionProducesPushSword() {
-        FusionResult result = engine(8, 5)
+        FusionResult result = engine(8)
                 .fuse(new ItemStack(Material.DIAMOND_SWORD), new ItemStack(Material.NETHER_STAR));
 
         assertTrue(result.success(), result.message());
@@ -64,12 +65,11 @@ class FusionEngineTest {
         assertEquals(Material.DIAMOND_SWORD, out.getType());
         assertTrue(reader.isFused(out));
         assertEquals(List.of("PUSH"), reader.readModifierIds(out));
-        assertEquals(1, reader.generation(out));
     }
 
     @Test
     void ingredientWithoutLatentMagicIsRefused() {
-        FusionResult result = engine(8, 5)
+        FusionResult result = engine(8)
                 .fuse(new ItemStack(Material.DIAMOND_SWORD), new ItemStack(Material.DIRT));
 
         assertFalse(result.success());
@@ -77,7 +77,7 @@ class FusionEngineTest {
 
     @Test
     void fusedIngredientContributesItsStackPlusLatent() {
-        FusionEngine engine = engine(8, 5);
+        FusionEngine engine = engine(8);
         // A fused sword (NOVA) used as the ingredient should hand over its stack.
         ItemStack fusedSword = engine
                 .fuse(new ItemStack(Material.DIAMOND_SWORD), new ItemStack(Material.NETHER_STAR)).output();
@@ -90,37 +90,33 @@ class FusionEngineTest {
 
     @Test
     void emptyHandsAreRefused() {
-        assertFalse(engine(8, 5).fuse(null, new ItemStack(Material.NETHER_STAR)).success());
-        assertFalse(engine(8, 5).fuse(new ItemStack(Material.DIAMOND_SWORD), null).success());
+        assertFalse(engine(8).fuse(null, new ItemStack(Material.NETHER_STAR)).success());
+        assertFalse(engine(8).fuse(new ItemStack(Material.DIAMOND_SWORD), null).success());
     }
 
     @Test
     void duplicatesStackOnRefusion() {
-        FusionEngine engine = engine(8, 5);
+        FusionEngine engine = engine(8);
         ItemStack once = engine.fuse(new ItemStack(Material.DIAMOND_SWORD),
                 new ItemStack(Material.NETHER_STAR)).output();
         ItemStack twice = engine.fuse(once, new ItemStack(Material.NETHER_STAR)).output();
 
         assertEquals(List.of("PUSH", "PUSH"), reader.readModifierIds(twice));
-        assertEquals(2, reader.generation(twice));
     }
 
     @Test
-    void generationCapIsEnforced() {
-        FusionEngine engine = engine(8, 5);
+    void lineageAccumulatesAndCollapses() {
+        FusionEngine engine = engine(24);
         ItemStack item = new ItemStack(Material.DIAMOND_SWORD);
-        for (int i = 0; i < 5; i++) {
-            FusionResult r = engine.fuse(item, new ItemStack(Material.NETHER_STAR));
-            assertTrue(r.success(), "fusion " + (i + 1) + ": " + r.message());
-            item = r.output();
+        for (int i = 0; i < 3; i++) {
+            item = engine.fuse(item, new ItemStack(Material.NETHER_STAR)).output();
         }
-        assertEquals(5, reader.generation(item));
-        assertFalse(engine.fuse(item, new ItemStack(Material.NETHER_STAR)).success());
+        assertEquals("Diamond Sword + 3× Nether Star", Lineage.render(reader.fusedFrom(item)));
     }
 
     @Test
     void modifierCapTruncatesTail() {
-        FusionEngine engine = engine(2, 10);
+        FusionEngine engine = engine(2);
         ItemStack item = new ItemStack(Material.DIAMOND_SWORD);
         for (int i = 0; i < 3; i++) {
             item = engine.fuse(item, new ItemStack(Material.NETHER_STAR)).output();

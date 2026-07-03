@@ -23,19 +23,18 @@ public final class FusedItemFactory {
         this.lore = lore;
     }
 
-    public ItemStack create(Material base, List<String> modifierIds, int generation, String fusedFrom) {
+    public ItemStack create(Material base, List<String> modifierIds, String fusedFrom) {
         ItemStack out = new ItemStack(base);
         ItemMeta meta = out.getItemMeta();
 
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
         pdc.set(keys.isFused, PersistentDataType.BYTE, (byte) 1);
         pdc.set(keys.modifierStack, PersistentDataType.STRING, String.join(",", modifierIds));
-        pdc.set(keys.generation, PersistentDataType.INTEGER, generation);
         pdc.set(keys.fusedFrom, PersistentDataType.STRING, fusedFrom);
 
         meta.displayName(Component.text("Fusion Weapon", NamedTextColor.GOLD)
                 .decoration(TextDecoration.ITALIC, false));
-        meta.lore(lore.generate(modifierIds, generation, fusedFrom));
+        meta.lore(lore.generate(modifierIds, fusedFrom));
 
         // Cosmetic glint. Optional under test harnesses that don't implement it.
         try {

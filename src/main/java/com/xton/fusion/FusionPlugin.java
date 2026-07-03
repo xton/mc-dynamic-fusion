@@ -1,10 +1,14 @@
 package com.xton.fusion;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
 
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -18,6 +22,7 @@ import com.xton.fusion.item.FusionKeys;
 import com.xton.fusion.item.LatentRegistry;
 import com.xton.fusion.item.LoreGenerator;
 import com.xton.fusion.machine.FusionMachineMenu;
+import com.xton.fusion.machine.MachineGlowTask;
 import com.xton.fusion.machine.MachineListener;
 import com.xton.fusion.modifier.ModifierRegistry;
 import com.xton.fusion.modifier.WeaponBuilder;
@@ -50,8 +55,7 @@ public final class FusionPlugin extends JavaPlugin {
     public void onEnable() {
         saveDefaultConfig();
 
-        int maxModifiers = getConfig().getInt("fusion.max-modifiers", 8);
-        int maxGeneration = getConfig().getInt("fusion.max-generation", 5);
+        int maxModifiers = getConfig().getInt("fusion.max-modifiers", 24);
         int fusionCost = getConfig().getInt("fusion.cost", 0);
         long swingCooldownMs = getConfig().getLong("cooldown.swing-ms", 200);
         boolean debug = getConfig().getBoolean("debug-logging", true);
@@ -79,17 +83,15 @@ public final class FusionPlugin extends JavaPlugin {
                 .register(new LifetimeModifier(
                         getConfig().getInt("lifetime.ticks-per-apply", 30)))
                 .register(new MiningModifier(
-                        getConfig().getInt("mining.lifetime-ticks", 6),
-                        getConfig().getDouble("mining.speed", 2.5),
-                        getConfig().getDouble("mining.max-hardness", 3.0)));
+                        getConfig().getDouble("mining.base-radius", 1.0)));
 
-        LatentRegistry latent = loadLatentRegistry();
+        LatentRegistry latent = loadLatentRegistry(registry);
 
         FusionKeys keys = new FusionKeys(this);
         FusedItemReader reader = new FusedItemReader(keys);
         LoreGenerator lore = new LoreGenerator(registry);
         FusedItemFactory factory = new FusedItemFactory(keys, lore);
-        FusionEngine engine = new FusionEngine(latent, reader, factory, maxModifiers, maxGeneration);
+        FusionEngine engine = new FusionEngine(latent, reader, factory, maxModifiers);
 
         Scheduler scheduler = new BukkitTaskScheduler(this);
         AoeBurst burst = new AoeBurst(scheduler, new AoeBurst.Settings(
@@ -104,7 +106,8 @@ public final class FusionPlugin extends JavaPlugin {
                         getConfig().getDouble("push.radius", 2.0),
                         getConfig().getDouble("push.power", 1.0),
                         getConfig().getDouble("damage.radius", 2.5),
-                        getConfig().getDouble("damage.power", 4.0)));
+                        getConfig().getDouble("damage.power", 4.0)),
+                getConfig().getInt("projectile.melee-lifetime-ticks", 2));
 
         CooldownMap cooldown = new CooldownMap(swingCooldownMs);
         getServer().getPluginManager().registerEvents(
@@ -123,6 +126,12 @@ public final class FusionPlugin extends JavaPlugin {
                     getConfig().getLong("effect.shed-period-ticks", 4));
         }
 
+        // Ambient glow above placed Fusion Machines, so they stand out.
+        if (getConfig().getBoolean("effect.machine-glow", true)) {
+            scheduler.runRepeating(new MachineGlowTask(menu), 60,
+                    getConfig().getLong("effect.machine-glow-period-ticks", 15));
+        }
+
         // Headless functional self-test (`/fusion test`), driving the real
         // projectile/burst code against a live world — used by the smoke boot.
         SelfTest selfTest = new SelfTest(scheduler, registry, launcher, burst, getLogger());
@@ -137,26 +146,82 @@ public final class FusionPlugin extends JavaPlugin {
         getLogger().info("DynamicFusion enabled.");
     }
 
-    private LatentRegistry loadLatentRegistry() {
-        File file = new File(getDataFolder(), "latent_registry.yml");
-        if (!file.exists()) {
-            saveResource("latent_registry.yml", false);
+    /**
+     * Load ingredient→modifier mappings with unambiguous ownership. Defaults live
+     * only in the jar; the plugin never writes a user config (an
+     * ambiguously-owned file is what let a stale mapping silently shadow renamed
+     * modifiers). It refreshes a plugin-owned {@code latent_registry.example.yml}
+     * with the current defaults, and if the user has created their own
+     * {@code latent_registry.yml} that <em>fully replaces</em> the defaults (no
+     * merge). Unknown modifier IDs are warned about rather than silently dropped.
+     */
+    private LatentRegistry loadLatentRegistry(ModifierRegistry registry) {
+        writeExampleRegistry();
+
+        File userFile = new File(getDataFolder(), "latent_registry.yml");
+        ConfigurationSection section;
+        if (userFile.exists()) {
+            getLogger().info("Using your latent_registry.yml — it fully replaces the built-in "
+                    + "defaults (no merge). Copy latent_registry.example.yml over it to pick up "
+                    + "new defaults.");
+            section = YamlConfiguration.loadConfiguration(userFile)
+                    .getConfigurationSection("latent_modifiers");
+        } else {
+            section = bundledRegistrySection();
         }
-        YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
-        // Merge the bundled defaults so ingredients added in newer plugin
-        // versions appear even when the on-disk file predates them (it is only
-        // written when absent). The user's own entries win on conflict.
+
+        LatentRegistry latent = LatentRegistry.fromConfig(section, getLogger());
+        warnUnknownModifiers(latent, registry);
+        return latent;
+    }
+
+    /** Overwrite the plugin-owned example file with the current bundled defaults. */
+    private void writeExampleRegistry() {
         try (InputStream in = getResource("latent_registry.yml")) {
-            if (in != null) {
-                YamlConfiguration defaults = YamlConfiguration.loadConfiguration(
-                        new InputStreamReader(in, StandardCharsets.UTF_8));
-                yaml.setDefaults(defaults);
-                yaml.options().copyDefaults(true);
+            if (in == null) {
+                return;
+            }
+            getDataFolder().mkdirs();
+            String header = "# AUTO-GENERATED by DynamicFusion — do NOT edit.\n"
+                    + "# Overwritten on every startup with the current defaults.\n"
+                    + "# To customize, copy this file to latent_registry.yml (which the plugin\n"
+                    + "# never touches) and edit that. Your latent_registry.yml fully REPLACES\n"
+                    + "# these defaults — it is not merged — so copy the whole file, then tweak.\n\n";
+            try (OutputStream out = new FileOutputStream(
+                    new File(getDataFolder(), "latent_registry.example.yml"))) {
+                out.write(header.getBytes(StandardCharsets.UTF_8));
+                in.transferTo(out);
             }
         } catch (IOException e) {
-            getLogger().warning("Could not load default latent registry: " + e.getMessage());
+            getLogger().warning("Could not write latent_registry.example.yml: " + e.getMessage());
         }
-        ConfigurationSection section = yaml.getConfigurationSection("latent_modifiers");
-        return LatentRegistry.fromConfig(section, getLogger());
+    }
+
+    /** The bundled defaults' {@code latent_modifiers} section, straight from the jar. */
+    private ConfigurationSection bundledRegistrySection() {
+        try (InputStream in = getResource("latent_registry.yml")) {
+            if (in == null) {
+                return null;
+            }
+            return YamlConfiguration.loadConfiguration(
+                    new InputStreamReader(in, StandardCharsets.UTF_8))
+                    .getConfigurationSection("latent_modifiers");
+        } catch (IOException e) {
+            getLogger().warning("Could not load bundled latent registry: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /** Warn (don't silently drop) when an ingredient maps to a modifier that no longer exists. */
+    private void warnUnknownModifiers(LatentRegistry latent, ModifierRegistry registry) {
+        for (Map.Entry<org.bukkit.Material, List<String>> entry : latent.entries().entrySet()) {
+            for (String id : entry.getValue()) {
+                if (!registry.isKnown(id)) {
+                    getLogger().warning("Ingredient " + entry.getKey() + " maps to unknown modifier '"
+                            + id + "' — it will be ignored. Update latent_registry.yml"
+                            + " (see latent_registry.example.yml for the current names).");
+                }
+            }
+        }
     }
 }

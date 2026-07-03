@@ -550,3 +550,47 @@ drop the push-and-wait loop. Now possible because the web sandbox ships Docker.
 Daemon start + Gradle build verified in-sandbox. `make smoke` / `make e2e`
 end-to-end need the network widening above (image pull currently 403s on the
 Docker Hub CDN), which is a per-environment settings action.
+
+## UAT round 3 — model & GUI refinements (batch)
+
+A batch of UAT feedback fixes and model refinements. Each landed as its own
+commit; the notable decisions:
+
+- **Fusion "generation" removed.** The `[Gen N]` counter and the max-generation
+  depth cap weren't useful concepts; the only cap now is `max-modifiers`
+  (default raised 8 → 24, configurable). The unrelated projectile-recursion
+  generation (cluster-bomb seam) is untouched.
+- **"Fused from" accumulates the real lineage,** collapsed with counts
+  ("Diamond Sword + 3× Nether Star + Heart of the Sea") via a `Lineage` helper.
+  It previously only ever showed the last pair.
+- **Latent config ownership.** The plugin no longer generates `latent_registry.yml`
+  (an ambiguously plugin/user-owned file let a stale mapping shadow a renamed
+  modifier — e.g. `NETHER_STAR → NOVA` after NOVA was removed → a "fused but
+  inert" weapon). Defaults live in the jar; a plugin-owned
+  `latent_registry.example.yml` is refreshed each boot; a user `latent_registry.yml`
+  is a **full replacement** (no merge). Unknown modifier IDs are warned, not
+  silently dropped.
+- **Rename-only fusion.** A target with no ingredient is a valid rename (item
+  back, renamed) — which also removed the one-frame result-slot flicker. The
+  machine anvil is titled "✦ Fusion" (Paper `MenuType.ANVIL` builder).
+- **Melee vs. bow flight by weapon type.** A melee swing delivers at arm's length
+  (short base lifetime, no visible trail); a bow throws the same weapon downrange.
+  **Gravity is the launcher's call, never a modifier:** bows arc, melee is
+  straight. Seeded before the stack compiles so a future gravity modifier can
+  override it. (Until then it's fixed by weapon type.)
+- **Pierce delivers its payload along the path.** A piercing shot now fires its
+  full burst at every entity it passes through (Expand/Amplify splash on each),
+  not only at the terminus. **Future:** split the pierce-contact effect from the
+  terminus effect — kept unified and simple for now.
+- **MINING reframed as an emitter.** MINING adds a MINING-kind AOE of base radius
+  1 (a one-block bore) so **Expand widens the tunnel**. It no longer pierces on
+  its own: alone it breaks what it hits and stops; add Pierce to bore, Lifetime
+  to reach. Carved along the path (excluded from the terminus payload, so a bare
+  ray still doesn't pop). Bore radius is capped so a heavily-Expanded ray can't
+  level a region.
+- **PERSIST "grenade" visual.** A glowing dot sits at the retrigger point and
+  blinks faster until a small explosion sprite marks each pulse (the moment the
+  effect applies). Single bursts get a centred boom sprite too; CRIT trails stay
+  only for CHAIN. Visual-only — damage timing unchanged.
+- **Machine glow.** A config-gated task scans nearby chunk block-entities and
+  glows tagged machines (no location registry needed).

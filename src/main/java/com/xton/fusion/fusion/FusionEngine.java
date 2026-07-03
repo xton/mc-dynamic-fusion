@@ -9,6 +9,7 @@ import org.bukkit.inventory.ItemStack;
 import com.xton.fusion.item.FusedItemFactory;
 import com.xton.fusion.item.FusedItemReader;
 import com.xton.fusion.item.LatentRegistry;
+import com.xton.fusion.item.Lineage;
 
 /**
  * Core merge logic. Fusion is asymmetric: the Target defines the output base
@@ -24,18 +25,15 @@ public final class FusionEngine {
     private final FusedItemReader reader;
     private final FusedItemFactory factory;
     private final int maxModifiers;
-    private final int maxGeneration;
 
     public FusionEngine(LatentRegistry latent,
                         FusedItemReader reader,
                         FusedItemFactory factory,
-                        int maxModifiers,
-                        int maxGeneration) {
+                        int maxModifiers) {
         this.latent = latent;
         this.reader = reader;
         this.factory = factory;
         this.maxModifiers = maxModifiers;
-        this.maxGeneration = maxGeneration;
     }
 
     public FusionResult fuse(ItemStack target, ItemStack ingredient) {
@@ -56,11 +54,6 @@ public final class FusionEngine {
             return FusionResult.fail(pretty(ingredient.getType()) + " has no magic to give.");
         }
 
-        int generation = reader.generation(target) + 1;
-        if (generation > maxGeneration) {
-            return FusionResult.fail("This weapon has reached its maximum fusion depth.");
-        }
-
         List<String> merged = new ArrayList<>();
         if (reader.isFused(target)) {
             merged.addAll(reader.readModifierIds(target));
@@ -70,8 +63,19 @@ public final class FusionEngine {
             merged = new ArrayList<>(merged.subList(0, maxModifiers));
         }
 
-        String fusedFrom = pretty(target.getType()) + " + " + pretty(ingredient.getType());
-        ItemStack output = factory.create(target.getType(), merged, generation, fusedFrom);
+        // Accumulate the provenance: the target's existing lineage (base +
+        // prior ingredients) plus this ingredient, so the "Fused from" line grows
+        // instead of only ever showing the last pair.
+        List<String> lineage = new ArrayList<>();
+        if (reader.isFused(target)) {
+            lineage.addAll(Lineage.split(reader.fusedFrom(target)));
+        }
+        if (lineage.isEmpty()) {
+            lineage.add(pretty(target.getType()));
+        }
+        lineage.add(pretty(ingredient.getType()));
+
+        ItemStack output = factory.create(target.getType(), merged, Lineage.join(lineage));
         return FusionResult.ok(output);
     }
 

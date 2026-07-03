@@ -24,7 +24,7 @@ public final class ProjectileSpec {
     private double pierceMaxHardness;  // blocks harder than this stop a piercing shot
     private int bounces;               // bounce seam
     private int lifetimeTicks;         // ticks before it expires & terminates
-    private boolean mining;            // breaks soft blocks along the flight
+    private boolean visibleTrail = true; // render the flight trail (off for a short melee poke)
 
     // ----- payload -----
     private final List<AoeSpec> payload = new ArrayList<>();
@@ -99,12 +99,27 @@ public final class ProjectileSpec {
         this.lifetimeTicks += ticks;
     }
 
-    public boolean isMining() {
-        return mining;
+    /** The MINING emitter in the payload (the tunnel-carver), or null if none. */
+    public AoeSpec miningAoe() {
+        for (AoeSpec aoe : payload) {
+            if (aoe.kind() == AoeKind.MINING) {
+                return aoe;
+            }
+        }
+        return null;
     }
 
-    public void setMining(boolean mining) {
-        this.mining = mining;
+    /** True when the stack carries a MINING emitter (derived from the payload). */
+    public boolean isMining() {
+        return miningAoe() != null;
+    }
+
+    public boolean hasVisibleTrail() {
+        return visibleTrail;
+    }
+
+    public void setVisibleTrail(boolean visibleTrail) {
+        this.visibleTrail = visibleTrail;
     }
 
     // ----- payload accessors -----

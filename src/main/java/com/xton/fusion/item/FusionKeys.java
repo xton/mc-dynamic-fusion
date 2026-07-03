@@ -8,14 +8,12 @@ public final class FusionKeys {
 
     public final NamespacedKey isFused;
     public final NamespacedKey modifierStack;
-    public final NamespacedKey generation;
     public final NamespacedKey fusedFrom;
     public final NamespacedKey machine;
 
     public FusionKeys(Plugin plugin) {
         this.isFused = new NamespacedKey(plugin, "is_fused");
         this.modifierStack = new NamespacedKey(plugin, "modifier_stack");
-        this.generation = new NamespacedKey(plugin, "generation");
         this.fusedFrom = new NamespacedKey(plugin, "fused_from");
         this.machine = new NamespacedKey(plugin, "machine");
     }

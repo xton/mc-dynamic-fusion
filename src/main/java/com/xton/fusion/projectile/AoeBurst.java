@@ -53,8 +53,33 @@ public final class AoeBurst {
     private void schedulePersist(World world, Location where, AoeSpec spec, Player caster) {
         long interval = Math.max(1, settings.persistIntervalTicks());
         long duration = spec.persistTicks();
-        for (long t = interval; t <= duration; t += interval) {
-            scheduler.runLater(() -> applyBurst(world, where, spec, caster), t);
+        // Grenade charge-up: between pulses a glowing dot sits at the point and
+        // blinks faster and faster; on each interval it detonates (applyBurst,
+        // which draws the boom and applies the effect). Only the pulse does
+        // anything — the dot is pure visual charge, so the visuals match the
+        // mechanic instead of implying continuous damage.
+        for (long t = 1; t <= duration; t++) {
+            final long tick = t;
+            final long intoCycle = t % interval;
+            final boolean pulse = intoCycle == 0;
+            final long toNext = pulse ? interval : interval - intoCycle;
+            scheduler.runLater(() -> {
+                if (pulse) {
+                    applyBurst(world, where, spec, caster);
+                } else {
+                    chargeDot(world, where, toNext);
+                }
+            }, tick);
+        }
+    }
+
+    /** A glowing dot at the retrigger point that flashes faster as the pulse nears. */
+    private void chargeDot(World world, Location where, long toNext) {
+        Location dot = where.clone().add(0, 0.6, 0);
+        world.spawnParticle(Particle.SMALL_FLAME, dot, 1, 0.0, 0.0, 0.0, 0.0); // steady marker
+        long blinkPeriod = Math.max(1, Math.min(4, toNext / 3));
+        if (toNext % blinkPeriod == 0) {
+            world.spawnParticle(Particle.END_ROD, dot, 1, 0.02, 0.02, 0.02, 0.0); // accelerating blink
         }
     }
 
@@ -71,7 +96,7 @@ public final class AoeBurst {
             affect(target, center, spec, caster);
             hit.add(target);
         }
-        particles(world, where, spec);
+        boom(world, where, spec);
 
         if (spec.chainCount() > 0) {
             chain(world, caster, where, hit, spec);
@@ -142,16 +167,20 @@ public final class AoeBurst {
         return best;
     }
 
-    private void particles(World world, Location where, AoeSpec spec) {
-        Location center = where.clone().add(0, 1, 0);
+    /**
+     * The "it goes off HERE" visual: a small explosion sprite right at the point,
+     * plus a little kind-specific flavour. Deliberately centred (not a spread of
+     * sparks) so a single burst reads as a detonation at that spot.
+     */
+    private void boom(World world, Location where, AoeSpec spec) {
+        Location center = where.clone().add(0, 0.5, 0);
         double radius = spec.radius();
+        world.spawnParticle(Particle.EXPLOSION, center, 1);
         if (spec.kind() == AoeKind.DAMAGE) {
-            world.spawnParticle(Particle.CRIT, center, 20, radius / 2, 0.4, radius / 2, 0.1);
-            world.spawnParticle(Particle.LAVA, center, 6, radius / 3, 0.2, radius / 3, 0.0);
+            world.spawnParticle(Particle.CRIT, center, 10, radius / 3, 0.2, radius / 3, 0.05);
             world.playSound(where, Sound.ENTITY_GENERIC_EXPLODE, 0.7f, 1.1f);
         } else {
-            world.spawnParticle(Particle.SWEEP_ATTACK, center, 12, radius / 2, 0.4, radius / 2, 0.0);
-            world.spawnParticle(Particle.CLOUD, center, 24, 0.3, 0.3, 0.3, 0.05);
+            world.spawnParticle(Particle.SWEEP_ATTACK, center, 4, radius / 3, 0.2, radius / 3, 0.0);
             world.playSound(where, Sound.ENTITY_GENERIC_EXPLODE, 0.6f, 1.4f);
         }
     }

@@ -2,6 +2,7 @@ package com.xton.fusion.modifier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -46,7 +47,7 @@ class WeaponCompileTest {
                 .register(new SpreadModifier(12.0))
                 .register(new PierceModifier())
                 .register(new LifetimeModifier(30))
-                .register(new MiningModifier(6, 2.5, 3.0));
+                .register(new MiningModifier(1.0));
     }
 
     private ProjectileSpec compile(String... ids) {
@@ -134,19 +135,25 @@ class WeaponCompileTest {
     }
 
     @Test
-    void miningIsAShortFastPierce() {
+    void miningIsAnEmitterThatDoesNotPierce() {
         ProjectileSpec p = compile("MINING");
         assertTrue(p.isMining());
-        assertTrue(p.isPierce());
-        assertEquals(6, p.lifetimeTicks());
-        assertEquals(2.5, p.speed(), 1.0e-9);
-        assertTrue(p.payload().isEmpty(), "a bare mining ray delivers nothing at its terminus");
+        assertFalse(p.isPierce(), "MINING no longer pierces on its own — add PIERCE to bore through");
+        assertNotNull(p.miningAoe());
+        assertEquals(1.0, p.miningAoe().radius(), 1.0e-9, "base tunnel radius 1");
+        assertEquals(1, p.payload().size(), "the payload holds the MINING element");
     }
 
     @Test
-    void miningPlusPushStillBursts() {
+    void expandWidensTheMiningTunnel() {
+        ProjectileSpec p = compile("MINING", "EXPAND", "EXPAND");
+        assertEquals(1.0 * 1.6 * 1.6, p.miningAoe().radius(), 1.0e-9);
+    }
+
+    @Test
+    void miningPlusPushCarriesBothEmitters() {
         ProjectileSpec p = compile("PUSH", "MINING");
         assertTrue(p.isMining());
-        assertEquals(1, p.payload().size(), "the push burst survives the mining flight");
+        assertEquals(2, p.payload().size(), "PUSH burst + MINING element");
     }
 }

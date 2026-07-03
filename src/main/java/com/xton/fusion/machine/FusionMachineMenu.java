@@ -21,6 +21,7 @@ import org.bukkit.event.inventory.PrepareAnvilEvent;
 import org.bukkit.inventory.AnvilInventory;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.MenuType;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.view.AnvilView;
 import org.bukkit.persistence.PersistentDataType;
@@ -101,7 +102,12 @@ public final class FusionMachineMenu {
     }
 
     public boolean isMachineBlock(Block block) {
-        if (block.getState() instanceof TileState tile) {
+        return isMachineState(block.getState());
+    }
+
+    /** True if a block-entity state carries the machine tag (used by the glow task). */
+    public boolean isMachineState(org.bukkit.block.BlockState state) {
+        if (state instanceof TileState tile) {
             Byte flag = tile.getPersistentDataContainer().get(keys.machine, PersistentDataType.BYTE);
             return flag != null && flag == (byte) 1;
         }
@@ -111,9 +117,15 @@ public final class FusionMachineMenu {
     // ----- opening -----
 
     public void open(Player player, Location machine) {
-        if (player.openAnvil(null, true) != null) {
-            openAnvils.put(player.getUniqueId(), machine);
-        }
+        // Open a titled anvil view ("✦ Fusion" instead of the vanilla "Repair &
+        // Name"). checkReachable(false) is the equivalent of the old
+        // openAnvil(null, true) — no real anvil block required.
+        AnvilView view = MenuType.ANVIL.builder()
+                .title(plain("✦ Fusion", NamedTextColor.GOLD))
+                .checkReachable(false)
+                .build(player);
+        player.openInventory(view);
+        openAnvils.put(player.getUniqueId(), machine);
     }
 
     // ----- event handling (routed by MachineListener) -----
@@ -128,10 +140,19 @@ public final class FusionMachineMenu {
         AnvilInventory inv = event.getInventory();
         ItemStack target = inv.getItem(0);
         ItemStack ingredient = inv.getItem(1);
-        FusionResult result = engine.fuse(target, ingredient);
-
         AnvilView anvilView = event.getView() instanceof AnvilView av ? av : null;
-        if (result.success()) {
+
+        // Target present but no ingredient: this is a rename-only operation, not
+        // a fusion. Offer the item back (renamed if a name was typed) rather than
+        // an empty result — leaving it null makes the vanilla rename preview
+        // flicker through for a frame. A takeable result is what the rename field
+        // implies.
+        boolean renameOnly = !isEmpty(target) && isEmpty(ingredient);
+        FusionResult result = renameOnly ? null : engine.fuse(target, ingredient);
+
+        if (renameOnly) {
+            event.setResult(renamedCopy(target, anvilView));
+        } else if (result.success()) {
             event.setResult(applyRename(result.output(), anvilView));
         } else if (!isEmpty(target) && !isEmpty(ingredient)) {
             // Both inputs present but they can't fuse — say why right in the
@@ -148,9 +169,10 @@ public final class FusionMachineMenu {
         inv.setRepairCost(0);
 
         if (debug) {
+            String outcome = renameOnly ? "RENAME"
+                    : (result.success() ? "OK" : "REFUSED(" + result.message() + ")");
             String line = "anvil preview by " + viewer.getName() + ": " + desc(target) + " + "
-                    + desc(ingredient) + " => "
-                    + (result.success() ? "OK" : "REFUSED(" + result.message() + ")")
+                    + desc(ingredient) + " => " + outcome
                     + " [view=" + event.getView().getClass().getSimpleName()
                     + ", isAnvilView=" + (anvilView != null) + "]";
             if (!line.equals(lastLogged.put(viewer.getUniqueId(), line))) {
@@ -174,6 +196,20 @@ public final class FusionMachineMenu {
 
         ItemStack a = inv.getItem(0);
         ItemStack b = inv.getItem(1);
+        AnvilView view = event.getView() instanceof AnvilView av ? av : null;
+
+        // Rename-only take: a target, no ingredient. Hand back the item (renamed
+        // if a name was typed), consuming nothing but the target slot. No XP —
+        // it isn't a fusion.
+        if (!isEmpty(a) && isEmpty(b)) {
+            deliver(player, renamedCopy(a, view), false);
+            consume(inv, 0);
+            inv.setItem(RESULT_SLOT, null);
+            player.updateInventory();
+            logTake(player, a, b, "renamed");
+            return;
+        }
+
         FusionResult result = engine.fuse(a, b);
         if (!result.success()) {
             logTake(player, a, b, "refused(" + result.message() + ")");
@@ -190,8 +226,7 @@ public final class FusionMachineMenu {
 
         // Re-apply the rename so the *taken* item keeps the custom name, not just
         // the preview.
-        AnvilView view = event.getView() instanceof AnvilView av ? av : null;
-        deliver(player, applyRename(result.output(), view));
+        deliver(player, applyRename(result.output(), view), true);
         consume(inv, 0); // Target is upgraded into the result
         consume(inv, 1); // Ingredient is spent
         inv.setItem(RESULT_SLOT, null);
@@ -242,12 +277,19 @@ public final class FusionMachineMenu {
         return isEmpty(item) ? "(empty)" : item.getType().name();
     }
 
-    private void deliver(Player player, ItemStack output) {
+    private void deliver(Player player, ItemStack output, boolean announce) {
         Map<Integer, ItemStack> leftover = player.getInventory().addItem(output);
         for (ItemStack extra : leftover.values()) {
             player.getWorld().dropItemNaturally(player.getLocation(), extra);
         }
-        player.sendMessage(plain("✦ Fusion complete!", NamedTextColor.GREEN));
+        if (announce) {
+            player.sendMessage(plain("✦ Fusion complete!", NamedTextColor.GREEN));
+        }
+    }
+
+    /** A clone of {@code target} with the anvil's rename applied (if any was typed). */
+    private ItemStack renamedCopy(ItemStack target, AnvilView view) {
+        return applyRename(target.clone(), view);
     }
 
     private void consume(Inventory inv, int slot) {

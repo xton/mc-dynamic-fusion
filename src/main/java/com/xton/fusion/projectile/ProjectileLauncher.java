@@ -9,6 +9,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.util.Vector;
 
+import com.xton.fusion.modifier.AoeKind;
 import com.xton.fusion.modifier.AoeSpec;
 import com.xton.fusion.modifier.ModifierStack;
 import com.xton.fusion.modifier.ProjectileSpec;
@@ -29,11 +30,14 @@ public final class ProjectileLauncher {
     private final Plugin plugin;
     private final AoeBurst burst;
     private final WeaponBuilder.Defaults defaults;
+    private final int meleeLifetimeTicks;
 
-    public ProjectileLauncher(Plugin plugin, AoeBurst burst, WeaponBuilder.Defaults defaults) {
+    public ProjectileLauncher(Plugin plugin, AoeBurst burst, WeaponBuilder.Defaults defaults,
+                              int meleeLifetimeTicks) {
         this.plugin = plugin;
         this.burst = burst;
         this.defaults = defaults;
+        this.meleeLifetimeTicks = meleeLifetimeTicks;
     }
 
     /** The owning plugin — used to schedule projectiles (e.g. by the self-test). */
@@ -57,18 +61,47 @@ public final class ProjectileLauncher {
     public Payload buildPayload(ProjectileSpec spec) {
         List<PayloadEffect> effects = new ArrayList<>();
         for (AoeSpec aoe : spec.payload()) {
+            if (aoe.kind() == AoeKind.MINING) {
+                continue; // carved along the flight, not delivered as a terminus burst
+            }
             effects.add(new BurstEffect(burst, aoe));
         }
         return effects.isEmpty() ? Payload.empty() : new Payload(effects);
     }
 
     /**
-     * Launch the shot from {@code caster}'s eye along their look direction.
-     * {@code speedScale} lets a bow scale speed by draw force (1.0 for a melee
-     * swing).
+     * A melee swing: a short, gravity-free poke that delivers its payload at
+     * arm's length with no visible flight trail. Flight transforms (LIFETIME,
+     * MINING, ...) extend it from there.
      */
-    public void launch(Player caster, ModifierStack stack, double speedScale) {
-        ProjectileSpec spec = compile(stack);
+    public void launchMelee(Player caster, ModifierStack stack) {
+        launch(caster, stack, 1.0, false, meleeLifetimeTicks, false);
+    }
+
+    /**
+     * A bow release: a ranged, arcing shot whose speed scales with draw force
+     * (a tap still fires a slow shot).
+     */
+    public void launchBow(Player caster, ModifierStack stack, double force) {
+        double speedScale = 0.35 + 0.65 * clamp01(force);
+        // Bow shots arc (gravity on); a melee poke stays straight. Gravity is
+        // purely the launcher's call — no modifier touches it (yet).
+        launch(caster, stack, speedScale, true, defaults.baseLifetimeTicks(), true);
+    }
+
+    /**
+     * Launch the shot from {@code caster}'s eye along their look direction. The
+     * weapon-type flight (gravity, base lifetime, trail) is seeded before the
+     * modifier stack compiles, so flight transforms build on top of it.
+     */
+    private void launch(Player caster, ModifierStack stack, double speedScale,
+                        boolean gravity, int baseLifetimeTicks, boolean visibleTrail) {
+        WeaponBuilder builder = new WeaponBuilder(defaults);
+        builder.projectile().setLifetimeTicks(baseLifetimeTicks);
+        builder.projectile().setGravity(gravity);
+        builder.projectile().setVisibleTrail(visibleTrail);
+        ProjectileSpec spec = builder.compile(stack);
+
         Payload payload = buildPayload(spec);
         Location origin = caster.getEyeLocation();
         Vector aim = origin.getDirection().normalize();
@@ -81,6 +114,10 @@ public final class ProjectileLauncher {
             new FusionProjectile(plugin, payload, spec, caster.getWorld(),
                     origin.clone(), velocity, caster, 0).start();
         }
+    }
+
+    private static double clamp01(double force) {
+        return force < 0 ? 0.0 : Math.min(1.0, force);
     }
 
     /** Offset a direction by a random angle within a {@code spreadDegrees} cone. */

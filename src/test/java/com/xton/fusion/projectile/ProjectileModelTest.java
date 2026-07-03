@@ -29,7 +29,7 @@ class ProjectileModelTest {
     /** A launcher whose world-touching deps are unused by compile/buildPayload. */
     private ProjectileLauncher launcher() {
         return new ProjectileLauncher(null, null, new WeaponBuilder.Defaults(
-                1.6, 30, 3.0, 2.0, 1.0, 2.5, 4.0));
+                1.6, 30, 3.0, 2.0, 1.0, 2.5, 4.0), 2);
     }
 
     private ModifierRegistry registry() {
@@ -39,7 +39,7 @@ class ProjectileModelTest {
                 .register(new ExpandModifier(1.6))
                 .register(new PierceModifier())
                 .register(new LifetimeModifier(30))
-                .register(new MiningModifier(6, 2.5, 3.0));
+                .register(new MiningModifier(1.0));
     }
 
     private Payload payload(String... ids) {

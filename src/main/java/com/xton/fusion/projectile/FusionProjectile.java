@@ -18,6 +18,7 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
+import com.xton.fusion.modifier.AoeSpec;
 import com.xton.fusion.modifier.ProjectileSpec;
 
 /**
@@ -52,6 +53,8 @@ public final class FusionProjectile extends BukkitRunnable {
     private static final double GRAVITY_PER_TICK = 0.05;
     /** Fixed nudge a piercing shot gives each entity it passes through. */
     private static final double CONTACT_IMPULSE = 0.35;
+    /** Cap on the mining bore radius, so a heavily-EXPANDed ray can't level a region. */
+    private static final double MINING_MAX_RADIUS = 6.0;
 
     private final Plugin plugin;
     private final Payload payload;
@@ -63,6 +66,7 @@ public final class FusionProjectile extends BukkitRunnable {
     private final Vector position;
     private final Vector velocity;
     private final Set<UUID> contacted = new HashSet<>();
+    private final Set<Long> minedCells = new HashSet<>();
 
     private int age;
 
@@ -141,21 +145,15 @@ public final class FusionProjectile extends BukkitRunnable {
         if (type.isAir() || !type.isSolid()) {
             return false; // nothing to collide with
         }
-        double hardness = type.getHardness();
-        boolean breakable = hardness >= 0 && hardness <= spec.pierceMaxHardness();
+        boolean breakable = isBreakable(type);
 
-        if (spec.isMining() && breakable) {
-            ItemStack tool = caster != null ? caster.getInventory().getItemInMainHand() : null;
-            // breakNaturally already plays the vanilla break particles/sound; a
-            // little extra spark/crack sells the ray boring through.
-            world.spawnParticle(Particle.BLOCK, here, 12, 0.2, 0.2, 0.2, 0.0, type.createBlockData());
-            world.playSound(here, Sound.BLOCK_STONE_BREAK, 0.6f, 0.9f);
-            if (tool != null) {
-                block.breakNaturally(tool);
-            } else {
-                block.breakNaturally();
-            }
-            return false; // bored through
+        AoeSpec mining = spec.miningAoe();
+        if (mining != null && breakable) {
+            // Carve a cross-section (radius from the MINING emitter, EXPAND-scaled)
+            // and only bore onward if we also pierce — MINING alone breaks the
+            // block it hits and stops.
+            mineCrossSection(here, mining.radius());
+            return !spec.isPierce();
         }
         if (spec.isPierce() && breakable) {
             return false; // ghost through a soft block
@@ -163,6 +161,63 @@ public final class FusionProjectile extends BukkitRunnable {
         // TODO(bounce seam): with spec.bounces() > 0, reflect off the block
         // face here and decrement instead of stopping.
         return true;
+    }
+
+    private boolean isBreakable(Material type) {
+        double hardness = type.getHardness();
+        return hardness >= 0 && hardness <= spec.pierceMaxHardness();
+    }
+
+    /** Break every soft block within {@code radius} of the ray point (EXPAND-scaled bore). */
+    private void mineCrossSection(Location center, double radius) {
+        if (!minedCells.add(blockKey(center))) {
+            return; // already carved around this block cell
+        }
+        double r = Math.min(radius, MINING_MAX_RADIUS);
+        double rSq = r * r;
+        int ri = (int) Math.ceil(r);
+        int cx = center.getBlockX();
+        int cy = center.getBlockY();
+        int cz = center.getBlockZ();
+        boolean carved = false;
+        for (int dx = -ri; dx <= ri; dx++) {
+            for (int dy = -ri; dy <= ri; dy++) {
+                for (int dz = -ri; dz <= ri; dz++) {
+                    // The centre always breaks; a neighbour only if inside the bore.
+                    boolean centre = dx == 0 && dy == 0 && dz == 0;
+                    if (!centre && dx * dx + dy * dy + dz * dz >= rSq) {
+                        continue;
+                    }
+                    carved |= breakSoft(world.getBlockAt(cx + dx, cy + dy, cz + dz));
+                }
+            }
+        }
+        if (carved) {
+            world.playSound(center, Sound.BLOCK_STONE_BREAK, 0.6f, 0.9f);
+        }
+    }
+
+    /** Break one block if it's soft enough for this ray; returns true if it broke. */
+    private boolean breakSoft(Block block) {
+        Material type = block.getType();
+        if (type.isAir() || !type.isSolid() || !isBreakable(type)) {
+            return false;
+        }
+        world.spawnParticle(Particle.BLOCK, block.getLocation().add(0.5, 0.5, 0.5),
+                8, 0.2, 0.2, 0.2, 0.0, type.createBlockData());
+        ItemStack tool = caster != null ? caster.getInventory().getItemInMainHand() : null;
+        if (tool != null) {
+            block.breakNaturally(tool);
+        } else {
+            block.breakNaturally();
+        }
+        return true;
+    }
+
+    private static long blockKey(Location loc) {
+        return ((long) loc.getBlockX() & 0x3FFFFFFL) << 38
+                | ((long) loc.getBlockZ() & 0x3FFFFFFL) << 12
+                | ((long) loc.getBlockY() & 0xFFFL);
     }
 
     /**
@@ -181,7 +236,11 @@ public final class FusionProjectile extends BukkitRunnable {
             if (!spec.isPierce()) {
                 return true; // stop at the first entity; the payload acts here
             }
-            contactShove(living, travel); // pierce: nudge and continue
+            // Pierce: deliver the full payload at each entity we pass through
+            // (so EXPAND/AMPLIFY splash on every hit), then nudge it and carry
+            // on. The terminus burst still fires where the shot finally stops.
+            payload.detonate(world, here, caster, generation);
+            contactShove(living, travel);
         }
         return false;
     }
@@ -198,7 +257,11 @@ public final class FusionProjectile extends BukkitRunnable {
     }
 
     private void trail(Location here) {
-        world.spawnParticle(Particle.CRIT, here, 1, 0.02, 0.02, 0.02, 0.0);
+        // A short melee poke keeps no visible trail (it just delivers in front of
+        // you); ranged shots and mining rays render theirs.
+        if (spec.hasVisibleTrail()) {
+            world.spawnParticle(Particle.CRIT, here, 1, 0.02, 0.02, 0.02, 0.0);
+        }
         if (spec.isMining()) {
             world.spawnParticle(Particle.ELECTRIC_SPARK, here, 1, 0.02, 0.02, 0.02, 0.0);
         }
@@ -222,5 +285,10 @@ public final class FusionProjectile extends BukkitRunnable {
     /** Fusion depth of this shot; reserved for the spawn-children trigger seam. */
     public int generation() {
         return generation;
+    }
+
+    /** Current (or, once stopped, final) Y — used by the self-test to observe gravity. */
+    public double positionY() {
+        return position.getY();
     }
 }

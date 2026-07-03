@@ -80,7 +80,9 @@ public final class ProjectileLauncher {
      */
     public void launchBow(Player caster, ModifierStack stack, double force) {
         double speedScale = 0.35 + 0.65 * clamp01(force);
-        launch(caster, stack, speedScale, false, defaults.baseLifetimeTicks(), true);
+        // Bow shots arc (gravity on); a melee poke stays straight. Gravity is
+        // purely the launcher's call — no modifier touches it (yet).
+        launch(caster, stack, speedScale, true, defaults.baseLifetimeTicks(), true);
     }
 
     /**

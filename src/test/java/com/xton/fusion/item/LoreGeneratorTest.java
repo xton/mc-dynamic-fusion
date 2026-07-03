@@ -25,10 +25,10 @@ class LoreGeneratorTest {
         ModifierRegistry registry = new ModifierRegistry().register(new PushModifier());
         LoreGenerator lore = new LoreGenerator(registry);
 
-        List<Component> lines = lore.generate(List.of("PUSH"), 1, "Diamond Sword + Nether Star");
+        List<Component> lines = lore.generate(List.of("PUSH"), "Diamond Sword + Nether Star");
         List<String> text = lines.stream().map(this::plain).toList();
 
-        assertTrue(text.stream().anyMatch(s -> s.contains("Gen 1")), text.toString());
+        assertTrue(text.stream().anyMatch(s -> s.contains("Fusion Weapon")), text.toString());
         assertTrue(text.stream().anyMatch(s -> s.contains("Push")), text.toString());
         assertTrue(text.stream().anyMatch(s -> s.contains("Fused from: Diamond Sword + Nether Star")),
                 text.toString());
@@ -39,7 +39,7 @@ class LoreGeneratorTest {
         ModifierRegistry registry = new ModifierRegistry().register(new PushModifier());
         LoreGenerator lore = new LoreGenerator(registry);
 
-        List<Component> lines = lore.generate(List.of("PUSH", "MYSTERY"), 2, "A + B");
+        List<Component> lines = lore.generate(List.of("PUSH", "MYSTERY"), "A + B");
         long pushLines = lines.stream().map(this::plain).filter(s -> s.contains("Push")).count();
 
         assertEquals(1, pushLines);

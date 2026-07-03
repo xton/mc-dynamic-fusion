@@ -42,14 +42,14 @@ public final class FusedItemReader {
                 .toList();
     }
 
-    /** Stored generation (1 = first fusion); 0 if the item is not fused. */
-    public int generation(ItemStack item) {
+    /** The stored "fused from" lineage line, or empty if absent/unfused. */
+    public String fusedFrom(ItemStack item) {
         PersistentDataContainer pdc = pdcOf(item);
         if (pdc == null) {
-            return 0;
+            return "";
         }
-        Integer gen = pdc.get(keys.generation, PersistentDataType.INTEGER);
-        return gen == null ? 0 : gen;
+        String from = pdc.get(keys.fusedFrom, PersistentDataType.STRING);
+        return from == null ? "" : from;
     }
 
     private PersistentDataContainer pdcOf(ItemStack item) {

@@ -7,9 +7,7 @@ debug-logging: true
 fusion:
   # Maximum modifiers stored on one item. Technical guard on PDC/loop size,
   # not a balance lever — excess is dropped from the tail.
-  max-modifiers: 8
-  # Maximum fusion depth (generation). Refused past this.
-  max-generation: 5
+  max-modifiers: 24
   # XP-level cost to fuse. Free to start; raise later to add cost.
   cost: 0
 

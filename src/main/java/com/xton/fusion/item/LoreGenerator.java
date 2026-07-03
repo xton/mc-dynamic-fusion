@@ -22,11 +22,10 @@ public final class LoreGenerator {
         this.registry = registry;
     }
 
-    public List<Component> generate(List<String> modifierIds, int generation, String fusedFrom) {
+    public List<Component> generate(List<String> modifierIds, String fusedFrom) {
         List<Component> lore = new ArrayList<>();
 
-        lore.add(plain("✦ Fusion Weapon ", NamedTextColor.GOLD)
-                .append(plain("[Gen " + generation + "]", NamedTextColor.GRAY)));
+        lore.add(plain("✦ Fusion Weapon", NamedTextColor.GOLD));
         lore.add(separator());
 
         for (String id : modifierIds) {

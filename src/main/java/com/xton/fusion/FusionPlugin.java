@@ -50,8 +50,7 @@ public final class FusionPlugin extends JavaPlugin {
     public void onEnable() {
         saveDefaultConfig();
 
-        int maxModifiers = getConfig().getInt("fusion.max-modifiers", 8);
-        int maxGeneration = getConfig().getInt("fusion.max-generation", 5);
+        int maxModifiers = getConfig().getInt("fusion.max-modifiers", 24);
         int fusionCost = getConfig().getInt("fusion.cost", 0);
         long swingCooldownMs = getConfig().getLong("cooldown.swing-ms", 200);
         boolean debug = getConfig().getBoolean("debug-logging", true);
@@ -89,7 +88,7 @@ public final class FusionPlugin extends JavaPlugin {
         FusedItemReader reader = new FusedItemReader(keys);
         LoreGenerator lore = new LoreGenerator(registry);
         FusedItemFactory factory = new FusedItemFactory(keys, lore);
-        FusionEngine engine = new FusionEngine(latent, reader, factory, maxModifiers, maxGeneration);
+        FusionEngine engine = new FusionEngine(latent, reader, factory, maxModifiers);
 
         Scheduler scheduler = new BukkitTaskScheduler(this);
         AoeBurst burst = new AoeBurst(scheduler, new AoeBurst.Settings(

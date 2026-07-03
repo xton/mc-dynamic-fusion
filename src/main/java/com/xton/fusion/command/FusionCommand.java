@@ -182,7 +182,7 @@ public final class FusionCommand implements CommandExecutor, TabCompleter {
                     + String.join(", ", registry.ids()), NamedTextColor.RED));
             return true;
         }
-        ItemStack item = factory.create(base, ids, 1, "/fusion give");
+        ItemStack item = factory.create(base, ids, "/fusion give");
         target.getInventory().addItem(item);
         sender.sendMessage(Component.text("Gave " + target.getName() + " a fused "
                 + base.name().toLowerCase(Locale.ROOT) + " [" + String.join(", ", ids) + "].",

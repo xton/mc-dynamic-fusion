@@ -27,8 +27,11 @@ projectile:
   # Launch speed in blocks/tick for a full-power shot (melee = a short fast bolt).
   base-speed: 1.6
   # Ticks a shot lives before it expires and terminates if it hits nothing.
-  # LIFETIME lengthens this (more range); MINING shortens it.
+  # This is the base for a bow (a ranged, arcing shot). LIFETIME lengthens it.
   base-lifetime-ticks: 30
+  # Base lifetime for a melee swing — a short, arm's-length poke that delivers
+  # in front of you with no visible trail. Add LIFETIME to throw it downrange.
+  melee-lifetime-ticks: 2
   # A piercing shot ghosts through blocks up to this hardness and stops at
   # anything harder (stone is 1.5, obsidian 50, bedrock -1/unbreakable).
   pierce-max-hardness: 3.0

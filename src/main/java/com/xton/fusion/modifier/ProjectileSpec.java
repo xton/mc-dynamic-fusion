@@ -25,6 +25,7 @@ public final class ProjectileSpec {
     private int bounces;               // bounce seam
     private int lifetimeTicks;         // ticks before it expires & terminates
     private boolean mining;            // breaks soft blocks along the flight
+    private boolean visibleTrail = true; // render the flight trail (off for a short melee poke)
 
     // ----- payload -----
     private final List<AoeSpec> payload = new ArrayList<>();
@@ -105,6 +106,14 @@ public final class ProjectileSpec {
 
     public void setMining(boolean mining) {
         this.mining = mining;
+    }
+
+    public boolean hasVisibleTrail() {
+        return visibleTrail;
+    }
+
+    public void setVisibleTrail(boolean visibleTrail) {
+        this.visibleTrail = visibleTrail;
     }
 
     // ----- payload accessors -----

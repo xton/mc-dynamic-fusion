@@ -107,7 +107,8 @@ public final class FusionPlugin extends JavaPlugin {
                         getConfig().getDouble("push.radius", 2.0),
                         getConfig().getDouble("push.power", 1.0),
                         getConfig().getDouble("damage.radius", 2.5),
-                        getConfig().getDouble("damage.power", 4.0)));
+                        getConfig().getDouble("damage.power", 4.0)),
+                getConfig().getInt("projectile.melee-lifetime-ticks", 2));
 
         CooldownMap cooldown = new CooldownMap(swingCooldownMs);
         getServer().getPluginManager().registerEvents(

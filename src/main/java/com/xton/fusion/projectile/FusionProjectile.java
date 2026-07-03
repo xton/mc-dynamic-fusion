@@ -198,7 +198,11 @@ public final class FusionProjectile extends BukkitRunnable {
     }
 
     private void trail(Location here) {
-        world.spawnParticle(Particle.CRIT, here, 1, 0.02, 0.02, 0.02, 0.0);
+        // A short melee poke keeps no visible trail (it just delivers in front of
+        // you); ranged shots and mining rays render theirs.
+        if (spec.hasVisibleTrail()) {
+            world.spawnParticle(Particle.CRIT, here, 1, 0.02, 0.02, 0.02, 0.0);
+        }
         if (spec.isMining()) {
             world.spawnParticle(Particle.ELECTRIC_SPARK, here, 1, 0.02, 0.02, 0.02, 0.0);
         }

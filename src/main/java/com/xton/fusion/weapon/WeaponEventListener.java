@@ -80,6 +80,6 @@ public final class WeaponEventListener implements Listener {
         if (!cooldown.tryUse(player.getUniqueId())) {
             return;
         }
-        launcher.launch(player, stack, 1.0);
+        launcher.launchMelee(player, stack);
     }
 }

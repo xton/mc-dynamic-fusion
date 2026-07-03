@@ -47,17 +47,9 @@ public final class ProjectileListener implements Listener {
         if (stack.isEmpty()) {
             return; // fused bow, but no implemented modifiers — leave it vanilla
         }
-        // Replace the vanilla arrow with our own projectile(s). Force is 0..1;
-        // map it to a speed scale so a tap still fires a slow shot.
+        // Replace the vanilla arrow with our own projectile(s). The bow launches
+        // a ranged, arcing shot whose speed scales with draw force.
         event.setCancelled(true);
-        double speedScale = 0.35 + 0.65 * clamp01(event.getForce());
-        launcher.launch(player, stack, speedScale);
-    }
-
-    private static double clamp01(float f) {
-        if (f < 0f) {
-            return 0.0;
-        }
-        return Math.min(1.0, f);
+        launcher.launchBow(player, stack, event.getForce());
     }
 }

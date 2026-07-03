@@ -81,7 +81,7 @@ public final class FusionPlugin extends JavaPlugin {
                         getConfig().getDouble("spread.degrees-per-apply", 12.0)))
                 .register(new PierceModifier())
                 .register(new LifetimeModifier(
-                        getConfig().getInt("lifetime.ticks-per-apply", 30)))
+                        getConfig().getDouble("lifetime.range-per-apply", 12.0)))
                 .register(new MiningModifier(
                         getConfig().getDouble("mining.base-radius", 1.0)));
 

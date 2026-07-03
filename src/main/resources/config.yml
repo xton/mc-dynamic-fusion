@@ -88,9 +88,11 @@ spread:
 # PIERCE — passes through soft blocks/entities (no tunables; uses
 # projectile.pierce-max-hardness as the cutoff).
 
-# LIFETIME — lengthens a shot's lifetime so it flies farther; stacks per copy.
+# LIFETIME — adds range so a shot flies farther; stacks per copy. Expressed as a
+# fixed DISTANCE (blocks), converted to ticks against the shot's speed, so it
+# adds the same tunnel length regardless of how fast the weapon fires.
 lifetime:
-  ticks-per-apply: 30
+  range-per-apply: 12.0
 
 # MINING — an emitter that carves a tunnel along the flight. It does NOT pierce
 # on its own: alone it breaks the block it hits and stops; add PIERCE to bore

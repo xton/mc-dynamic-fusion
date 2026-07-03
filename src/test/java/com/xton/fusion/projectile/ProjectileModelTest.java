@@ -38,7 +38,7 @@ class ProjectileModelTest {
                 .register(new DamageModifier())
                 .register(new ExpandModifier(1.6))
                 .register(new PierceModifier())
-                .register(new LifetimeModifier(30))
+                .register(new LifetimeModifier(12.0))
                 .register(new MiningModifier(1.0));
     }
 

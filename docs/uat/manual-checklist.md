@@ -31,47 +31,59 @@ Build test weapons the fast way: `/fusion give <you> <BASE> <MOD...>` (op only).
 1. **Particle shedding.** Hold any fused weapon and stand still → subtle
    enchant-style particles rise off you; holding a non-fused item shows nothing.
    Toggle with `effect.particle-shedding: false`.
-2. **Machine glow.** `/fusion machine`, place it → a particle glow rises above
-   it. A *normal* enchanting table placed elsewhere has none.
+2. **Machine glow.** `/fusion machine`, place it → a subtle END_ROD/enchant glow
+   rises above it. A *normal* enchanting table placed elsewhere has none. Toggle
+   with `effect.machine-glow: false`.
 3. **Fusion sound/particles.** Fuse something → anvil sound + a totem burst play
-   at the machine. Does it feel satisfying?
+   at the machine. Does it feel satisfying? The GUI title reads **✦ Fusion**.
 4. **Spread looks like a spray.** `/fusion give <you> DIAMOND_SWORD DAMAGE
    MULTISHOT MULTISHOT SPREAD` → the 5 bolts should visibly fan into a cone (the
    *count* and *angle* are asserted; the *look* is yours to judge).
-5. **Bow draw feel.** `/fusion give <you> BOW DAMAGE AMPLIFY` → tap = slow lob,
-   full draw = fast bolt. Feels like a bow?
-6. **Mining feel & drops.** `/fusion give <you> DIAMOND_PICKAXE MINING` → carving
-   a wall should *feel* like a ray; confirm blocks drop items and silk/fortune on
-   the tool apply. (Grief check: only breaks where you aim — no region protection
-   yet, see DECISIONS.md.)
+5. **Melee vs. bow feel.** A fused melee weapon (`DIAMOND_SWORD DAMAGE`) delivers
+   **at arm's length** — a short, near-invisible poke, the burst going off right
+   in front of you (no long bolt). A fused **bow** (`BOW DAMAGE`) throws the same
+   burst downrange in a **gravity arc**: tap = short weak lob, full draw = long
+   fast arc. Do both read right?
+6. **Mining tunnels.** `DIAMOND_PICKAXE MINING PIERCE` bores a 1-wide tunnel (add
+   `LIFETIME` to reach farther); add `EXPAND EXPAND` for a **fat** tunnel. `MINING`
+   *alone* (no Pierce) should break just the block in front and stop. Blocks drop
+   items; silk/fortune apply. (Grief check: only where you aim — no region
+   protection yet, see DECISIONS.md.)
+7. **PERSIST grenade.** `DIAMOND_SWORD DAMAGE PERSIST` → where it lands, a glowing
+   dot sits and **blinks faster** until a small **explosion** marks each
+   retrigger. Reads as a charging grenade, and the boom is *at the point* (not a
+   scatter of sparks)?
 
 ## B. Performance (needs a running server + judgement)
 
-7. **PERSIST doesn't lag.** `/fusion give <you> DIAMOND_SWORD DAMAGE PERSIST
+8. **PERSIST doesn't lag.** `/fusion give <you> DIAMOND_SWORD DAMAGE PERSIST
    PERSIST PERSIST`, swing in a crowd, walk away → the field pulses then **stops**
    cleanly; no pile-up or TPS drop. (That it re-pulses at all is asserted; that
    it stays performant under stacking is yours.)
 
 ## C. Not-yet-automated mechanics (worth a manual pass)
 
-8. **XP cost gate.** Set `fusion.cost: 3` in the plugin config, restart. With
+9. **XP cost gate.** Set `fusion.cost: 3` in the plugin config, restart. With
    < 3 levels a fuse is refused ("Fusing costs 3 XP levels."); with ≥ 3 it
    succeeds and drops your level by 3. (Config + restart, so it's not in the bot
    suite.)
-9. **Anvil rename sticks.** In the machine, load a valid Target + Ingredient,
-   type a name in the anvil's rename field → the result stays valid and carries
-   your custom name; take it and confirm.
-10. **Machine survives a restart.** Place a machine, fuse once, restart the
-    server, right-click it → it still opens (location persisted in
-    `machines.yml`). Break it → it drops the **Fusion Machine** item, not a plain
-    enchanting table.
-11. **Fused item as ingredient.** Fuse a sword, then use *that fused sword* as
+10. **Anvil rename.** *Rename-only:* put just a Target (no ingredient) and type a
+    name → the result slot shows the renamed item, takeable, with no flicker.
+    *Fusion + rename:* a valid fusion with a typed name keeps the custom name on
+    the fused output.
+11. **Machine survives a restart.** Place a machine, fuse once, restart the
+    server, right-click it → it still opens. Break it → it drops the **Fusion
+    Machine** item, not a plain enchanting table.
+12. **Fused item as ingredient.** Fuse a sword, then use *that fused sword* as
     the Ingredient on a fresh weapon → no "has no magic"; the target gains the
-    ingredient's whole stack plus its base-material latents.
-12. **Ingredient roster spot-check.** Data-driven (`latent_registry.yml`), so
-    just eyeball a few map correctly: e.g. **Nether Star → PUSH**, **TNT →
-    DAMAGE·EXPAND·EXPAND**, **Amethyst Shard → MINING**. Lore should list the
-    modifiers.
+    ingredient's whole stack plus its base-material latents. The **Fused from**
+    line should accumulate (e.g. `... + 3× Nether Star + Heart of the Sea`).
+13. **Ingredient roster.** Data-driven — the plugin no longer writes
+    `latent_registry.yml`; defaults come from the jar and a reference copy is
+    refreshed at `latent_registry.example.yml` each boot. Spot-check a few map
+    right: **Nether Star → Push**, **TNT → Damage·Expand·Expand**, **Amethyst
+    Shard → Mining**. (A custom `latent_registry.yml`, if you make one, *fully
+    replaces* the defaults — copy the example and edit.)
 
 ---
 

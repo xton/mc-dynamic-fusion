@@ -23,6 +23,7 @@ Noita-style. Modifiers come in two kinds:
 |---|---|---|---|
 | **emit** | **Push** | Nether Star, Piston | a knockback burst where it lands |
 | **emit** | **Damage** | Fire Charge, Flint | a damaging burst where it lands |
+| **emit** | **Mining** | Amethyst Shard | carves a tunnel along the flight (Expand widens it) — add Pierce to bore through |
 | *xf (aoe)* | **Expand** | Heart of the Sea, Magma Cream | ×radius of the previous burst |
 | *xf (aoe)* | **Amplify** | Glowstone Dust, Blaze Powder | ×force/damage of the previous burst |
 | *xf (aoe)* | **Chain** | String, Echo Shard | previous burst hops to more entities |
@@ -30,17 +31,21 @@ Noita-style. Modifiers come in two kinds:
 | *xf (aoe)* | **Persist** | Blaze Rod, Dragon's Breath | previous burst lingers and re-pulses |
 | *xf (fly)* | **Multishot** | Rabbit's Foot, Slime Ball | launches extra projectiles |
 | *xf (fly)* | **Spread** | Feather, Sugar | scatters the aim |
-| *xf (fly)* | **Pierce** | Arrow, Quartz | punches through blocks & every entity in its path |
+| *xf (fly)* | **Pierce** | Arrow, Quartz | punches through soft blocks & delivers its burst to every entity in its path |
 | *xf (fly)* | **Lifetime** | Gunpowder, Redstone | flies farther before it expires |
-| *xf (fly)* | **Mining** | Amethyst Shard | a short, fast piercing ray that bores soft blocks |
 
 Because these are small primitives, weapons **compose**: a nova is
 `Push · Expand · Expand`; a fireball is `Damage · Amplify`; a shotgun is
 `Damage · Multishot · Spread`; a ray gun is `Pierce · Lifetime`; a mining laser
-is `Mining`. Many ingredients are **bundles** — a ready-made recipe in one item
-(TNT = `Damage · Expand · Expand`, End Crystal = the works). See
+is a pickaxe with `Mining · Pierce · Lifetime`. Many ingredients are
+**bundles** — a ready-made recipe in one item (TNT = `Damage · Expand · Expand`,
+End Crystal = the works). See
 [`latent_registry.yml`](src/main/resources/latent_registry.yml) for the roster.
-Bounce and gravity are seamed for later builds (grenades, cluster bombs).
+
+**Weapon type sets the flight, not modifiers:** a melee swing delivers at arm's
+length in a straight line; a bow throws the same weapon downrange in a gravity
+arc (draw strength scales the range). Bounce and a gravity-toggle modifier are
+seamed for later builds (grenades, cluster bombs).
 
 **Fused bows** become wands: releasing fires the same projectiles downrange,
 their speed scaled by draw force (so a Multishot bow fans a volley). Fusing can

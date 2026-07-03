@@ -24,7 +24,7 @@ const USER = process.env.MC_BOT_USER || 'FusionBot';
 // bridge and the client stays inside Via's supported range. Override with
 // MC_BOT_VERSION if needed.
 const VERSION = process.env.MC_BOT_VERSION || '1.21.11';
-const WALL_DZ = -4; // wall is 4 blocks north of the bot
+const WALL_DZ = -2; // wall is 2 blocks north — within a melee swing's arm's-length reach
 
 const results = [];
 const recentChat = []; // last few server/system messages, for diagnostics

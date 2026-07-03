@@ -40,15 +40,17 @@ Build test weapons the fast way: `/fusion give <you> <BASE> <MOD...>` (op only).
    MULTISHOT MULTISHOT SPREAD` → the 5 bolts should visibly fan into a cone (the
    *count* and *angle* are asserted; the *look* is yours to judge).
 5. **Melee vs. bow feel.** A fused melee weapon (`DIAMOND_SWORD DAMAGE`) delivers
-   **at arm's length** — a short, near-invisible poke, the burst going off right
-   in front of you (no long bolt). A fused **bow** (`BOW DAMAGE`) throws the same
-   burst downrange in a **gravity arc**: tap = short weak lob, full draw = long
-   fast arc. Do both read right?
-6. **Mining tunnels.** `DIAMOND_PICKAXE MINING PIERCE` bores a 1-wide tunnel (add
-   `LIFETIME` to reach farther); add `EXPAND EXPAND` for a **fat** tunnel. `MINING`
-   *alone* (no Pierce) should break just the block in front and stop. Blocks drop
-   items; silk/fortune apply. (Grief check: only where you aim — no region
-   protection yet, see DECISIONS.md.)
+   **at arm's length, near-instantly, with no visible bolt** — it should read as
+   a swing, the burst going off right in front of you. A fused **bow**
+   (`BOW DAMAGE`) throws the same burst downrange in a **gravity arc**: tap =
+   short weak lob, full draw = long fast arc. Do both read right?
+6. **Mining tunnels.** `DIAMOND_PICKAXE MINING PIERCE` bores a 1-wide tunnel; add
+   `EXPAND EXPAND` for a **fat** one, and `LIFETIME` for a longer one — each
+   LIFETIME adds a fixed ~12-block reach (the same whether the shot is fast or
+   slow). `MINING` *alone* (no Pierce) breaks just the block in front and stops.
+   Aim it at a **grass patch** → the plant *and* the ground beneath should carve
+   (not just the plant). Blocks drop items; silk/fortune apply. (Grief check:
+   only where you aim — no region protection yet, see DECISIONS.md.)
 7. **PERSIST grenade.** `DIAMOND_SWORD DAMAGE PERSIST` → where it lands, a glowing
    dot sits and **blinks faster** until a small **explosion** marks each
    retrigger. Reads as a charging grenade, and the boom is *at the point* (not a

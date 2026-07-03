@@ -41,7 +41,7 @@ public final class FusionCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> SUBCOMMANDS = List.of("machine", "fuse", "give", "test");
     private static final List<String> BASE_HINTS =
-            List.of("DIAMOND_SWORD", "NETHERITE_SWORD", "BOW", "DIAMOND_AXE", "TRIDENT");
+            List.of("DIAMOND_SWORD", "NETHERITE_SWORD", "DIAMOND_PICKAXE", "BOW", "DIAMOND_AXE", "TRIDENT");
 
     private final FusionMachineMenu menu;
     private final ModifierRegistry registry;

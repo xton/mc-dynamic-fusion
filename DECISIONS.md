@@ -594,3 +594,22 @@ commit; the notable decisions:
   only for CHAIN. Visual-only — damage timing unchanged.
 - **Machine glow.** A config-gated task scans nearby chunk block-entities and
   glows tagged machines (no location registry needed).
+
+## UAT round 4 — mining/melee feel (batch)
+
+- **`DIAMOND_PICKAXE`** added to the `/fusion give` base autocomplete.
+- **Mining carves through vegetation.** The bore now triggers on any breakable
+  block, not just solid ones — a ray through grass/crops clears the plant and
+  the ground within its radius (previously it sailed through non-solid blocks
+  without triggering, leaving the ground untouched). Still won't chew fluids or
+  obsidian (hardness cap).
+- **Melee is invisible and instant.** A melee swing shows no flight trail at all
+  (mining sparks included) and uses a high base speed (`projectile.melee-speed`)
+  with a 1-tick life, so it reaches its arm's-length terminus within the first
+  tick — it reads as a swing, not a travelling bolt. Ranged shots keep their
+  trail.
+- **LIFETIME adds a fixed distance, not ticks.** Tunnel length was speed ×
+  lifetime, so the faster melee speed inflated every LIFETIME tunnel. LIFETIME
+  now contributes `range ÷ speed` ticks (config `lifetime.range-per-apply`,
+  ~12 blocks), so one LIFETIME adds the same length regardless of speed —
+  ~25% of the old length, and velocity-proof.

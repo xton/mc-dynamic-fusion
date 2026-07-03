@@ -4,23 +4,24 @@ import com.xton.fusion.modifier.Modifier;
 import com.xton.fusion.modifier.WeaponBuilder;
 
 /**
- * Flight transform: extends how long the projectile lives before it expires and
- * terminates — the "expiry" primitive. Stacks: each copy adds
- * {@code ticksPerApply} more life, so the shot travels farther. Leave it short
- * for a hit-where-it-lands bolt, or stack it for a long-range lance.
+ * Flight transform: extends how far the projectile flies before it expires — the
+ * "range" primitive. Each copy adds a fixed <em>distance</em> ({@code
+ * rangePerApply} blocks), converted to ticks against the shot's current speed,
+ * so a single LIFETIME always adds the same tunnel length whether it's a fast
+ * melee poke or a slow bow lob. Stack it for a long-range lance.
  */
 public final class LifetimeModifier implements Modifier {
 
     public static final String ID = "LIFETIME";
 
-    private final int ticksPerApply;
+    private final double rangePerApply;
 
-    public LifetimeModifier(int ticksPerApply) {
-        this.ticksPerApply = ticksPerApply;
+    public LifetimeModifier(double rangePerApply) {
+        this.rangePerApply = rangePerApply;
     }
 
     public LifetimeModifier() {
-        this(30);
+        this(12.0);
     }
 
     @Override
@@ -50,6 +51,10 @@ public final class LifetimeModifier implements Modifier {
 
     @Override
     public void apply(WeaponBuilder builder) {
-        builder.projectile().addLifetimeTicks(ticksPerApply);
+        // Fixed distance ÷ current speed = ticks, so raising a weapon's velocity
+        // doesn't inflate its LIFETIME range. (Speed is seeded before compile.)
+        double speed = Math.max(0.1, builder.projectile().speed());
+        int ticks = Math.max(1, (int) Math.round(rangePerApply / speed));
+        builder.projectile().addLifetimeTicks(ticks);
     }
 }

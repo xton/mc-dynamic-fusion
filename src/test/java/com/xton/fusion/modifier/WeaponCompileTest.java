@@ -46,7 +46,7 @@ class WeaponCompileTest {
                 .register(new MultishotModifier(2))
                 .register(new SpreadModifier(12.0))
                 .register(new PierceModifier())
-                .register(new LifetimeModifier(30))
+                .register(new LifetimeModifier(12.0))
                 .register(new MiningModifier(1.0));
     }
 
@@ -130,8 +130,23 @@ class WeaponCompileTest {
         assertEquals(5, p.count());               // 1 + 2 + 2
         assertEquals(12.0, p.spreadDegrees(), 1.0e-9);
         assertTrue(p.isPierce());
-        assertEquals(60, p.lifetimeTicks());      // 30 base + 30
+        assertEquals(38, p.lifetimeTicks());      // 30 base + round(12 / 1.6 speed) = 8
         assertTrue(p.payload().isEmpty(), "flight-only weapon delivers no burst");
+    }
+
+    @Test
+    void lifetimeAddsFixedDistanceRegardlessOfSpeed() {
+        // The same LIFETIME on a slow shot and a fast one adds ~the same range,
+        // so raising a weapon's speed doesn't inflate its tunnel length.
+        ProjectileSpec slow = new WeaponBuilder(DEFAULTS)
+                .compile(registry().resolve(List.of("LIFETIME")));
+        WeaponBuilder fastBuilder = new WeaponBuilder(DEFAULTS);
+        fastBuilder.projectile().setSpeed(4.0);
+        ProjectileSpec fast = fastBuilder.compile(registry().resolve(List.of("LIFETIME")));
+
+        double slowAddedRange = (slow.lifetimeTicks() - 30) * 1.6;
+        double fastAddedRange = (fast.lifetimeTicks() - 30) * 4.0;
+        assertEquals(slowAddedRange, fastAddedRange, 4.0); // ~12 blocks either way, modulo rounding
     }
 
     @Test

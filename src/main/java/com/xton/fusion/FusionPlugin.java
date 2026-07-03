@@ -81,7 +81,7 @@ public final class FusionPlugin extends JavaPlugin {
                         getConfig().getDouble("spread.degrees-per-apply", 12.0)))
                 .register(new PierceModifier())
                 .register(new LifetimeModifier(
-                        getConfig().getInt("lifetime.ticks-per-apply", 30)))
+                        getConfig().getDouble("lifetime.range-per-apply", 12.0)))
                 .register(new MiningModifier(
                         getConfig().getDouble("mining.base-radius", 1.0)));
 
@@ -107,7 +107,8 @@ public final class FusionPlugin extends JavaPlugin {
                         getConfig().getDouble("push.power", 1.0),
                         getConfig().getDouble("damage.radius", 2.5),
                         getConfig().getDouble("damage.power", 4.0)),
-                getConfig().getInt("projectile.melee-lifetime-ticks", 2));
+                getConfig().getInt("projectile.melee-lifetime-ticks", 1),
+                getConfig().getDouble("projectile.melee-speed", 4.0));
 
         CooldownMap cooldown = new CooldownMap(swingCooldownMs);
         getServer().getPluginManager().registerEvents(

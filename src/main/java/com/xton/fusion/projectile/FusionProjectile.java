@@ -142,18 +142,24 @@ public final class FusionProjectile extends BukkitRunnable {
     private boolean hitBlockStops(Location here) {
         Block block = here.getBlock();
         Material type = block.getType();
-        if (type.isAir() || !type.isSolid()) {
-            return false; // nothing to collide with
+        if (type.isAir()) {
+            return false; // nothing here
         }
+        boolean solid = type.isSolid();
         boolean breakable = isBreakable(type);
 
         AoeSpec mining = spec.miningAoe();
         if (mining != null && breakable) {
             // Carve a cross-section (radius from the MINING emitter, EXPAND-scaled)
-            // and only bore onward if we also pierce — MINING alone breaks the
-            // block it hits and stops.
+            // here — through vegetation too, not just solid blocks — so aiming a
+            // mining ray at grass clears the plant AND the ground within its
+            // radius. Non-solid blocks don't collide, so they never stop it; a
+            // solid block stops it unless we also pierce.
             mineCrossSection(here, mining.radius());
-            return !spec.isPierce();
+            return solid && !spec.isPierce();
+        }
+        if (!solid) {
+            return false; // no collision with grass, fluids, etc.
         }
         if (spec.isPierce() && breakable) {
             return false; // ghost through a soft block
@@ -200,7 +206,9 @@ public final class FusionProjectile extends BukkitRunnable {
     /** Break one block if it's soft enough for this ray; returns true if it broke. */
     private boolean breakSoft(Block block) {
         Material type = block.getType();
-        if (type.isAir() || !type.isSolid() || !isBreakable(type)) {
+        // Break anything within the hardness cap, including vegetation (which is
+        // non-solid). The cap still excludes fluids and hard blocks (obsidian).
+        if (type.isAir() || !isBreakable(type)) {
             return false;
         }
         world.spawnParticle(Particle.BLOCK, block.getLocation().add(0.5, 0.5, 0.5),
@@ -257,11 +265,13 @@ public final class FusionProjectile extends BukkitRunnable {
     }
 
     private void trail(Location here) {
-        // A short melee poke keeps no visible trail (it just delivers in front of
-        // you); ranged shots and mining rays render theirs.
-        if (spec.hasVisibleTrail()) {
-            world.spawnParticle(Particle.CRIT, here, 1, 0.02, 0.02, 0.02, 0.0);
+        // A short melee poke keeps no visible trail at all — not even mining
+        // sparks — so it reads as an instant swing rather than a flying bolt.
+        // Ranged shots and mining rays (visibleTrail on) render theirs.
+        if (!spec.hasVisibleTrail()) {
+            return;
         }
+        world.spawnParticle(Particle.CRIT, here, 1, 0.02, 0.02, 0.02, 0.0);
         if (spec.isMining()) {
             world.spawnParticle(Particle.ELECTRIC_SPARK, here, 1, 0.02, 0.02, 0.02, 0.0);
         }

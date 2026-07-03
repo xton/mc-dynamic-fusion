@@ -33,9 +33,12 @@ projectile:
   # Ticks a shot lives before it expires and terminates if it hits nothing.
   # This is the base for a bow (a ranged, arcing shot). LIFETIME lengthens it.
   base-lifetime-ticks: 30
-  # Base lifetime for a melee swing — a short, arm's-length poke that delivers
-  # in front of you with no visible trail. Add LIFETIME to throw it downrange.
-  melee-lifetime-ticks: 2
+  # Base flight for a melee swing — a short, arm's-length poke that delivers in
+  # front of you with no visible trail. High speed + a 1-tick life means the
+  # terminus is reached within the first tick (reads as instant, like a swing).
+  # Add LIFETIME to throw it downrange.
+  melee-lifetime-ticks: 1
+  melee-speed: 4.0
   # A piercing shot ghosts through blocks up to this hardness and stops at
   # anything harder (stone is 1.5, obsidian 50, bedrock -1/unbreakable).
   pierce-max-hardness: 3.0
@@ -85,9 +88,11 @@ spread:
 # PIERCE — passes through soft blocks/entities (no tunables; uses
 # projectile.pierce-max-hardness as the cutoff).
 
-# LIFETIME — lengthens a shot's lifetime so it flies farther; stacks per copy.
+# LIFETIME — adds range so a shot flies farther; stacks per copy. Expressed as a
+# fixed DISTANCE (blocks), converted to ticks against the shot's speed, so it
+# adds the same tunnel length regardless of how fast the weapon fires.
 lifetime:
-  ticks-per-apply: 30
+  range-per-apply: 12.0
 
 # MINING — an emitter that carves a tunnel along the flight. It does NOT pierce
 # on its own: alone it breaks the block it hits and stops; add PIERCE to bore

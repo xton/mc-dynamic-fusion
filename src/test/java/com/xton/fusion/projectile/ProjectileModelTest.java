@@ -29,7 +29,7 @@ class ProjectileModelTest {
     /** A launcher whose world-touching deps are unused by compile/buildPayload. */
     private ProjectileLauncher launcher() {
         return new ProjectileLauncher(null, null, new WeaponBuilder.Defaults(
-                1.6, 30, 3.0, 2.0, 1.0, 2.5, 4.0), 2);
+                1.6, 30, 3.0, 2.0, 1.0, 2.5, 4.0), 1, 4.0);
     }
 
     private ModifierRegistry registry() {

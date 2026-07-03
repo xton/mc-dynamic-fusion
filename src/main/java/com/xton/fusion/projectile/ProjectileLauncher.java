@@ -31,12 +31,14 @@ public final class ProjectileLauncher {
     private final AoeBurst burst;
     private final WeaponBuilder.Defaults defaults;
     private final int meleeLifetimeTicks;
+    private final double meleeSpeed;
 
     public ProjectileLauncher(Plugin plugin, AoeBurst burst, WeaponBuilder.Defaults defaults,
-                              int meleeLifetimeTicks) {
+                              int meleeLifetimeTicks, double meleeSpeed) {
         this.plugin = plugin;
         this.burst = burst;
         this.defaults = defaults;
+        this.meleeSpeed = meleeSpeed;
         this.meleeLifetimeTicks = meleeLifetimeTicks;
     }
 
@@ -75,7 +77,7 @@ public final class ProjectileLauncher {
      * MINING, ...) extend it from there.
      */
     public void launchMelee(Player caster, ModifierStack stack) {
-        launch(caster, stack, 1.0, false, meleeLifetimeTicks, false);
+        launch(caster, stack, 1.0, false, meleeLifetimeTicks, meleeSpeed, false);
     }
 
     /**
@@ -86,7 +88,7 @@ public final class ProjectileLauncher {
         double speedScale = 0.35 + 0.65 * clamp01(force);
         // Bow shots arc (gravity on); a melee poke stays straight. Gravity is
         // purely the launcher's call — no modifier touches it (yet).
-        launch(caster, stack, speedScale, true, defaults.baseLifetimeTicks(), true);
+        launch(caster, stack, speedScale, true, defaults.baseLifetimeTicks(), defaults.baseSpeed(), true);
     }
 
     /**
@@ -95,8 +97,9 @@ public final class ProjectileLauncher {
      * modifier stack compiles, so flight transforms build on top of it.
      */
     private void launch(Player caster, ModifierStack stack, double speedScale,
-                        boolean gravity, int baseLifetimeTicks, boolean visibleTrail) {
+                        boolean gravity, int baseLifetimeTicks, double baseSpeed, boolean visibleTrail) {
         WeaponBuilder builder = new WeaponBuilder(defaults);
+        builder.projectile().setSpeed(baseSpeed);
         builder.projectile().setLifetimeTicks(baseLifetimeTicks);
         builder.projectile().setGravity(gravity);
         builder.projectile().setVisibleTrail(visibleTrail);

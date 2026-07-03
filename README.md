@@ -24,6 +24,10 @@ Noita-style. Modifiers come in two kinds:
 | **emit** | **Push** | Nether Star, Piston | a knockback burst where it lands |
 | **emit** | **Damage** | Fire Charge, Flint | a damaging burst where it lands |
 | **emit** | **Mining** | Amethyst Shard | carves a tunnel along the flight (Expand widens it) — add Pierce to bore through |
+| **emit** | **Fire** | Flint and Steel, Magma Block | spreads fire, melts snow/ice, ignites mobs in a radius (a touch wider than Mining) |
+| **emit** | **Ice** | Blue Ice, Snowball | freezes water→ice, lava→obsidian, snuffs fire, chills mobs |
+| **emit** | **Deposit:_block_** | Dirt, Sand, Water/Lava Bucket, Cobweb | fills the empty air in a radius with that block (`Deposit:Dirt`, `Deposit:Water`, …) |
+| **emit** | **Spawn** | Firework Rocket, Egg | at the terminus, bursts into a fresh child built from every modifier *after* Spawn |
 | *xf (aoe)* | **Expand** | Heart of the Sea, Magma Cream | ×radius of the previous burst |
 | *xf (aoe)* | **Amplify** | Glowstone Dust, Blaze Powder | ×force/damage of the previous burst |
 | *xf (aoe)* | **Chain** | String, Echo Shard | previous burst hops to more entities |
@@ -31,16 +35,27 @@ Noita-style. Modifiers come in two kinds:
 | *xf (aoe)* | **Persist** | Blaze Rod, Dragon's Breath | previous burst lingers and re-pulses |
 | *xf (fly)* | **Multishot** | Rabbit's Foot, Slime Ball | launches extra projectiles |
 | *xf (fly)* | **Spread** | Feather, Sugar | scatters the aim |
-| *xf (fly)* | **Pierce** | Arrow, Quartz | punches through soft blocks & delivers its burst to every entity in its path |
+| *xf (fly)* | **Pierce** | Arrow, Quartz | punches through soft blocks & applies its effects at every occupied cell/entity in its path |
+| *xf (fly)* | **Trail** | Trident, Prismarine Shard | inverse of Pierce — applies environmental effects at every *empty-air* cell it flies through |
 | *xf (fly)* | **Lifetime** | Gunpowder, Redstone | adds a fixed range (same distance fast or slow) |
+| *xf (fly)* | **Teleport** | Ender Pearl, Eye of Ender | warps the caster to where the shot terminates (once per cast, safely offset) |
 
 Because these are small primitives, weapons **compose**: a nova is
 `Push · Expand · Expand`; a fireball is `Damage · Amplify`; a shotgun is
 `Damage · Multishot · Spread`; a ray gun is `Pierce · Lifetime`; a mining laser
-is a pickaxe with `Mining · Pierce · Lifetime`. Many ingredients are
-**bundles** — a ready-made recipe in one item (TNT = `Damage · Expand · Expand`,
-End Crystal = the works). See
-[`latent_registry.yml`](src/main/resources/latent_registry.yml) for the roster.
+is a pickaxe with `Mining · Pierce · Lifetime`. The new emitters compose the
+same way: a flamethrower is `Fire · Pierce · Lifetime`; a **block-replacement
+bolt** is `Mining · Pierce · Deposit:Dirt` (carve, then backfill — order
+matters); a river-layer is `Deposit:Water · Trail`; a cluster firebomb is
+`Damage · Spawn · Multishot · Spread · Fire`; a blink lance is
+`Pierce · Lifetime · Teleport`. Many ingredients are **bundles** — a ready-made
+recipe in one item (TNT = `Damage · Expand · Expand`, End Crystal = the works).
+See [`latent_registry.yml`](src/main/resources/latent_registry.yml) for the roster.
+
+**Environmental effects apply in stack order.** The block-affecting emitters
+(Mining/Fire/Ice/Deposit) run left-to-right at each application point, so
+`Mining · Deposit:Dirt` carves *then* backfills (a solid bolt), while
+`Deposit:Dirt · Mining` fills then immediately re-digs (and you feel foolish).
 
 **Weapon type sets the flight, not modifiers:** a melee swing delivers at arm's
 length in a straight line, near-instantly and with no visible bolt (it reads as
@@ -110,17 +125,20 @@ make smoke
 It then runs an **in-process functional self-test** — `/fusion test`
 (console/op only) drives the *real* modifier compiler, projectile, and burst
 code against the live world and asserts the mechanics MockBukkit can't reach. It
-has two kinds of check (18 in total):
+has two kinds of check (30 in total):
 
 - **compile checks** pin the emitter/transform RPN semantics on the compiled
   spec — EXPAND/AMPLIFY scaling, MULTISHOT/SPREAD/LIFETIME stacking, INVERT
-  toggling, CHAIN/PERSIST accumulation, the flight flags, and the
-  *nearest-previous binding* (a transform touches only the last emitter) that's
-  nearly impossible to eyeball in-world;
+  toggling, CHAIN/PERSIST accumulation, the flight flags, the FIRE/ICE/DEPOSIT
+  emitters and TRAIL/TELEPORT/SPAWN wiring (`Deposit:Dirt` parameter parsing,
+  Spawn pushing a fresh child), and the *nearest-previous binding* (a transform
+  touches only the last emitter) that's nearly impossible to eyeball in-world;
 - **runtime checks** fire real bursts/projectiles at dummies and blocks: PUSH
   knockback, DAMAGE health loss, an inverted PUSH pulling inward, a CHAIN hop to
   a second mob, a MINING ray carving a run of blocks and *stopping at obsidian*,
-  and a PIERCE bolt passing through two mobs.
+  a PIERCE bolt passing through two mobs, FIRE melting snow and igniting a mob,
+  ICE freezing water to ice, DEPOSIT backfilling air at its terminus, and a
+  DEPOSIT · Trail bolt filling the air it flies through.
 
 Results are logged as `[fusion-selftest] RESULT: PASS|FAIL`; the smoke script
 fails the build unless it sees PASS. You can run it by hand on any server too

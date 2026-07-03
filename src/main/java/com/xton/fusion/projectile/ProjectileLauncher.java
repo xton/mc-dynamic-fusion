@@ -3,13 +3,14 @@ package com.xton.fusion.projectile;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.util.Vector;
 
-import com.xton.fusion.modifier.AoeKind;
 import com.xton.fusion.modifier.AoeSpec;
 import com.xton.fusion.modifier.ModifierStack;
 import com.xton.fusion.modifier.ProjectileSpec;
@@ -30,14 +31,19 @@ public final class ProjectileLauncher {
     private final Plugin plugin;
     private final AoeBurst burst;
     private final WeaponBuilder.Defaults defaults;
+    private final EnvironmentalAoe.Settings envSettings;
+    private final int maxSpawnGeneration;
     private final int meleeLifetimeTicks;
     private final double meleeSpeed;
 
     public ProjectileLauncher(Plugin plugin, AoeBurst burst, WeaponBuilder.Defaults defaults,
+                              EnvironmentalAoe.Settings envSettings, int maxSpawnGeneration,
                               int meleeLifetimeTicks, double meleeSpeed) {
         this.plugin = plugin;
         this.burst = burst;
         this.defaults = defaults;
+        this.envSettings = envSettings;
+        this.maxSpawnGeneration = maxSpawnGeneration;
         this.meleeSpeed = meleeSpeed;
         this.meleeLifetimeTicks = meleeLifetimeTicks;
     }
@@ -53,18 +59,17 @@ public final class ProjectileLauncher {
     }
 
     /**
-     * Build the payload for a compiled spec: one {@link BurstEffect} per AOE
-     * emitter. Empty when the stack had no emitters — so a mining ray or kinetic
-     * lance delivers nothing at its terminus. Pure.
-     *
-     * <p>Seam: a future spawn effect (cluster bomb) would be added here from a
-     * spawn emitter in the spec, gated by the projectile's generation.
+     * Build the payload for a compiled spec: one {@link BurstEffect} per
+     * <em>entity-burst</em> AOE emitter (PUSH/DAMAGE). The environmental kinds
+     * (MINING/FIRE/ICE/DEPOSIT) are applied by the projectile along its flight, so
+     * they're skipped here. Empty when the stack had no entity bursts — so a
+     * mining ray or a fire trail delivers no terminus burst. Pure.
      */
     public Payload buildPayload(ProjectileSpec spec) {
         List<PayloadEffect> effects = new ArrayList<>();
         for (AoeSpec aoe : spec.payload()) {
-            if (aoe.kind() == AoeKind.MINING) {
-                continue; // carved along the flight, not delivered as a terminus burst
+            if (aoe.kind().isEnvironmental()) {
+                continue; // applied along the flight, not delivered as a terminus burst
             }
             effects.add(new BurstEffect(burst, aoe));
         }
@@ -111,12 +116,54 @@ public final class ProjectileLauncher {
         double speed = Math.max(0.05, spec.speed() * speedScale);
         int count = Math.max(1, spec.count());
 
+        // One Shot per cast: caster, generation 0, and a single shared TELEPORT
+        // latch so the whole volley (and any SPAWN children) teleports at most once.
+        Shot shot = new Shot(caster, 0, maxSpawnGeneration, envSettings, this, new AtomicBoolean(false));
         for (int i = 0; i < count; i++) {
             Vector dir = scatter(aim, spec.spreadDegrees());
             Vector velocity = dir.multiply(speed);
             new FusionProjectile(plugin, payload, spec, caster.getWorld(),
-                    origin.clone(), velocity, caster, 0).start();
+                    origin.clone(), velocity, shot).start();
         }
+    }
+
+    /**
+     * Launch a SPAWN emitter's fresh children at a parent's terminus. Each child
+     * carries its own compiled flight/payload; it inherits nothing from the
+     * parent but the cast context (one generation deeper, so recursion is capped).
+     * A child's own MULTISHOT/SPREAD scatter it around the parent's heading.
+     */
+    public void spawnChildren(List<ProjectileSpec> children, Location at, Vector heading, Shot parentShot) {
+        Shot childShot = parentShot.deeper();
+        World world = at.getWorld();
+        if (world == null) {
+            return;
+        }
+        Vector aim = heading.lengthSquared() > 1.0e-6 ? heading.clone().normalize() : new Vector(0, 1, 0);
+        for (ProjectileSpec child : children) {
+            Payload payload = buildPayload(child);
+            double speed = Math.max(0.05, child.speed());
+            int count = Math.max(1, child.count());
+            for (int i = 0; i < count; i++) {
+                Vector dir = scatter(aim, child.spreadDegrees());
+                Vector velocity = dir.multiply(speed);
+                new FusionProjectile(plugin, payload, child, world,
+                        at.clone(), velocity, childShot).start();
+            }
+        }
+    }
+
+    /**
+     * Fire a single projectile directly with a fresh cast context — the entry the
+     * self-test uses to launch a compiled spec against a live world without a
+     * player. Returns the projectile so the test can observe it.
+     */
+    public FusionProjectile fireDirect(World world, Location origin, Vector velocity, ProjectileSpec spec) {
+        Payload payload = buildPayload(spec);
+        Shot shot = new Shot(null, 0, maxSpawnGeneration, envSettings, this, new AtomicBoolean(false));
+        FusionProjectile bolt = new FusionProjectile(plugin, payload, spec, world, origin, velocity, shot);
+        bolt.start();
+        return bolt;
     }
 
     private static double clamp01(double force) {

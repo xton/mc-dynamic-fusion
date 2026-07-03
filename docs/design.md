@@ -150,24 +150,49 @@ and stops, no pop).
 
 Modifiers come in two categories (`Modifier.Category`):
 
-- **Emitters** add a concrete element. `PUSH` and `DAMAGE` append an `AoeSpec`
-  burst to the current projectile's payload. (A spawn-projectile emitter is the
-  seam for cluster bombs — the payload is a `List<PayloadEffect>`, so a spawn
-  effect that re-launches child projectiles with a decremented generation drops
-  in with no special-casing.)
+- **Emitters** add a concrete element to the current projectile's payload.
+  `PUSH`/`DAMAGE` append an entity-burst `AoeSpec`; the **environmental** emitters
+  `MINING`/`FIRE`/`ICE`/`DEPOSIT:<block>` append `AoeSpec`s that act on the world
+  (break / ignite / freeze / fill) rather than shoving entities. `SPAWN` is the
+  cluster-bomb emitter: it pushes a **fresh child projectile** onto the compile
+  stack, so every modifier after `SPAWN` builds the child, which is launched at
+  the parent's terminus with a decremented generation (config-capped recursion).
 - **Transforms** modify the **nearest preceding emitter** (RPN, apply-to-previous).
   *AOE transforms* (`EXPAND` ×radius, `AMPLIFY` ×power/damage, `CHAIN`, `INVERT`,
   `PERSIST`) mutate the top `AoeSpec`; *flight transforms* (`MULTISHOT`, `SPREAD`,
-  `PIERCE`, `LIFETIME`, `MINING`) mutate the projectile. A transform with no
-  matching preceding emitter is **inert** — so a burst is opt-in (Expand alone
-  does nothing), and it binds to the *nearest* element only (`PUSH PUSH EXPAND`
-  widens just the second push).
+  `PIERCE`, `TRAIL`, `LIFETIME`, `MINING`, `TELEPORT`) mutate the projectile. A
+  transform with no matching preceding emitter is **inert** — so a burst is opt-in
+  (Expand alone does nothing), and it binds to the *nearest* element only
+  (`PUSH PUSH EXPAND` widens just the second push).
 
 Because the primitives are small, weapons compose:
 `PUSH·EXPAND·EXPAND` = a nova · `DAMAGE·AMPLIFY` = a fireball ·
 `DAMAGE·MULTISHOT·SPREAD` = a shotgun · `PIERCE·LIFETIME` = a ray gun ·
-`MINING` = a mining laser. Ingredients are a hybrid roster: atomic *reagents*
-(one attribute) plus curated *bundles* (a ready-made spell in one item).
+`MINING` = a mining laser · `FIRE·PIERCE·LIFETIME` = a flamethrower ·
+`MINING·PIERCE·DEPOSIT:DIRT` = a block-replacement bolt (carve then backfill) ·
+`DAMAGE·SPAWN·MULTISHOT·SPREAD·FIRE` = a cluster firebomb ·
+`PIERCE·LIFETIME·TELEPORT` = a blink lance. Ingredients are a hybrid roster:
+atomic *reagents* (one attribute) plus curated *bundles* (a ready-made spell in
+one item).
+
+**Three orthogonal AOE application triggers** decouple *where* an effect fires
+from *what* it is, so `MINING` stops being special-cased:
+
+- **terminus** — always, where the shot stops or expires;
+- **`PIERCE`** — at every *occupied* cell (a block it bores or an entity it
+  contacts) it passes through;
+- **`TRAIL`** — at every *empty-air* cell it passes through (the inverse of
+  pierce).
+
+Entity bursts (`PUSH`/`DAMAGE`) fire at the terminus and each pierced entity;
+environmental kinds sweep their radius at each trigger cell (and `FIRE`/`ICE`
+also burn/freeze the entities they touch), deduped per block cell so a slow shot
+doesn't re-apply in place. Environmental kinds run in **stack order** at each
+point, so `MINING·DEPOSIT:DIRT` carves then backfills while the reverse fills
+then re-digs. `TELEPORT` warps the caster to the first bolt of a cast to
+terminate (a shared latch makes it fire at most once, even under `MULTISHOT`).
+`DEPOSIT:<block>` is a **parameterized modifier ID** — one registry template
+mints a material-bound instance from the text after the colon.
 
 ### Compile pipeline
 

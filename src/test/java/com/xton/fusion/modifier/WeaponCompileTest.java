@@ -13,7 +13,10 @@ import org.junit.jupiter.api.Test;
 import com.xton.fusion.modifier.impl.AmplifyModifier;
 import com.xton.fusion.modifier.impl.ChainModifier;
 import com.xton.fusion.modifier.impl.DamageModifier;
+import com.xton.fusion.modifier.impl.DepositModifier;
 import com.xton.fusion.modifier.impl.ExpandModifier;
+import com.xton.fusion.modifier.impl.FireModifier;
+import com.xton.fusion.modifier.impl.IceModifier;
 import com.xton.fusion.modifier.impl.InvertModifier;
 import com.xton.fusion.modifier.impl.LifetimeModifier;
 import com.xton.fusion.modifier.impl.MiningModifier;
@@ -21,7 +24,10 @@ import com.xton.fusion.modifier.impl.MultishotModifier;
 import com.xton.fusion.modifier.impl.PersistModifier;
 import com.xton.fusion.modifier.impl.PierceModifier;
 import com.xton.fusion.modifier.impl.PushModifier;
+import com.xton.fusion.modifier.impl.SpawnModifier;
 import com.xton.fusion.modifier.impl.SpreadModifier;
+import com.xton.fusion.modifier.impl.TeleportModifier;
+import com.xton.fusion.modifier.impl.TrailModifier;
 
 /**
  * The stack compiles into a {@link ProjectileSpec} purely (no server), so the
@@ -32,7 +38,7 @@ import com.xton.fusion.modifier.impl.SpreadModifier;
 class WeaponCompileTest {
 
     private static final WeaponBuilder.Defaults DEFAULTS = new WeaponBuilder.Defaults(
-            1.6, 30, 3.0, 2.0, 1.0, 2.5, 4.0);
+            1.6, 30, 3.0, 2.0, 1.0, 2.5, 4.0, 1.5, 1.5, 1.5);
 
     private ModifierRegistry registry() {
         return new ModifierRegistry()
@@ -47,7 +53,13 @@ class WeaponCompileTest {
                 .register(new SpreadModifier(12.0))
                 .register(new PierceModifier())
                 .register(new LifetimeModifier(12.0))
-                .register(new MiningModifier(1.0));
+                .register(new MiningModifier(1.0))
+                .register(new FireModifier())
+                .register(new IceModifier())
+                .register(new DepositModifier())
+                .register(new SpawnModifier())
+                .register(new TrailModifier())
+                .register(new TeleportModifier());
     }
 
     private ProjectileSpec compile(String... ids) {
@@ -170,5 +182,44 @@ class WeaponCompileTest {
         ProjectileSpec p = compile("PUSH", "MINING");
         assertTrue(p.isMining());
         assertEquals(2, p.payload().size(), "PUSH burst + MINING element");
+    }
+
+    @Test
+    void fireAndIceAreEnvironmentalEmitters() {
+        ProjectileSpec fire = compile("FIRE");
+        assertEquals(1, fire.payload().size());
+        assertEquals(AoeKind.FIRE, fire.topAoe().kind());
+        assertTrue(fire.hasEnvironmental());
+        assertEquals(1.5, fire.topAoe().radius(), 1.0e-9, "base fire radius");
+
+        ProjectileSpec ice = compile("ICE", "EXPAND");
+        assertEquals(AoeKind.ICE, ice.topAoe().kind());
+        assertEquals(1.5 * 1.6, ice.topAoe().radius(), 1.0e-9, "EXPAND widens the freeze");
+    }
+
+    @Test
+    void trailAndTeleportAreFlightFlags() {
+        assertFalse(compile("FIRE").isTrail());
+        assertTrue(compile("FIRE", "TRAIL").isTrail());
+        assertFalse(compile("DAMAGE").isTeleport());
+        assertTrue(compile("DAMAGE", "PIERCE", "TELEPORT").isTeleport());
+    }
+
+    @Test
+    void spawnPushesAFreshChildThatSubsequentModifiersBuild() {
+        // DAMAGE builds the root; after SPAWN, FIRE builds the child. So the root
+        // carries the DAMAGE burst and one child; the child carries FIRE and nothing
+        // is inherited from the parent.
+        ProjectileSpec root = compile("DAMAGE", "SPAWN", "FIRE", "PIERCE");
+        assertEquals(1, root.payload().size());
+        assertEquals(AoeKind.DAMAGE, root.topAoe().kind());
+        assertFalse(root.isPierce(), "PIERCE after SPAWN targets the child, not the root");
+        assertEquals(1, root.spawns().size());
+
+        ProjectileSpec child = root.spawns().get(0);
+        assertEquals(1, child.payload().size());
+        assertEquals(AoeKind.FIRE, child.topAoe().kind());
+        assertTrue(child.isPierce());
+        assertTrue(child.spawns().isEmpty());
     }
 }

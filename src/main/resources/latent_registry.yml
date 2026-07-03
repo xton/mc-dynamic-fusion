@@ -62,6 +62,42 @@ latent_modifiers:
   AMETHYST_SHARD:         # MINING — short piercing mining ray
     - MINING
 
+  # ---- Environmental emitters (reagents) ----
+  FLINT_AND_STEEL:        # FIRE — spread fire, melt snow/ice, ignite mobs
+    - FIRE
+  LAVA_BUCKET:            # DEPOSIT:LAVA — pour a lava splash (also a fire source)
+    - DEPOSIT:LAVA
+  BLUE_ICE:               # ICE — freeze water, harden lava, chill mobs
+    - ICE
+  PACKED_ICE:
+    - ICE
+  SNOWBALL:
+    - ICE
+  DIRT:                   # DEPOSIT:DIRT — raise a dirt mound
+    - DEPOSIT:DIRT
+  SAND:                   # DEPOSIT:SAND — drop suffocating sand
+    - DEPOSIT:SAND
+  GRAVEL:
+    - DEPOSIT:GRAVEL
+  WATER_BUCKET:           # DEPOSIT:WATER — splash of water
+    - DEPOSIT:WATER
+  COBWEB:                 # DEPOSIT:COBWEB — snare the area
+    - DEPOSIT:COBWEB
+
+  # ---- Structural (reagents) ----
+  ENDER_PEARL:            # TELEPORT — warp to where the shot lands
+    - TELEPORT
+  ENDER_EYE:
+    - TELEPORT
+  FIREWORK_ROCKET:        # SPAWN — burst into fresh child projectiles
+    - SPAWN
+  EGG:
+    - SPAWN
+  TRIDENT:                # TRAIL — leave an environmental wake
+    - TRAIL
+  PRISMARINE_SHARD:
+    - TRAIL
+
   # ---- Bundles (curated multi-attribute "spells") ----
   TNT:                    # a big boom
     - DAMAGE
@@ -111,3 +147,25 @@ latent_modifiers:
     - EXPAND
     - AMPLIFY
     - PERSIST
+  MAGMA_BLOCK:            # a boring flamethrower — tunnels and torches
+    - FIRE
+    - PIERCE
+    - LIFETIME
+  BLAZE_SPAWN_EGG:        # a cluster firebomb: bursts into fiery children
+    - DAMAGE
+    - SPAWN
+    - MULTISHOT
+    - SPREAD
+    - FIRE
+  MUD:                    # a block-replacement bolt (carve, then backfill)
+    - MINING
+    - PIERCE
+    - DEPOSIT:DIRT
+  POWDER_SNOW_BUCKET:     # a freezing lance that leaves an icy wake
+    - ICE
+    - PIERCE
+    - TRAIL
+  CHORUS_FLOWER:          # a piercing blink to the end of the tunnel
+    - PIERCE
+    - LIFETIME
+    - TELEPORT

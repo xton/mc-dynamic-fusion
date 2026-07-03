@@ -1,13 +1,15 @@
 package com.xton.fusion.modifier;
 
+import org.bukkit.Material;
+
 /**
- * One area-of-effect element in a projectile's payload — a concrete emitter
- * (PUSH or DAMAGE burst) that transforms then scale or decorate.
+ * One area-of-effect element in a projectile's payload — a concrete emitter that
+ * the transforms after it scale or decorate.
  *
  * <p>It is a mutable compile-time value: an emitter modifier creates one with
  * base radius/power, and the transforms that follow it in the stack (EXPAND,
  * AMPLIFY, CHAIN, INVERT, PERSIST) mutate <em>this</em> element — the nearest
- * preceding one. Read at fire time by {@code AoeBurst}.
+ * preceding one. Read at fire time by the burst / environmental applicators.
  */
 public final class AoeSpec {
 
@@ -17,15 +19,26 @@ public final class AoeSpec {
     private int chainCount;      // extra entities to hop to after the main burst
     private boolean inverted;    // PUSH only: pull inward instead of out
     private int persistTicks;    // re-pulse the burst for this long
+    private final Material material; // DEPOSIT: the block to place; null otherwise
 
     public AoeSpec(AoeKind kind, double radius, double power) {
+        this(kind, radius, power, null);
+    }
+
+    public AoeSpec(AoeKind kind, double radius, double power, Material material) {
         this.kind = kind;
         this.radius = radius;
         this.power = power;
+        this.material = material;
     }
 
     public AoeKind kind() {
         return kind;
+    }
+
+    /** DEPOSIT: the block to place in the radius; null for other kinds. */
+    public Material material() {
+        return material;
     }
 
     public double radius() {

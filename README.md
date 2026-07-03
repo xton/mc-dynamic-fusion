@@ -32,7 +32,7 @@ Noita-style. Modifiers come in two kinds:
 | *xf (fly)* | **Multishot** | Rabbit's Foot, Slime Ball | launches extra projectiles |
 | *xf (fly)* | **Spread** | Feather, Sugar | scatters the aim |
 | *xf (fly)* | **Pierce** | Arrow, Quartz | punches through soft blocks & delivers its burst to every entity in its path |
-| *xf (fly)* | **Lifetime** | Gunpowder, Redstone | flies farther before it expires |
+| *xf (fly)* | **Lifetime** | Gunpowder, Redstone | adds a fixed range (same distance fast or slow) |
 
 Because these are small primitives, weapons **compose**: a nova is
 `Push · Expand · Expand`; a fireball is `Damage · Amplify`; a shotgun is
@@ -43,8 +43,10 @@ End Crystal = the works). See
 [`latent_registry.yml`](src/main/resources/latent_registry.yml) for the roster.
 
 **Weapon type sets the flight, not modifiers:** a melee swing delivers at arm's
-length in a straight line; a bow throws the same weapon downrange in a gravity
-arc (draw strength scales the range). Bounce and a gravity-toggle modifier are
+length in a straight line, near-instantly and with no visible bolt (it reads as
+a swing); a bow throws the same weapon downrange in a gravity arc (draw strength
+scales the range). A mining ray clears vegetation and the ground it hides, and
+LIFETIME adds a fixed *distance* so faster weapons don't get longer tunnels. Bounce and a gravity-toggle modifier are
 seamed for later builds (grenades, cluster bombs).
 
 **Fused bows** become wands: releasing fires the same projectiles downrange,

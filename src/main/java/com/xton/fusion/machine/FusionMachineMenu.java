@@ -21,6 +21,7 @@ import org.bukkit.event.inventory.PrepareAnvilEvent;
 import org.bukkit.inventory.AnvilInventory;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.MenuType;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.view.AnvilView;
 import org.bukkit.persistence.PersistentDataType;
@@ -111,9 +112,15 @@ public final class FusionMachineMenu {
     // ----- opening -----
 
     public void open(Player player, Location machine) {
-        if (player.openAnvil(null, true) != null) {
-            openAnvils.put(player.getUniqueId(), machine);
-        }
+        // Open a titled anvil view ("✦ Fusion" instead of the vanilla "Repair &
+        // Name"). checkReachable(false) is the equivalent of the old
+        // openAnvil(null, true) — no real anvil block required.
+        AnvilView view = MenuType.ANVIL.builder()
+                .title(plain("✦ Fusion", NamedTextColor.GOLD))
+                .checkReachable(false)
+                .build(player);
+        player.openInventory(view);
+        openAnvils.put(player.getUniqueId(), machine);
     }
 
     // ----- event handling (routed by MachineListener) -----

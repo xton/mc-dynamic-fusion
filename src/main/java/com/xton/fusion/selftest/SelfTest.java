@@ -8,6 +8,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Zombie;
@@ -119,7 +121,12 @@ public final class SelfTest {
         final double pierceA0 = health(pierceA);
         final double pierceB0 = health(pierceB);
         // An isolated dummy for a lingering DAMAGE PERSIST field.
+        // The PERSIST dummy takes several un-mitigated DAMAGE pulses (i-frames are
+        // off so each one lands), so a vanilla 20-HP zombie can die before the
+        // final assertion — leaving "no mob". Give it a big health pool so it
+        // survives the whole field and we can measure the cumulative damage.
         Zombie persistMob = spawnDummy(world, base.clone().add(3, 0, -10), spawned);
+        toughen(persistMob, 200.0);
         final double persist0 = health(persistMob);
 
         int bx = base.getBlockX();
@@ -563,6 +570,18 @@ public final class SelfTest {
 
     private double health(Zombie mob) {
         return mob == null ? 0 : mob.getHealth();
+    }
+
+    /** Raise a dummy's max health and fill it, so repeated pulses can't kill it mid-test. */
+    private void toughen(Zombie mob, double maxHealth) {
+        if (mob == null) {
+            return;
+        }
+        AttributeInstance attr = mob.getAttribute(Attribute.MAX_HEALTH);
+        if (attr != null) {
+            attr.setBaseValue(maxHealth);
+            mob.setHealth(maxHealth);
+        }
     }
 
     /** A grass plant (non-solid) on the flight line at {@code col}, with ground beneath. */

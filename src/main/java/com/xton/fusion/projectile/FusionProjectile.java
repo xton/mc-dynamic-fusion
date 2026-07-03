@@ -181,7 +181,11 @@ public final class FusionProjectile extends BukkitRunnable {
             if (!spec.isPierce()) {
                 return true; // stop at the first entity; the payload acts here
             }
-            contactShove(living, travel); // pierce: nudge and continue
+            // Pierce: deliver the full payload at each entity we pass through
+            // (so EXPAND/AMPLIFY splash on every hit), then nudge it and carry
+            // on. The terminus burst still fires where the shot finally stops.
+            payload.detonate(world, here, caster, generation);
+            contactShove(living, travel);
         }
         return false;
     }

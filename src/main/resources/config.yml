@@ -85,15 +85,13 @@ spread:
 lifetime:
   ticks-per-apply: 30
 
-# MINING — a short, fast piercing ray that breaks the soft blocks it bores
-# through. Built from pierce + a very short expiry.
+# MINING — an emitter that carves a tunnel along the flight. It does NOT pierce
+# on its own: alone it breaks the block it hits and stops; add PIERCE to bore
+# through many and LIFETIME to reach farther. Break hardness uses
+# projectile.pierce-max-hardness (stone 1.5, obsidian 50, bedrock -1).
 mining:
-  # How long the ray lives (short = short tunnel). Stack LIFETIME to reach farther.
-  lifetime-ticks: 6
-  # Launch speed in blocks/tick (fast, so it reads as a ray).
-  speed: 2.5
-  # Blocks harder than this resist (stone is 1.5, obsidian 50, bedrock -1).
-  max-hardness: 3.0
+  # Base tunnel radius. 1.0 = a one-block-wide bore; EXPAND widens it.
+  base-radius: 1.0
 
 cooldown:
   # Swing cooldown in milliseconds (per player).

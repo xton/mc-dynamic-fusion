@@ -173,15 +173,15 @@ public final class SelfTest {
     private List<Result> compileChecks() {
         List<Result> r = new ArrayList<>();
 
-        // Emitters seed a payload element; a flight-only / transform-only stack
-        // delivers nothing (burst is opt-in — no terminus pop).
-        boolean miningEmpty = compile("MINING").payload().isEmpty();
-        boolean pushNonEmpty = !compile("PUSH").payload().isEmpty();
-        boolean transformOnlyEmpty = compile("EXPAND").payload().isEmpty()
-                && compile("AMPLIFY").payload().isEmpty()
-                && compile("INVERT").payload().isEmpty();
-        r.add(new Result("compile:payload-opt-in", miningEmpty && pushNonEmpty && transformOnlyEmpty,
-                "mining.empty=" + miningEmpty + " push.nonEmpty=" + pushNonEmpty
+        // Burst is opt-in: PUSH/DAMAGE deliver a terminus burst; a mining ray
+        // (carved along the flight) and transform-only stacks deliver none.
+        boolean miningNoBurst = launcher.buildPayload(compile("MINING")).isEmpty();
+        boolean pushBursts = !launcher.buildPayload(compile("PUSH")).isEmpty();
+        boolean transformOnlyEmpty = launcher.buildPayload(compile("EXPAND")).isEmpty()
+                && launcher.buildPayload(compile("AMPLIFY")).isEmpty()
+                && launcher.buildPayload(compile("INVERT")).isEmpty();
+        r.add(new Result("compile:payload-opt-in", miningNoBurst && pushBursts && transformOnlyEmpty,
+                "mining.noBurst=" + miningNoBurst + " push.bursts=" + pushBursts
                         + " transformOnly.empty=" + transformOnlyEmpty));
 
         // EXPAND multiplies the previous burst's radius, and stacks multiplicatively.
@@ -260,19 +260,20 @@ public final class SelfTest {
         r.add(new Result("compile:chain-and-persist-accumulate", chain > 0 && persist > 0,
                 "chainCount=" + chain + " persistTicks=" + persist));
 
-        // Flight flags: PIERCE sets pierce (not mining); MINING sets both, with a
-        // short life and faster speed than a plain bolt (a fast, short ray).
+        // MINING is an emitter that does NOT pierce on its own; add PIERCE to
+        // bore, and EXPAND widens the tunnel radius. PIERCE is a flight flag.
         ProjectileSpec pierce = compile("DAMAGE", "PIERCE");
-        ProjectileSpec bare = compile("DAMAGE");
         ProjectileSpec mining = compile("MINING");
+        ProjectileSpec miningPierce = compile("MINING", "PIERCE");
+        ProjectileSpec miningExpand = compile("MINING", "EXPAND");
         boolean flagsOk = pierce.isPierce() && !pierce.isMining()
-                && mining.isMining() && mining.isPierce()
-                && mining.lifetimeTicks() < bare.lifetimeTicks()
-                && mining.speed() > bare.speed();
-        r.add(new Result("compile:flight-flags", flagsOk,
-                "pierce.pierce=" + pierce.isPierce() + " mining.mining=" + mining.isMining()
-                        + " mining.life=" + mining.lifetimeTicks() + " bare.life=" + bare.lifetimeTicks()
-                        + " mining.speed=" + mining.speed() + " bare.speed=" + bare.speed()));
+                && mining.isMining() && !mining.isPierce()
+                && miningPierce.isPierce()
+                && miningExpand.miningAoe().radius() > mining.miningAoe().radius();
+        r.add(new Result("compile:mining-and-pierce", flagsOk,
+                "mining.pierce=" + mining.isPierce() + " miningPierce.pierce=" + miningPierce.isPierce()
+                        + " mining.r=" + mining.miningAoe().radius()
+                        + " miningExpand.r=" + miningExpand.miningAoe().radius()));
 
         return r;
     }
@@ -397,9 +398,9 @@ public final class SelfTest {
         }
     }
 
-    /** Launch a MINING ray down the corridor at row {@code bz} from just before it. */
+    /** Launch a boring ray (MINING + PIERCE) down the corridor at row {@code bz}. */
     private void fireMiningRay(World world, int bx, int by, int bz) {
-        ProjectileSpec spec = compile("MINING");
+        ProjectileSpec spec = compile("MINING", "PIERCE");
         Payload payload = launcher.buildPayload(spec);
         Location origin = new Location(world, bx + 0.5, by + 0.5, bz + 0.5);
         Vector velocity = new Vector(1, 0, 0).multiply(spec.speed());

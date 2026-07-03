@@ -39,7 +39,7 @@ class ProjectileModelTest {
                 .register(new ExpandModifier(1.6))
                 .register(new PierceModifier())
                 .register(new LifetimeModifier(30))
-                .register(new MiningModifier(6, 2.5, 3.0));
+                .register(new MiningModifier(1.0));
     }
 
     private Payload payload(String... ids) {

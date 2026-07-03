@@ -57,6 +57,15 @@ public final class WeaponBuilder {
         return root.addAoe(new AoeSpec(AoeKind.DAMAGE, defaults.damageRadius(), defaults.damagePower()));
     }
 
+    /**
+     * Emitter: add a MINING element — a block-breaking tunnel of the given base
+     * radius. EXPAND scales its radius (a wider bore); it is carved along the
+     * flight, not delivered as a terminus burst.
+     */
+    public AoeSpec emitMining(double radius) {
+        return root.addAoe(new AoeSpec(AoeKind.MINING, radius, 0));
+    }
+
     /** Walk the stack in order, letting each modifier act, and return the spec. */
     public ProjectileSpec compile(ModifierStack stack) {
         for (Modifier modifier : stack.modifiers()) {

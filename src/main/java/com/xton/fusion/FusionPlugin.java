@@ -82,9 +82,7 @@ public final class FusionPlugin extends JavaPlugin {
                 .register(new LifetimeModifier(
                         getConfig().getInt("lifetime.ticks-per-apply", 30)))
                 .register(new MiningModifier(
-                        getConfig().getInt("mining.lifetime-ticks", 6),
-                        getConfig().getDouble("mining.speed", 2.5),
-                        getConfig().getDouble("mining.max-hardness", 3.0)));
+                        getConfig().getDouble("mining.base-radius", 1.0)));
 
         LatentRegistry latent = loadLatentRegistry(registry);
 

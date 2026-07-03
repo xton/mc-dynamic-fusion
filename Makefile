@@ -51,7 +51,18 @@ _stage-plugin: jar
 # fallback starts it the first time. Ctrl-C stops following — the server keeps
 # running, so you can detach and come back.
 uat: _stage-plugin
-	$(COMPOSE) restart mc 2>/dev/null || $(COMPOSE) up -d
+	@# If the server is already running, restart it to load the freshly-staged
+	@# jar; otherwise create/start it (a fresh boot loads the jar anyway). We
+	@# can't use `restart || up` — `docker compose restart` on a not-yet-created
+	@# service exits 0 without creating anything, so the fallback never fires and
+	@# nothing starts on the first run.
+	@if [ -n "$$($(COMPOSE) ps -q mc 2>/dev/null)" ]; then \
+	  echo "==> UAT server running — restarting to load the new jar"; \
+	  $(COMPOSE) restart mc; \
+	else \
+	  echo "==> starting UAT server"; \
+	  $(COMPOSE) up -d; \
+	fi
 	$(COMPOSE) logs -f mc
 
 # Heavier option: fully recreate the container (picks up compose/env changes

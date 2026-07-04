@@ -30,6 +30,7 @@ import com.xton.fusion.modifier.impl.AmplifyModifier;
 import com.xton.fusion.modifier.impl.BounceModifier;
 import com.xton.fusion.modifier.impl.ChainModifier;
 import com.xton.fusion.modifier.impl.DamageModifier;
+import com.xton.fusion.modifier.impl.DelayModifier;
 import com.xton.fusion.modifier.impl.DepositModifier;
 import com.xton.fusion.modifier.impl.DurationModifier;
 import com.xton.fusion.modifier.impl.ExpandModifier;
@@ -106,8 +107,9 @@ public final class FusionPlugin extends JavaPlugin {
                 .register(new FireModifier())
                 .register(new IceModifier())
                 .register(new DepositModifier())
-                // Structural: spawn children, trail, teleport.
+                // Structural: spawn children, delayed charge, trail, teleport.
                 .register(new SpawnModifier())
+                .register(new DelayModifier())
                 .register(new TrailModifier())
                 .register(new TeleportModifier())
                 // Flight tuning: gravity/lob, trail visibility, absolute speed & lifetime.

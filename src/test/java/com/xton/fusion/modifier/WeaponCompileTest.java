@@ -14,6 +14,7 @@ import com.xton.fusion.modifier.impl.AmplifyModifier;
 import com.xton.fusion.modifier.impl.BounceModifier;
 import com.xton.fusion.modifier.impl.ChainModifier;
 import com.xton.fusion.modifier.impl.DamageModifier;
+import com.xton.fusion.modifier.impl.DelayModifier;
 import com.xton.fusion.modifier.impl.DepositModifier;
 import com.xton.fusion.modifier.impl.DurationModifier;
 import com.xton.fusion.modifier.impl.ExpandModifier;
@@ -69,6 +70,7 @@ class WeaponCompileTest {
                 .register(new IceModifier())
                 .register(new DepositModifier())
                 .register(new SpawnModifier())
+                .register(new DelayModifier())
                 .register(new TrailModifier())
                 .register(new TeleportModifier())
                 .register(new GravityModifier())
@@ -233,6 +235,21 @@ class WeaponCompileTest {
         assertEquals(AoeKind.PUSH, compile("PULL").topAoe().kind());
         assertTrue(compile("PULL").topAoe().inverted(), "PULL drags inward");
         assertFalse(compile("PUSH").topAoe().inverted());
+    }
+
+    @Test
+    void delaySpawnsADelayedInPlaceChild() {
+        // PULL DELAY:2 DAMAGE — root gathers (PULL), the delayed child blasts (DAMAGE).
+        ProjectileSpec root = compile("PULL", "DELAY:2", "DAMAGE");
+        assertEquals(1, root.payload().size());
+        assertEquals(AoeKind.PUSH, root.topAoe().kind()); // PULL is a pre-inverted push
+        assertEquals(1, root.spawns().size());
+
+        ProjectileSpec child = root.spawns().get(0);
+        assertEquals(40, child.spawnDelayTicks(), "2s × 20 ticks");
+        assertEquals(0.0, child.speed(), 1.0e-9, "detonates in place");
+        assertEquals(1, child.lifetimeTicks(), "~zero lifetime");
+        assertEquals(AoeKind.DAMAGE, child.topAoe().kind());
     }
 
     @Test

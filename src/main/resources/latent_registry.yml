@@ -105,6 +105,8 @@ latent_modifiers:
     - DEPOSIT:COBWEB
 
   # ---- Structural (reagents) ----
+  CLOCK:                  # DELAY:2 — a 2-second timed charge (parameterized)
+    - DELAY:2
   ENDER_PEARL:            # TELEPORT — warp to where the shot lands
     - TELEPORT
   ENDER_EYE:
@@ -164,6 +166,12 @@ latent_modifiers:
     - VISIBLE
     - SPEED:0.8
     - DURATION:4
+  SCULK_CATALYST:         # gravity-well grenade — gather, wait, then blast
+    - PULL
+    - EXPAND
+    - DELAY:2
+    - DAMAGE
+    - AMPLIFY
   CHORUS_FRUIT:           # a chaotic multishot spray
     - MULTISHOT
     - SPREAD

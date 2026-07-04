@@ -146,17 +146,34 @@ public final class ProjectileLauncher {
             return;
         }
         Vector aim = heading.lengthSquared() > 1.0e-6 ? heading.clone().normalize() : new Vector(0, 1, 0);
-        Location origin = at.clone().add(aim.clone().multiply(SPAWN_OFFSET));
         for (ProjectileSpec child : children) {
-            Payload payload = buildPayload(child);
-            double speed = Math.max(0.05, child.speed());
-            int count = Math.max(1, child.count());
-            for (int i = 0; i < count; i++) {
-                Vector dir = scatter(aim, child.spreadDegrees());
-                Vector velocity = dir.multiply(speed);
-                new FusionProjectile(plugin, payload, child, world,
-                        origin.clone(), velocity, childShot).start();
+            // A DELAY child detonates in place, so spawn it exactly at the terminus;
+            // a flying SPAWN child is nudged off the surface so it clears the face.
+            boolean inPlace = child.spawnDelayTicks() > 0 || child.speed() < 0.1;
+            Location origin = inPlace ? at.clone() : at.clone().add(aim.clone().multiply(SPAWN_OFFSET));
+            if (child.spawnDelayTicks() > 0) {
+                plugin.getServer().getScheduler().runTaskLater(plugin,
+                        () -> launchChildVolley(child, world, origin, aim, childShot),
+                        child.spawnDelayTicks());
+            } else {
+                launchChildVolley(child, world, origin, aim, childShot);
             }
+        }
+    }
+
+    /** Launch one child spec's volley (its MULTISHOT count, scattered by its SPREAD). */
+    private void launchChildVolley(ProjectileSpec child, World world, Location origin, Vector aim, Shot childShot) {
+        if (!world.isChunkLoaded(origin.getBlockX() >> 4, origin.getBlockZ() >> 4)) {
+            return; // the area unloaded during a DELAY — drop the charge rather than force-load
+        }
+        Payload payload = buildPayload(child);
+        double speed = Math.max(0.05, child.speed());
+        int count = Math.max(1, child.count());
+        for (int i = 0; i < count; i++) {
+            Vector dir = scatter(aim, child.spreadDegrees());
+            Vector velocity = dir.multiply(speed);
+            new FusionProjectile(plugin, payload, child, world,
+                    origin.clone(), velocity, childShot).start();
         }
     }
 

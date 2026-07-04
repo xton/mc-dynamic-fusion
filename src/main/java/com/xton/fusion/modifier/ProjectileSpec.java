@@ -29,6 +29,8 @@ public final class ProjectileSpec {
     private boolean trail;             // TRAIL: apply AOEs at every empty-air cell too
     private boolean teleport;          // TELEPORT: move the caster to the terminus
 
+    private int spawnDelayTicks;       // DELAY: ticks to wait before launching this child
+
     // ----- payload -----
     private final List<AoeSpec> payload = new ArrayList<>();
     // ----- child projectiles spawned at the terminus (SPAWN / cluster) -----
@@ -187,5 +189,14 @@ public final class ProjectileSpec {
     /** Register a fresh child projectile to launch at this one's terminus. */
     public void addSpawn(ProjectileSpec child) {
         spawns.add(child);
+    }
+
+    /** DELAY: ticks to wait after the parent's terminus before launching this child (0 = at once). */
+    public int spawnDelayTicks() {
+        return spawnDelayTicks;
+    }
+
+    public void setSpawnDelayTicks(int ticks) {
+        this.spawnDelayTicks = ticks;
     }
 }

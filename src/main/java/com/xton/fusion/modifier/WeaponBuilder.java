@@ -112,6 +112,22 @@ public final class WeaponBuilder {
         stack.push(child);
     }
 
+    /**
+     * Emitter: like {@link #emitSpawn} but the child is launched {@code delayTicks}
+     * after the parent's terminus and detonates <em>in place</em> — it starts
+     * stationary with a 1-tick life. Later modifiers still build the child (so
+     * {@code PULL DELAY:2 DAMAGE} gathers, waits, then blasts). Give the child a
+     * SPEED to make it fly instead of sitting.
+     */
+    public void emitDelay(int delayTicks) {
+        ProjectileSpec child = newProjectile();
+        child.setSpawnDelayTicks(delayTicks);
+        child.setSpeed(0);        // detonate in place, not fly off
+        child.setLifetimeTicks(1); // ~zero lifetime: goes off the tick after it spawns
+        stack.peek().addSpawn(child);
+        stack.push(child);
+    }
+
     /** Walk the stack in order, letting each modifier act, and return the root. */
     public ProjectileSpec compile(ModifierStack stack) {
         for (Modifier modifier : stack.modifiers()) {

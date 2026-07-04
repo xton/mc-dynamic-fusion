@@ -135,6 +135,10 @@ public final class SelfTest {
             healCow.setHealth(4.0);
         }
         final double healCow0 = healCow != null ? healCow.getHealth() : 0;
+        // A dummy for DELAY: a DAMAGE DELAY DAMAGE bolt should hit it, then its
+        // delayed charge re-detonates in place — so it takes more than one burst.
+        Zombie delayMob = spawnDummy(world, base.clone().add(3, 0, -30), spawned);
+        final double delayMob0 = health(delayMob);
 
         int bx = base.getBlockX();
         int by = base.getBlockY() + 1;
@@ -176,6 +180,7 @@ public final class SelfTest {
         // A clear corridor for a DEPOSIT:DIRT PIERCE TRAIL bolt: the trail warm-up
         // should leave the caster's own tile empty and only fill downrange.
         boolean trailWarmupOk = clearRowReturn(world, bx, by, bz - 26, 8);
+        clearRow(world, bx, by, bz - 30, 5); // clear path to the DELAY dummy at dx3
 
         final double gravityLaunchY = by + 20;
         final FusionProjectile[] gravityBolt = new FusionProjectile[1];
@@ -203,6 +208,9 @@ public final class SelfTest {
             }
             if (healCow != null && healCow.isValid()) {
                 burst.fire(world, healCow.getLocation(), firstAoe("HEAL"), null);
+            }
+            if (delayMob != null && delayMob.isValid()) {
+                fireBolt(world, at(world, bx, by, bz - 30), PLUS_X, false, "DAMAGE", "DELAY:0.5", "DAMAGE");
             }
             if (fireMining) {
                 fireBolt(world, at(world, bx, by, bz), PLUS_X, false, "MINING", "PIERCE");
@@ -290,6 +298,7 @@ public final class SelfTest {
             if (fireTrailWarmup) {
                 results.add(trailWarmupSparesCaster(world, bx, by, bz - 26));
             }
+            results.add(delayReDetonates(delayMob, delayMob0));
         }, SETTLE + MINING_WAIT);
 
         // --- last: the persist field has finished pulsing and the gravity bolt
@@ -448,6 +457,16 @@ public final class SelfTest {
         r.add(new Result("compile:heal-pull-complements", complementOk,
                 "healKind=" + compile("HEAL").payload().get(0).kind()
                         + " pullInverted=" + compile("PULL").payload().get(0).inverted()));
+
+        // DELAY:n pushes a delayed, in-place child that later modifiers build.
+        ProjectileSpec delayed = compile("PULL", "DELAY:1", "DAMAGE");
+        boolean delayOk = delayed.spawns().size() == 1
+                && delayed.spawns().get(0).spawnDelayTicks() == 20
+                && delayed.spawns().get(0).payload().get(0).kind() == AoeKind.DAMAGE
+                && delayed.spawns().get(0).speed() < EPS;
+        r.add(new Result("compile:delay-child", delayOk,
+                "delayTicks=" + (delayed.spawns().isEmpty() ? "-"
+                        : delayed.spawns().get(0).spawnDelayTicks())));
 
         // Flight tuning: GRAVITY arcs, VISIBLE/INVISIBLE toggle the trail, and the
         // parameterized SPEED:<v>/DURATION:<s> pin absolute values.
@@ -662,6 +681,17 @@ public final class SelfTest {
             log.warning(TAG + " could not spawn cow: " + e);
             return null;
         }
+    }
+
+    /** A DAMAGE DELAY DAMAGE bolt hits, then its delayed charge re-detonates — more than one burst lands. */
+    private Result delayReDetonates(Zombie mob, double before) {
+        if (mob == null || !mob.isValid()) {
+            return new Result("delay-re-detonates", false, "no mob");
+        }
+        double single = firstAoe("DAMAGE").power();
+        double taken = before - mob.getHealth();
+        return new Result("delay-re-detonates", taken > single + EPS,
+                String.format("took %.1f (single burst %.1f)", taken, single));
     }
 
     /** A HEAL burst mends the hurt (passive) cow — its health climbs back up. */

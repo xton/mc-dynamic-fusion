@@ -105,7 +105,9 @@ public final class FusionPlugin extends JavaPlugin {
                 .register(new LifetimeModifier(
                         getConfig().getDouble("lifetime.range-per-apply", 12.0)))
                 .register(new MiningModifier(
-                        getConfig().getDouble("mining.base-radius", 1.0)))
+                        getConfig().getDouble("mining.base-radius", 1.0),
+                        getConfig().getDouble("mining.base-hardness", 3.0),
+                        getConfig().getDouble("mining.hardness-per-apply", 15.0)))
                 // Delivery: launch a live mob as the projectile (parameterized).
                 .register(new MobModifier())
                 // Environmental emitters (block/area effects along the flight).
@@ -141,7 +143,7 @@ public final class FusionPlugin extends JavaPlugin {
                 getConfig().getInt("fire.burn-ticks", 100),
                 getConfig().getInt("ice.freeze-ticks", 140),
                 getConfig().getDouble("environmental.max-radius", 8.0),
-                getConfig().getDouble("environmental.max-hardness", 3.0));
+                getConfig().getDouble("environmental.max-hardness", 100.0));
         ProjectileLauncher launcher = new ProjectileLauncher(this, burst,
                 new WeaponBuilder.Defaults(
                         getConfig().getDouble("projectile.base-speed", 1.6),

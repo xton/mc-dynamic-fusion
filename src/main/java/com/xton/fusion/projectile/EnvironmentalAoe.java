@@ -53,7 +53,11 @@ public final class EnvironmentalAoe {
         double r = Math.min(aoe.radius(), settings.maxRadius());
         switch (aoe.kind()) {
             case MINING -> {
-                if (forEachBlock(where, r, this::breakSoft)) {
+                // The mining element's power carries its break-hardness cap (raised
+                // by stacking MINING / AMPLIFY), bounded by the global safety ceiling.
+                double base = aoe.power() > 0 ? aoe.power() : settings.maxHardness();
+                double cap = Math.min(base, settings.maxHardness());
+                if (forEachBlock(where, r, block -> breakSoft(block, cap))) {
                     world.playSound(where, Sound.BLOCK_STONE_BREAK, 0.6f, 0.9f);
                 }
             }
@@ -79,9 +83,9 @@ public final class EnvironmentalAoe {
         }
     }
 
-    private boolean breakSoft(Block block) {
+    private boolean breakSoft(Block block, double maxHardness) {
         Material type = block.getType();
-        if (type.isAir() || !isBreakable(type)) {
+        if (type.isAir() || !isBreakable(type, maxHardness)) {
             return false;
         }
         world.spawnParticle(Particle.BLOCK, block.getLocation().add(0.5, 0.5, 0.5),
@@ -192,9 +196,9 @@ public final class EnvironmentalAoe {
         return false;
     }
 
-    private boolean isBreakable(Material type) {
+    private boolean isBreakable(Material type, double maxHardness) {
         double hardness = type.getHardness();
-        return hardness >= 0 && hardness <= settings.maxHardness();
+        return hardness >= 0 && hardness <= maxHardness; // bedrock (-1) is never breakable
     }
 
     private static boolean isSnow(Material type) {

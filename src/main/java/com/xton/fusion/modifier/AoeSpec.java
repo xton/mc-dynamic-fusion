@@ -68,9 +68,14 @@ public final class AoeSpec {
         this.radius *= factor;
     }
 
-    /** AMPLIFY: multiply the power/damage (×N per apply). */
+    /** AMPLIFY: multiply the power/damage (×N per apply). For MINING this scales its break hardness. */
     public void scalePower(double factor) {
         this.power *= factor;
+    }
+
+    /** Stack additional power onto this element (MINING: raise the break-hardness cap per extra MINING). */
+    public void addPower(double delta) {
+        this.power += delta;
     }
 
     /** CHAIN: add hops to further entities. */

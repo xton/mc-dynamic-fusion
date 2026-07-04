@@ -16,9 +16,17 @@ public final class MiningModifier implements Modifier {
     public static final String ID = "MINING";
 
     private final double baseRadius;
+    private final double baseHardness;
+    private final double hardnessPerApply;
+
+    public MiningModifier(double baseRadius, double baseHardness, double hardnessPerApply) {
+        this.baseRadius = baseRadius;
+        this.baseHardness = baseHardness;
+        this.hardnessPerApply = hardnessPerApply;
+    }
 
     public MiningModifier(double baseRadius) {
-        this.baseRadius = baseRadius;
+        this(baseRadius, 3.0, 15.0);
     }
 
     public MiningModifier() {
@@ -42,7 +50,7 @@ public final class MiningModifier implements Modifier {
 
     @Override
     public String detailedDescription() {
-        return "Breaks the softer blocks along its path (obsidian and the like resist). Add Pierce to bore through many, Expand for a wider tunnel.";
+        return "Breaks blocks along its path (harder ones like obsidian resist at first). Stack Mining (or Amplify) to chew harder blocks, Pierce to bore through many, Expand for a wider tunnel.";
     }
 
     @Override
@@ -52,6 +60,6 @@ public final class MiningModifier implements Modifier {
 
     @Override
     public void apply(WeaponBuilder builder) {
-        builder.emitMining(baseRadius);
+        builder.emitMining(baseRadius, baseHardness, hardnessPerApply);
     }
 }

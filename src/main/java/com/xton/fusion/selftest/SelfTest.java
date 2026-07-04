@@ -183,6 +183,8 @@ public final class SelfTest {
         for (int dz = 0; dz <= 3; dz++) {   // a small arena for the HOMING bolt to curve in
             clearRow(world, bx, by, bz - 34 + dz, 6);
         }
+        // An obsidian-plugged corridor: a deep MINING stack should chew through it.
+        boolean heavyMineOk = layHardCorridor(world, bx, by, bz - 36);
         // A hurt COW floating in open air (passive, so HEAL mends it — hostiles are
         // skipped). Placed up high like the MOB test's cow, which spawns valid there.
         final Cow healCow = spawnCow(world, new Location(world, bx + 2.5, by + 3, bz + 0.5));
@@ -207,6 +209,7 @@ public final class SelfTest {
         final boolean fireBounce = bounceOk;
         final boolean fireSpawnRefl = spawnReflOk;
         final boolean fireTrailWarmup = trailWarmupOk;
+        final boolean fireHeavyMine = heavyMineOk;
         scheduler.runLater(() -> {
             results.add(pushKnockback(world, pushMob));
             results.add(damageHurts(world, dmgMob));
@@ -270,6 +273,10 @@ public final class SelfTest {
             if (fireTrailWarmup) {
                 fireBolt(world, at(world, bx, by, bz - 26), PLUS_X, false, "DEPOSIT:DIRT", "PIERCE", "TRAIL");
             }
+            if (fireHeavyMine) { // five MININGs stack past obsidian's hardness
+                fireBolt(world, at(world, bx, by, bz - 36), PLUS_X, false,
+                        "MINING", "MINING", "MINING", "MINING", "MINING", "PIERCE");
+            }
             gravityBolt[0] = fireBolt(world,
                     new Location(world, bx + 0.5, gravityLaunchY, bz + 0.5), PLUS_X, true);
         }, SETTLE);
@@ -318,6 +325,9 @@ public final class SelfTest {
             }
             if (fireTrailWarmup) {
                 results.add(trailWarmupSparesCaster(world, bx, by, bz - 26));
+            }
+            if (fireHeavyMine) {
+                results.add(heavyMiningBreaksObsidian(world, bx, by, bz - 36));
             }
             results.add(delayReDetonates(delayMob, delayMob0));
             results.add(homingCurvesIntoTarget(homingMob, homingMob0));
@@ -441,6 +451,15 @@ public final class SelfTest {
                 && mining.isMining() && !mining.isPierce()
                 && miningPierce.isPierce()
                 && miningExpand.miningAoe().radius() > mining.miningAoe().radius();
+        // Stacking MINING raises its break-hardness (stored in the element's power)
+        // without adding a duplicate bore; AMPLIFY scales the same hardness.
+        double mineH1 = compile("MINING").miningAoe().power();
+        double mineH2 = compile("MINING", "MINING").miningAoe().power();
+        boolean mineHardOk = mineH1 > 0 && mineH2 > mineH1
+                && compile("MINING", "MINING").payload().size() == 1;
+        r.add(new Result("compile:mining-hardness-stacks", mineHardOk,
+                "hardness " + mineH1 + " -> " + mineH2));
+
         r.add(new Result("compile:mining-and-pierce", flagsOk,
                 "mining.pierce=" + mining.isPierce() + " miningPierce.pierce=" + miningPierce.isPierce()
                         + " mining.r=" + mining.miningAoe().radius()
@@ -726,6 +745,12 @@ public final class SelfTest {
         boolean ok = mob.getHealth() < before;
         return new Result("homing-curves-into-target", ok,
                 String.format("health %.1f -> %.1f", before, mob.getHealth()));
+    }
+
+    /** A deep MINING stack (hardness past 50) bores through the obsidian plug the base ray stops at. */
+    private Result heavyMiningBreaksObsidian(World world, int bx, int by, int bz) {
+        Material m = world.getBlockAt(bx + 5, by, bz).getType();
+        return new Result("mining-stacks-break-obsidian", m != Material.OBSIDIAN, "obsidian=" + m);
     }
 
     /** A DAMAGE DELAY DAMAGE bolt hits, then its delayed charge re-detonates — more than one burst lands. */

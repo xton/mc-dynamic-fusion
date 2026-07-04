@@ -82,9 +82,20 @@ public final class WeaponBuilder {
         return pull;
     }
 
-    /** Emitter: add a MINING element — a block-breaking bore of the given base radius. */
-    public AoeSpec emitMining(double radius) {
-        return stack.peek().addAoe(new AoeSpec(AoeKind.MINING, radius, 0));
+    /**
+     * Emitter: add a MINING element — a block-breaking bore of the given base
+     * radius, whose {@code power} carries the break-hardness cap. A repeated MINING
+     * doesn't add a duplicate bore; it <em>stacks</em> {@code hardnessPerApply}
+     * onto the existing one, so MINING·MINING chews harder blocks (AMPLIFY scales
+     * the same hardness). EXPAND still widens the radius.
+     */
+    public AoeSpec emitMining(double radius, double baseHardness, double hardnessPerApply) {
+        AoeSpec existing = stack.peek().miningAoe();
+        if (existing != null) {
+            existing.addPower(hardnessPerApply);
+            return existing;
+        }
+        return stack.peek().addAoe(new AoeSpec(AoeKind.MINING, radius, baseHardness));
     }
 
     /** Emitter: add a FIRE element — ignites blocks/mobs and melts snow/ice in radius. */

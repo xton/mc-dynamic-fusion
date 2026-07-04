@@ -147,6 +147,17 @@ spawn:
   # its children 1, and so on; past this a SPAWN simply doesn't fire.
   max-generation: 2
 
+# GOLDEN BRUSH — a fused BRUSH with TREASURE (from gold). Brushing any block has
+# a chance to cough up loot; more gold (TREASURE level) procs more often and
+# unlocks rarer finds.
+golden-brush:
+  # Proc chance = base + per-level × TREASURE level, clamped to the cap.
+  proc-chance-base: 0.15
+  proc-chance-per-level: 0.1
+  proc-chance-cap: 0.75
+  # Per-player cooldown between brush strokes (ms), so it isn't a firehose.
+  cooldown-ms: 250
+
 cooldown:
   # Swing cooldown in milliseconds (per player).
   swing-ms: 200

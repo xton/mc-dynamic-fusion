@@ -37,6 +37,7 @@ import com.xton.fusion.modifier.impl.SpeedModifier;
 import com.xton.fusion.modifier.impl.SpreadModifier;
 import com.xton.fusion.modifier.impl.TeleportModifier;
 import com.xton.fusion.modifier.impl.TrailModifier;
+import com.xton.fusion.modifier.impl.TreasureModifier;
 import com.xton.fusion.modifier.impl.VisibleModifier;
 
 /**
@@ -79,7 +80,8 @@ class WeaponCompileTest {
                 .register(new VisibleModifier())
                 .register(new InvisibleModifier())
                 .register(new SpeedModifier())
-                .register(new DurationModifier());
+                .register(new DurationModifier())
+                .register(new TreasureModifier());
     }
 
     private ProjectileSpec compile(String... ids) {
@@ -223,6 +225,13 @@ class WeaponCompileTest {
         assertTrue(compile("FIRE", "TRAIL").isTrail());
         assertFalse(compile("DAMAGE").isTeleport());
         assertTrue(compile("DAMAGE", "PIERCE", "TELEPORT").isTeleport());
+    }
+
+    @Test
+    void treasureStacksTheLootLevel() {
+        assertEquals(0, compile("DAMAGE").treasure());
+        assertEquals(1, compile("TREASURE").treasure());
+        assertEquals(3, compile("TREASURE", "TREASURE", "TREASURE").treasure());
     }
 
     @Test

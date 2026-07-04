@@ -181,6 +181,15 @@ public final class ProjectileSpec {
         return homing > 0;
     }
 
+    /** TREASURE (Golden Brush) loot level — how many TREASURE modifiers were applied (0 = none). */
+    public int treasure() {
+        return treasure;
+    }
+
+    public void addTreasure(int count) {
+        this.treasure += count;
+    }
+
     // ----- payload accessors -----
 
     public List<AoeSpec> payload() {

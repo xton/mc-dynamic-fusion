@@ -113,6 +113,14 @@ latent_modifiers:
     - DELAY:2
   COW_SPAWN_EGG:          # MOB:COW — the Cow Launcher (parameterized MOB:<type>)
     - MOB:COW
+  GOLD_INGOT:             # TREASURE — Golden Brush loot (stack more gold for rarer finds)
+    - TREASURE
+  GOLD_BLOCK:
+    - TREASURE
+  RAW_GOLD:
+    - TREASURE
+  GOLD_NUGGET:
+    - TREASURE
   ENDER_PEARL:            # TELEPORT — warp to where the shot lands
     - TELEPORT
   ENDER_EYE:

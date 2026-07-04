@@ -54,10 +54,13 @@ import com.xton.fusion.modifier.impl.SpeedModifier;
 import com.xton.fusion.modifier.impl.SpreadModifier;
 import com.xton.fusion.modifier.impl.TeleportModifier;
 import com.xton.fusion.modifier.impl.TrailModifier;
+import com.xton.fusion.modifier.impl.TreasureModifier;
 import com.xton.fusion.modifier.impl.VisibleModifier;
 import com.xton.fusion.projectile.AoeBurst;
 import com.xton.fusion.projectile.EnvironmentalAoe;
 import com.xton.fusion.projectile.ProjectileLauncher;
+import com.xton.fusion.weapon.GoldenBrush;
+import com.xton.fusion.weapon.GoldenBrushListener;
 import com.xton.fusion.selftest.SelfTest;
 import com.xton.fusion.util.BukkitTaskScheduler;
 import com.xton.fusion.util.CooldownMap;
@@ -110,6 +113,8 @@ public final class FusionPlugin extends JavaPlugin {
                         getConfig().getDouble("mining.hardness-per-apply", 15.0)))
                 // Delivery: launch a live mob as the projectile (parameterized).
                 .register(new MobModifier())
+                // Golden Brush: gold-scaled loot on brushing.
+                .register(new TreasureModifier())
                 // Environmental emitters (block/area effects along the flight).
                 .register(new FireModifier())
                 .register(new IceModifier())
@@ -166,6 +171,15 @@ public final class FusionPlugin extends JavaPlugin {
                 new WeaponEventListener(reader, registry, launcher, cooldown), this);
         getServer().getPluginManager().registerEvents(
                 new ProjectileListener(reader, registry, launcher), this);
+
+        // Golden Brush: brushing a fused BRUSH with TREASURE (gold) rolls a loot table.
+        GoldenBrush goldenBrush = new GoldenBrush(new GoldenBrush.Settings(
+                getConfig().getDouble("golden-brush.proc-chance-base", 0.15),
+                getConfig().getDouble("golden-brush.proc-chance-per-level", 0.1),
+                getConfig().getDouble("golden-brush.proc-chance-cap", 0.75)));
+        CooldownMap brushCooldown = new CooldownMap(getConfig().getLong("golden-brush.cooldown-ms", 250));
+        getServer().getPluginManager().registerEvents(
+                new GoldenBrushListener(reader, registry, launcher, goldenBrush, brushCooldown), this);
 
         // Fusion Machine: placeable enchanting table, tagged via block-entity PDC
         // (no side file), opening the anvil-style fusion GUI on right-click.

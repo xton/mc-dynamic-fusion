@@ -10,7 +10,7 @@ Before touching this list, run the harnesses — if they're green, the mechanics
 below the "already automated" line are covered and you can skip them:
 
 ```
-make smoke   # boots Paper + runs /fusion test: 33 in-process checks
+make smoke   # boots Paper + runs /fusion test: 35 in-process checks
 make e2e     # a real Mineflayer bot: swing/bow input + the anvil GUI (10 checks)
 ```
 
@@ -111,7 +111,8 @@ player; SPAWN clusters are best judged by eye) still want a look:
     `DEPOSIT:DIRT ... MINING` and it fills then re-digs — confirm order is honored.
 18. **Trail lays a line.** `DEPOSIT:WATER TRAIL` (or `FIRE TRAIL`) draws a
     continuous wake along the whole flight, not just at the end. Deduped, so no
-    spammy stutter.
+    spammy stutter. **Warm-up:** the wake starts a couple blocks downrange — a
+    water trail should **not** flood/trap you at your own feet.
 19. **Spawn cluster.** `DIAMOND_SWORD DAMAGE SPAWN MULTISHOT SPREAD FIRE` → where
     the first bolt lands it should **burst into a fanned volley** of fiery
     children. Bump `spawn.max-generation` for more chaos; confirm it can't run away.
@@ -130,6 +131,15 @@ player; SPAWN clusters are best judged by eye) still want a look:
     the room**, not vanish into it. (Compare: before this, a wall-hit cluster
     wasted its children against the surface.) `... BOUNCE ... SPAWN ...` is a
     grenade that bounces to rest, then scatters.
+23. **Lob a mortar (Gravity).** `DIAMOND_SWORD DAMAGE GRAVITY VISIBLE SPEED:0.8` →
+    a plain sword should now **throw a slow, visible, arcing shot** that drops to
+    the ground — no bow needed. (`SPLASH_POTION` is the ready-made lob bundle.)
+24. **Visible / Invisible.** A long-range melee build with `VISIBLE` shows a
+    travelling bolt; `INVISIBLE` on a bow hides its trail. Confirm each overrides
+    the weapon-type default.
+25. **Absolute Speed / Duration.** `SPEED:3` is a fast bolt, `SPEED:0.4` a crawl;
+    `DURATION:5` makes it live ~5s regardless of range. Handy on a `BOUNCE` build
+    to set how long it rattles before it rolls to rest and goes off.
 
 ---
 

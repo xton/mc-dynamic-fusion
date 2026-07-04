@@ -65,6 +65,16 @@ latent_modifiers:
     - LIFETIME
   AMETHYST_SHARD:         # MINING — short piercing mining ray
     - MINING
+  HEAVY_CORE:             # GRAVITY — arc/lob under gravity
+    - GRAVITY
+  LEAD:
+    - GRAVITY
+  GLOW_INK_SAC:           # VISIBLE — force a flight trail
+    - VISIBLE
+  INK_SAC:                # INVISIBLE — hide the flight trail
+    - INVISIBLE
+  # SPEED:<blocks/tick> and DURATION:<seconds> are parameterized (set an absolute
+  # value); use them via /fusion give SPEED:0.6 / DURATION:3, or in a bundle below.
 
   # ---- Environmental emitters (reagents) ----
   FLINT_AND_STEEL:        # FIRE — spread fire, melt snow/ice, ignite mobs
@@ -139,6 +149,11 @@ latent_modifiers:
   PHANTOM_MEMBRANE:       # a long, scattering flight
     - LIFETIME
     - SPREAD
+  SPLASH_POTION:          # visible lob — turn any weapon into a slow arcing mortar
+    - GRAVITY
+    - VISIBLE
+    - SPEED:0.8
+    - DURATION:4
   CHORUS_FRUIT:           # a chaotic multishot spray
     - MULTISHOT
     - SPREAD

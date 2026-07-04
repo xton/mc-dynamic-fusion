@@ -31,10 +31,13 @@ import com.xton.fusion.modifier.impl.BounceModifier;
 import com.xton.fusion.modifier.impl.ChainModifier;
 import com.xton.fusion.modifier.impl.DamageModifier;
 import com.xton.fusion.modifier.impl.DepositModifier;
+import com.xton.fusion.modifier.impl.DurationModifier;
 import com.xton.fusion.modifier.impl.ExpandModifier;
 import com.xton.fusion.modifier.impl.FireModifier;
+import com.xton.fusion.modifier.impl.GravityModifier;
 import com.xton.fusion.modifier.impl.IceModifier;
 import com.xton.fusion.modifier.impl.InvertModifier;
+import com.xton.fusion.modifier.impl.InvisibleModifier;
 import com.xton.fusion.modifier.impl.LifetimeModifier;
 import com.xton.fusion.modifier.impl.MiningModifier;
 import com.xton.fusion.modifier.impl.MultishotModifier;
@@ -42,9 +45,11 @@ import com.xton.fusion.modifier.impl.PersistModifier;
 import com.xton.fusion.modifier.impl.PierceModifier;
 import com.xton.fusion.modifier.impl.PushModifier;
 import com.xton.fusion.modifier.impl.SpawnModifier;
+import com.xton.fusion.modifier.impl.SpeedModifier;
 import com.xton.fusion.modifier.impl.SpreadModifier;
 import com.xton.fusion.modifier.impl.TeleportModifier;
 import com.xton.fusion.modifier.impl.TrailModifier;
+import com.xton.fusion.modifier.impl.VisibleModifier;
 import com.xton.fusion.projectile.AoeBurst;
 import com.xton.fusion.projectile.EnvironmentalAoe;
 import com.xton.fusion.projectile.ProjectileLauncher;
@@ -100,7 +105,13 @@ public final class FusionPlugin extends JavaPlugin {
                 // Structural: spawn children, trail, teleport.
                 .register(new SpawnModifier())
                 .register(new TrailModifier())
-                .register(new TeleportModifier());
+                .register(new TeleportModifier())
+                // Flight tuning: gravity/lob, trail visibility, absolute speed & lifetime.
+                .register(new GravityModifier())
+                .register(new VisibleModifier())
+                .register(new InvisibleModifier())
+                .register(new SpeedModifier())
+                .register(new DurationModifier());
 
         LatentRegistry latent = loadLatentRegistry(registry);
 

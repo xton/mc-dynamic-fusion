@@ -166,6 +166,9 @@ public final class SelfTest {
         boolean spawnReflOk = layBounceRange(world, bx, by, bz - 24);
         Zombie spawnReflMob = spawnDummy(world, base.clone().add(-3, 1, -24), spawned);
         final double spawnReflMob0 = health(spawnReflMob);
+        // A clear corridor for a DEPOSIT:DIRT PIERCE TRAIL bolt: the trail warm-up
+        // should leave the caster's own tile empty and only fill downrange.
+        boolean trailWarmupOk = clearRowReturn(world, bx, by, bz - 26, 8);
 
         final double gravityLaunchY = by + 20;
         final FusionProjectile[] gravityBolt = new FusionProjectile[1];
@@ -182,6 +185,7 @@ public final class SelfTest {
         final boolean trailEnv = trailOk;
         final boolean fireBounce = bounceOk;
         final boolean fireSpawnRefl = spawnReflOk;
+        final boolean fireTrailWarmup = trailWarmupOk;
         scheduler.runLater(() -> {
             results.add(pushKnockback(world, pushMob));
             results.add(damageHurts(world, dmgMob));
@@ -223,6 +227,9 @@ public final class SelfTest {
             }
             if (fireSpawnRefl) {
                 fireBolt(world, at(world, bx, by, bz - 24), PLUS_X, false, "DAMAGE", "SPAWN", "DAMAGE");
+            }
+            if (fireTrailWarmup) {
+                fireBolt(world, at(world, bx, by, bz - 26), PLUS_X, false, "DEPOSIT:DIRT", "PIERCE", "TRAIL");
             }
             gravityBolt[0] = fireBolt(world,
                     new Location(world, bx + 0.5, gravityLaunchY, bz + 0.5), PLUS_X, true);
@@ -267,6 +274,9 @@ public final class SelfTest {
             }
             if (fireSpawnRefl) {
                 results.add(damagedOnRebound("spawn-reflects-off-wall", spawnReflMob, spawnReflMob0));
+            }
+            if (fireTrailWarmup) {
+                results.add(trailWarmupSparesCaster(world, bx, by, bz - 26));
             }
         }, SETTLE + MINING_WAIT);
 
@@ -417,6 +427,19 @@ public final class SelfTest {
         r.add(new Result("compile:deposit-parameterized", depositOk,
                 "material=" + (deposit.payload().isEmpty() ? "<none>"
                         : deposit.payload().get(0).material())));
+
+        // Flight tuning: GRAVITY arcs, VISIBLE/INVISIBLE toggle the trail, and the
+        // parameterized SPEED:<v>/DURATION:<s> pin absolute values.
+        boolean tuneOk = compile("DAMAGE", "GRAVITY").hasGravity()
+                && !compile("DAMAGE").hasGravity()
+                && !compile("DAMAGE", "INVISIBLE").hasVisibleTrail()
+                && compile("DAMAGE", "INVISIBLE", "VISIBLE").hasVisibleTrail()
+                && Math.abs(compile("SPEED:0.8").speed() - 0.8) < EPS
+                && compile("DURATION:3").lifetimeTicks() == 60;
+        r.add(new Result("compile:flight-tuning", tuneOk,
+                "gravity=" + compile("DAMAGE", "GRAVITY").hasGravity()
+                        + " speed=" + compile("SPEED:0.8").speed()
+                        + " durTicks=" + compile("DURATION:3").lifetimeTicks()));
 
         // BOUNCE is a flight flag; a fresh SPAWN child does not inherit it.
         ProjectileSpec bounceSpawn = compile("DAMAGE", "BOUNCE", "SPAWN", "DAMAGE");
@@ -697,6 +720,18 @@ public final class SelfTest {
             log.warning(TAG + " bounce-range setup failed: " + e);
             return false;
         }
+    }
+
+    /**
+     * A DEPOSIT:DIRT PIERCE TRAIL bolt's warm-up leaves the caster's own tile empty
+     * (no self-flood) while still filling downrange past the warm-up distance.
+     */
+    private Result trailWarmupSparesCaster(World world, int bx, int by, int bz) {
+        Material atCaster = world.getBlockAt(bx, by, bz).getType();      // origin tile — must stay clear
+        Material downrange = world.getBlockAt(bx + 5, by, bz).getType(); // past warm-up — must be filled
+        boolean ok = atCaster.isAir() && downrange == Material.DIRT;
+        return new Result("trail-warmup-spares-caster", ok,
+                "caster=" + atCaster + " downrange=" + downrange);
     }
 
     /** A mob behind the firing point loses health, so the shot (or its child) rebounded off the wall to reach it. */

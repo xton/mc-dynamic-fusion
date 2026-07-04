@@ -15,10 +15,13 @@ import com.xton.fusion.modifier.impl.BounceModifier;
 import com.xton.fusion.modifier.impl.ChainModifier;
 import com.xton.fusion.modifier.impl.DamageModifier;
 import com.xton.fusion.modifier.impl.DepositModifier;
+import com.xton.fusion.modifier.impl.DurationModifier;
 import com.xton.fusion.modifier.impl.ExpandModifier;
 import com.xton.fusion.modifier.impl.FireModifier;
+import com.xton.fusion.modifier.impl.GravityModifier;
 import com.xton.fusion.modifier.impl.IceModifier;
 import com.xton.fusion.modifier.impl.InvertModifier;
+import com.xton.fusion.modifier.impl.InvisibleModifier;
 import com.xton.fusion.modifier.impl.LifetimeModifier;
 import com.xton.fusion.modifier.impl.MiningModifier;
 import com.xton.fusion.modifier.impl.MultishotModifier;
@@ -26,9 +29,11 @@ import com.xton.fusion.modifier.impl.PersistModifier;
 import com.xton.fusion.modifier.impl.PierceModifier;
 import com.xton.fusion.modifier.impl.PushModifier;
 import com.xton.fusion.modifier.impl.SpawnModifier;
+import com.xton.fusion.modifier.impl.SpeedModifier;
 import com.xton.fusion.modifier.impl.SpreadModifier;
 import com.xton.fusion.modifier.impl.TeleportModifier;
 import com.xton.fusion.modifier.impl.TrailModifier;
+import com.xton.fusion.modifier.impl.VisibleModifier;
 
 /**
  * The stack compiles into a {@link ProjectileSpec} purely (no server), so the
@@ -61,7 +66,12 @@ class WeaponCompileTest {
                 .register(new DepositModifier())
                 .register(new SpawnModifier())
                 .register(new TrailModifier())
-                .register(new TeleportModifier());
+                .register(new TeleportModifier())
+                .register(new GravityModifier())
+                .register(new VisibleModifier())
+                .register(new InvisibleModifier())
+                .register(new SpeedModifier())
+                .register(new DurationModifier());
     }
 
     private ProjectileSpec compile(String... ids) {
@@ -205,6 +215,33 @@ class WeaponCompileTest {
         assertTrue(compile("FIRE", "TRAIL").isTrail());
         assertFalse(compile("DAMAGE").isTeleport());
         assertTrue(compile("DAMAGE", "PIERCE", "TELEPORT").isTeleport());
+    }
+
+    @Test
+    void flightTuningModifiers() {
+        assertFalse(compile("DAMAGE").hasGravity());
+        assertTrue(compile("DAMAGE", "GRAVITY").hasGravity(), "GRAVITY turns on the arc");
+
+        assertTrue(compile("DAMAGE").hasVisibleTrail(), "trail on by default");
+        assertFalse(compile("DAMAGE", "INVISIBLE").hasVisibleTrail());
+        assertTrue(compile("DAMAGE", "INVISIBLE", "VISIBLE").hasVisibleTrail(), "later toggle wins");
+
+        // SPEED:<v> pins absolute speed; DURATION:<s> pins absolute lifetime (s×20 ticks).
+        assertEquals(0.8, compile("SPEED:0.8").speed(), 1.0e-9);
+        assertEquals(2.5, compile("DAMAGE", "SPEED:2.5").speed(), 1.0e-9);
+        assertEquals(60, compile("DURATION:3").lifetimeTicks());
+        assertEquals(6.0, compile("SPEED:999").speed(), 1.0e-9, "absurd speed is clamped");
+        assertEquals(1.6, compile("SPEED:notanumber").speed(), 1.0e-9, "a bad param is inert");
+    }
+
+    @Test
+    void visibleLobBundleComposes() {
+        // The SPLASH_POTION bundle: GRAVITY + VISIBLE + slow SPEED + a long DURATION.
+        ProjectileSpec lob = compile("GRAVITY", "VISIBLE", "SPEED:0.8", "DURATION:4");
+        assertTrue(lob.hasGravity());
+        assertTrue(lob.hasVisibleTrail());
+        assertEquals(0.8, lob.speed(), 1.0e-9);
+        assertEquals(80, lob.lifetimeTicks());
     }
 
     @Test

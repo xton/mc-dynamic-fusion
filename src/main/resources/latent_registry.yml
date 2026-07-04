@@ -107,6 +107,8 @@ latent_modifiers:
   # ---- Structural (reagents) ----
   CLOCK:                  # DELAY:2 — a 2-second timed charge (parameterized)
     - DELAY:2
+  COW_SPAWN_EGG:          # MOB:COW — the Cow Launcher (parameterized MOB:<type>)
+    - MOB:COW
   ENDER_PEARL:            # TELEPORT — warp to where the shot lands
     - TELEPORT
   ENDER_EYE:

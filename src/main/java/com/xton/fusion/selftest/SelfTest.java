@@ -12,6 +12,8 @@ import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Cow;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Zombie;
 import org.bukkit.util.Vector;
@@ -211,6 +213,14 @@ public final class SelfTest {
             }
             if (delayMob != null && delayMob.isValid()) {
                 fireBolt(world, at(world, bx, by, bz - 30), PLUS_X, false, "DAMAGE", "DELAY:0.5", "DAMAGE");
+            }
+            // MOB:COW launches a real cow entity as the projectile; verify one appears.
+            Entity cowShot = launcher.spawnMobShot(world,
+                    new Location(world, bx + 0.5, by + 3, bz + 0.5), PLUS_X.clone().multiply(0.4), compile("MOB:COW"));
+            results.add(new Result("mob-launches-entity", cowShot instanceof Cow && cowShot.isValid(),
+                    "spawned=" + (cowShot == null ? "null" : cowShot.getType())));
+            if (cowShot != null) {
+                cowShot.remove();
             }
             if (fireMining) {
                 fireBolt(world, at(world, bx, by, bz), PLUS_X, false, "MINING", "PIERCE");
@@ -467,6 +477,12 @@ public final class SelfTest {
         r.add(new Result("compile:delay-child", delayOk,
                 "delayTicks=" + (delayed.spawns().isEmpty() ? "-"
                         : delayed.spawns().get(0).spawnDelayTicks())));
+
+        // MOB:<type> parses a spawnable living entity to launch as the projectile.
+        ProjectileSpec cowShot = compile("MOB:COW");
+        boolean mobOk = cowShot.mobType() == EntityType.COW && compile("MOB:ENDER_DRAGON").mobType() == null;
+        r.add(new Result("compile:mob-parameterized", mobOk,
+                "cow=" + cowShot.mobType() + " dragonBlocked=" + (compile("MOB:ENDER_DRAGON").mobType() == null)));
 
         // Flight tuning: GRAVITY arcs, VISIBLE/INVISIBLE toggle the trail, and the
         // parameterized SPEED:<v>/DURATION:<s> pin absolute values.

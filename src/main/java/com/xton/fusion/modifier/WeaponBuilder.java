@@ -4,6 +4,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 
 import org.bukkit.Material;
+import org.bukkit.entity.EntityType;
 
 /**
  * Compiles a modifier stack into a {@link ProjectileSpec}, RPN-style: the stack
@@ -99,6 +100,11 @@ public final class WeaponBuilder {
     /** Emitter: add a DEPOSIT element — fills the empty cells in radius with {@code material}. */
     public AoeSpec emitDeposit(Material material) {
         return stack.peek().addAoe(new AoeSpec(AoeKind.DEPOSIT, defaults.depositRadius(), 0, material));
+    }
+
+    /** Emitter: launch a live {@code type} entity as the projectile (the Cow Launcher). */
+    public void emitMob(EntityType type) {
+        stack.peek().setMobType(type);
     }
 
     /**

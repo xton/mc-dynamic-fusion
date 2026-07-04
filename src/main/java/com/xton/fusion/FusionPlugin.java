@@ -42,6 +42,7 @@ import com.xton.fusion.modifier.impl.InvertModifier;
 import com.xton.fusion.modifier.impl.InvisibleModifier;
 import com.xton.fusion.modifier.impl.LifetimeModifier;
 import com.xton.fusion.modifier.impl.MiningModifier;
+import com.xton.fusion.modifier.impl.MobModifier;
 import com.xton.fusion.modifier.impl.MultishotModifier;
 import com.xton.fusion.modifier.impl.PersistModifier;
 import com.xton.fusion.modifier.impl.PierceModifier;
@@ -103,6 +104,8 @@ public final class FusionPlugin extends JavaPlugin {
                         getConfig().getDouble("lifetime.range-per-apply", 12.0)))
                 .register(new MiningModifier(
                         getConfig().getDouble("mining.base-radius", 1.0)))
+                // Delivery: launch a live mob as the projectile (parameterized).
+                .register(new MobModifier())
                 // Environmental emitters (block/area effects along the flight).
                 .register(new FireModifier())
                 .register(new IceModifier())

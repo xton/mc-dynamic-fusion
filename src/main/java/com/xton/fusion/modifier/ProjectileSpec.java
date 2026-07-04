@@ -3,6 +3,8 @@ package com.xton.fusion.modifier;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.bukkit.entity.EntityType;
+
 /**
  * A compiled projectile: its <b>flight</b> (how it travels) plus its
  * <b>payload</b> (the ordered {@link AoeSpec} elements it delivers where it
@@ -30,6 +32,7 @@ public final class ProjectileSpec {
     private boolean teleport;          // TELEPORT: move the caster to the terminus
 
     private int spawnDelayTicks;       // DELAY: ticks to wait before launching this child
+    private EntityType mobType;        // MOB:<type>: launch this living entity as the projectile
 
     // ----- payload -----
     private final List<AoeSpec> payload = new ArrayList<>();
@@ -198,5 +201,14 @@ public final class ProjectileSpec {
 
     public void setSpawnDelayTicks(int ticks) {
         this.spawnDelayTicks = ticks;
+    }
+
+    /** MOB:&lt;type&gt;: the living entity to launch as the projectile, or null for a normal bolt. */
+    public EntityType mobType() {
+        return mobType;
+    }
+
+    public void setMobType(EntityType mobType) {
+        this.mobType = mobType;
     }
 }

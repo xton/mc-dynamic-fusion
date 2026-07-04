@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.util.Vector;
@@ -116,6 +117,15 @@ public final class ProjectileLauncher {
         double speed = Math.max(0.05, spec.speed() * speedScale);
         int count = Math.max(1, spec.count());
 
+        // MOB shots hurl live entities instead of custom bolts — the mob is the payload.
+        if (spec.mobType() != null) {
+            for (int i = 0; i < count; i++) {
+                Vector dir = scatter(aim, spec.spreadDegrees());
+                spawnMobShot(caster.getWorld(), origin.clone(), dir.multiply(speed), spec);
+            }
+            return;
+        }
+
         // One Shot per cast: caster, generation 0, and a single shared TELEPORT
         // latch so the whole volley (and any SPAWN children) teleports at most once.
         Shot shot = new Shot(caster, 0, maxSpawnGeneration, envSettings, this, new AtomicBoolean(false));
@@ -125,6 +135,20 @@ public final class ProjectileLauncher {
             new FusionProjectile(plugin, payload, spec, caster.getWorld(),
                     origin.clone(), velocity, shot).start();
         }
+    }
+
+    /**
+     * Spawn the MOB shot's live entity at {@code origin} and fling it with
+     * {@code velocity}, letting vanilla physics carry it. Returns the entity (or
+     * null if the type is unset / the spawn fails).
+     */
+    public Entity spawnMobShot(World world, Location origin, Vector velocity, ProjectileSpec spec) {
+        if (world == null || spec.mobType() == null) {
+            return null;
+        }
+        Entity entity = world.spawnEntity(origin, spec.mobType());
+        entity.setVelocity(velocity);
+        return entity;
     }
 
     /** How far off the terminus children spawn, along their heading, to clear the impacted face. */

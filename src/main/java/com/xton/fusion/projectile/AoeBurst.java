@@ -5,16 +5,21 @@ import java.util.List;
 
 import org.bukkit.Color;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.entity.BlockDisplay;
+import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
+import org.bukkit.util.Transformation;
 import org.bukkit.util.Vector;
+import org.joml.Vector3f;
 
 import com.xton.fusion.modifier.AoeKind;
 import com.xton.fusion.modifier.AoeSpec;
@@ -60,11 +65,11 @@ public final class AoeBurst {
     private void schedulePersist(World world, Location where, AoeSpec spec, Player caster) {
         long interval = Math.max(1, settings.persistIntervalTicks());
         long duration = spec.persistTicks();
-        // Grenade charge-up: between pulses a glowing dot sits at the point and
-        // blinks faster and faster; on each interval it detonates (applyBurst,
-        // which draws the boom and applies the effect). Only the pulse does
-        // anything — the dot is pure visual charge, so the visuals match the
-        // mechanic instead of implying continuous damage.
+        // Grenade charge-up: a small glowing block sits at the point and swells
+        // toward each pulse, then flashes and shrinks when it detonates (applyBurst,
+        // which draws the boom and applies the effect). A BlockDisplay — no
+        // particles — so it reads as a discrete charging marker, not smoky fire.
+        BlockDisplay marker = spawnChargeMarker(world, where);
         for (long t = 1; t <= duration; t++) {
             final long tick = t;
             final long intoCycle = t % interval;
@@ -73,20 +78,48 @@ public final class AoeBurst {
             scheduler.runLater(() -> {
                 if (pulse) {
                     applyBurst(world, where, spec, caster);
+                    scaleMarker(marker, 0.85f); // flash big on the pulse
                 } else {
-                    chargeDot(world, where, toNext);
+                    pulseMarker(marker, toNext, interval);
                 }
             }, tick);
         }
+        scheduler.runLater(() -> removeMarker(marker), duration + 1);
     }
 
-    /** A glowing dot at the retrigger point that flashes faster as the pulse nears. */
-    private void chargeDot(World world, Location where, long toNext) {
-        Location dot = where.clone().add(0, 0.6, 0);
-        world.spawnParticle(Particle.SMALL_FLAME, dot, 1, 0.0, 0.0, 0.0, 0.0); // steady marker
-        long blinkPeriod = Math.max(1, Math.min(4, toNext / 3));
-        if (toNext % blinkPeriod == 0) {
-            world.spawnParticle(Particle.END_ROD, dot, 1, 0.02, 0.02, 0.02, 0.0); // accelerating blink
+    /** A small glowing block-display at the retrigger point (no particles). */
+    private BlockDisplay spawnChargeMarker(World world, Location where) {
+        try {
+            return world.spawn(where.clone().add(0, 0.4, 0), BlockDisplay.class, d -> {
+                d.setBlock(Material.REDSTONE_BLOCK.createBlockData());
+                d.setBrightness(new Display.Brightness(15, 15));
+                d.setGlowing(true);
+                scaleMarker(d, 0.2f);
+            });
+        } catch (Exception e) {
+            return null; // display entities unavailable — skip the marker, mechanic still fires
+        }
+    }
+
+    /** Swell the marker toward the next pulse (bigger as the pulse nears). */
+    private void pulseMarker(BlockDisplay marker, long toNext, long interval) {
+        double frac = 1.0 - (double) toNext / Math.max(1, interval);
+        scaleMarker(marker, (float) (0.2 + 0.5 * frac));
+    }
+
+    private void scaleMarker(BlockDisplay marker, float s) {
+        if (marker == null || !marker.isValid()) {
+            return;
+        }
+        Transformation t = marker.getTransformation();
+        marker.setTransformation(new Transformation(
+                new Vector3f(-s / 2f, 0f, -s / 2f), t.getLeftRotation(),
+                new Vector3f(s, s, s), t.getRightRotation()));
+    }
+
+    private void removeMarker(BlockDisplay marker) {
+        if (marker != null && marker.isValid()) {
+            marker.remove();
         }
     }
 

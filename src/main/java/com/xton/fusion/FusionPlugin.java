@@ -27,6 +27,7 @@ import com.xton.fusion.machine.MachineListener;
 import com.xton.fusion.modifier.ModifierRegistry;
 import com.xton.fusion.modifier.WeaponBuilder;
 import com.xton.fusion.modifier.impl.AmplifyModifier;
+import com.xton.fusion.modifier.impl.BounceModifier;
 import com.xton.fusion.modifier.impl.ChainModifier;
 import com.xton.fusion.modifier.impl.DamageModifier;
 import com.xton.fusion.modifier.impl.DepositModifier;
@@ -87,6 +88,7 @@ public final class FusionPlugin extends JavaPlugin {
                 .register(new SpreadModifier(
                         getConfig().getDouble("spread.degrees-per-apply", 12.0)))
                 .register(new PierceModifier())
+                .register(new BounceModifier())
                 .register(new LifetimeModifier(
                         getConfig().getDouble("lifetime.range-per-apply", 12.0)))
                 .register(new MiningModifier(

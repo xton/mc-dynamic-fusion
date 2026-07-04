@@ -10,7 +10,7 @@ Before touching this list, run the harnesses — if they're green, the mechanics
 below the "already automated" line are covered and you can skip them:
 
 ```
-make smoke   # boots Paper + runs /fusion test: 30 in-process checks
+make smoke   # boots Paper + runs /fusion test: 33 in-process checks
 make e2e     # a real Mineflayer bot: swing/bow input + the anvil GUI (10 checks)
 ```
 
@@ -19,8 +19,9 @@ every transform's scaling and RPN nearest-previous binding (EXPAND, AMPLIFY,
 MULTISHOT, SPREAD, LIFETIME, INVERT, CHAIN, PERSIST), PIERCE pass-through,
 MINING carving + stopping at obsidian + no-pop terminus, FIRE melting snow &
 igniting a mob, ICE freezing water, DEPOSIT backfilling air, DEPOSIT·TRAIL
-filling the flight path, the DEPOSIT:<block> parameter parsing and SPAWN
-child-wiring at compile time, the swing and bow input paths, and the anvil
+filling the flight path, a BOUNCE bolt rebounding off a wall into a mob, a SPAWN
+child ricocheting off a wall, the DEPOSIT:<block> parameter parsing and
+BOUNCE/SPAWN wiring at compile time, the swing and bow input paths, and the anvil
 machine: shows-result, take ("Fusion complete!"), rejects-junk (red barrier),
 and close-returns-inputs. See `SelfTest.java` and `mineflayer/e2e.js`.
 
@@ -119,6 +120,16 @@ player; SPAWN clusters are best judged by eye) still want a look:
     bored tunnel**. Under `MULTISHOT` you teleport **once** (first bolt to land),
     and you never end up stuck in a wall or a mob (safe offset). Ender Pearl is the
     ingredient.
+21. **Bounce feel.** `DIAMOND_SWORD DAMAGE BOUNCE LIFETIME` → the bolt should
+    **ricochet** off floors/walls (a soft *tick* and crit sparks at each bounce),
+    losing a little speed each time, and **only go off** when it finally expires
+    or strikes a mob head-on. Fire it into a corner and watch it rattle around.
+    Slime Block is the ingredient.
+22. **Spawn ricochet.** `DIAMOND_SWORD DAMAGE SPAWN MULTISHOT SPREAD` fired
+    **straight at a wall** → the children should spray **back off the wall into
+    the room**, not vanish into it. (Compare: before this, a wall-hit cluster
+    wasted its children against the surface.) `... BOUNCE ... SPAWN ...` is a
+    grenade that bounces to rest, then scatters.
 
 ---
 

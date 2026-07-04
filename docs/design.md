@@ -160,7 +160,8 @@ Modifiers come in two categories (`Modifier.Category`):
 - **Transforms** modify the **nearest preceding emitter** (RPN, apply-to-previous).
   *AOE transforms* (`EXPAND` ×radius, `AMPLIFY` ×power/damage, `CHAIN`, `INVERT`,
   `PERSIST`) mutate the top `AoeSpec`; *flight transforms* (`MULTISHOT`, `SPREAD`,
-  `PIERCE`, `TRAIL`, `LIFETIME`, `MINING`, `TELEPORT`) mutate the projectile. A
+  `PIERCE`, `BOUNCE`, `TRAIL`, `LIFETIME`, `MINING`, `TELEPORT`) mutate the
+  projectile. A
   transform with no matching preceding emitter is **inert** — so a burst is opt-in
   (Expand alone does nothing), and it binds to the *nearest* element only
   (`PUSH PUSH EXPAND` widens just the second push).
@@ -193,6 +194,15 @@ then re-digs. `TELEPORT` warps the caster to the first bolt of a cast to
 terminate (a shared latch makes it fire at most once, even under `MULTISHOT`).
 `DEPOSIT:<block>` is a **parameterized modifier ID** — one registry template
 mints a material-bound instance from the text after the colon.
+
+**Surface reflection** couples `BOUNCE` and `SPAWN`. When a shot would terminate
+on a block, the projectile computes the **impact normal** (the strongest approach
+axis whose neighbour that way is open) and reflects its velocity about it:
+`BOUNCE` uses that to ricochet and fly on (shedding a little speed each hit,
+still ageing so it can't live forever), triggering only at expiry or a direct mob
+hit; a block terminus otherwise launches its `SPAWN` children along the reflected
+heading, nudged just off the face, so a cluster that hits a wall scatters back
+into the open instead of wasting its children against the same surface.
 
 ### Compile pipeline
 

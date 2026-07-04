@@ -127,11 +127,17 @@ public final class ProjectileLauncher {
         }
     }
 
+    /** How far off the terminus children spawn, along their heading, to clear the impacted face. */
+    private static final double SPAWN_OFFSET = 0.6;
+
     /**
      * Launch a SPAWN emitter's fresh children at a parent's terminus. Each child
      * carries its own compiled flight/payload; it inherits nothing from the
      * parent but the cast context (one generation deeper, so recursion is capped).
-     * A child's own MULTISHOT/SPREAD scatter it around the parent's heading.
+     * A child's own MULTISHOT/SPREAD scatter it around the parent's heading. The
+     * heading is the parent's velocity <em>reflected off the surface</em> when it
+     * hit a block, and children spawn nudged along it, so a shot that ends against
+     * a wall scatters its children back into the open instead of into the wall.
      */
     public void spawnChildren(List<ProjectileSpec> children, Location at, Vector heading, Shot parentShot) {
         Shot childShot = parentShot.deeper();
@@ -140,6 +146,7 @@ public final class ProjectileLauncher {
             return;
         }
         Vector aim = heading.lengthSquared() > 1.0e-6 ? heading.clone().normalize() : new Vector(0, 1, 0);
+        Location origin = at.clone().add(aim.clone().multiply(SPAWN_OFFSET));
         for (ProjectileSpec child : children) {
             Payload payload = buildPayload(child);
             double speed = Math.max(0.05, child.speed());
@@ -148,7 +155,7 @@ public final class ProjectileLauncher {
                 Vector dir = scatter(aim, child.spreadDegrees());
                 Vector velocity = dir.multiply(speed);
                 new FusionProjectile(plugin, payload, child, world,
-                        at.clone(), velocity, childShot).start();
+                        origin.clone(), velocity, childShot).start();
             }
         }
     }

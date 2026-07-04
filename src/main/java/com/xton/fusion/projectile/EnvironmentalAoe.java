@@ -62,12 +62,23 @@ public final class EnvironmentalAoe {
                 }
             }
             case FIRE -> {
-                if (forEachBlock(where, r, this::ignite)) {
+                boolean any = forEachBlock(where, r, this::ignite);
+                // A flame poof sized to the blaze, so FIRE always reads even over
+                // ground with nothing to melt or ignite. Kept small so a pierce/trail
+                // draws a line of fire, not a lag storm.
+                Location c = where.clone().add(0, 0.3, 0);
+                world.spawnParticle(Particle.FLAME, c, (int) Math.max(4, r * 5), r / 2, 0.3, r / 2, 0.02);
+                world.spawnParticle(Particle.LAVA, c, (int) Math.max(1, r), r / 3, 0.2, r / 3, 0.0);
+                if (any) {
                     world.playSound(where, Sound.ITEM_FIRECHARGE_USE, 0.5f, 1.0f);
                 }
             }
             case ICE -> {
-                if (forEachBlock(where, r, this::freeze)) {
+                boolean any = forEachBlock(where, r, this::freeze);
+                Location c = where.clone().add(0, 0.3, 0);
+                world.spawnParticle(Particle.SNOWFLAKE, c, (int) Math.max(5, r * 6), r / 2, 0.3, r / 2, 0.02);
+                world.spawnParticle(Particle.ITEM_SNOWBALL, c, (int) Math.max(2, r * 2), r / 3, 0.2, r / 3, 0.0);
+                if (any) {
                     world.playSound(where, Sound.BLOCK_GLASS_PLACE, 0.5f, 1.4f);
                 }
             }

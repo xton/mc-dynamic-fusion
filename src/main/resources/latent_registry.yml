@@ -65,6 +65,10 @@ latent_modifiers:
     - BOUNCE
   RABBIT_HIDE:
     - BOUNCE
+  COMPASS:                # HOMING — steer toward nearby creatures
+    - HOMING
+  RECOVERY_COMPASS:
+    - HOMING
   GUNPOWDER:              # LIFETIME — fly farther
     - LIFETIME
   REDSTONE:

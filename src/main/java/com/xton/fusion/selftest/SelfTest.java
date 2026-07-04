@@ -141,6 +141,9 @@ public final class SelfTest {
         // delayed charge re-detonates in place — so it takes more than one burst.
         Zombie delayMob = spawnDummy(world, base.clone().add(3, 0, -30), spawned);
         final double delayMob0 = health(delayMob);
+        // A mob off the firing line: a HOMING bolt must curve sideways into it.
+        Zombie homingMob = spawnDummy(world, base.clone().add(5, 0, -32), spawned);
+        final double homingMob0 = health(homingMob);
 
         int bx = base.getBlockX();
         int by = base.getBlockY() + 1;
@@ -183,6 +186,9 @@ public final class SelfTest {
         // should leave the caster's own tile empty and only fill downrange.
         boolean trailWarmupOk = clearRowReturn(world, bx, by, bz - 26, 8);
         clearRow(world, bx, by, bz - 30, 5); // clear path to the DELAY dummy at dx3
+        for (int dz = 0; dz <= 3; dz++) {   // a small arena for the HOMING bolt to curve in
+            clearRow(world, bx, by, bz - 34 + dz, 6);
+        }
 
         final double gravityLaunchY = by + 20;
         final FusionProjectile[] gravityBolt = new FusionProjectile[1];
@@ -221,6 +227,10 @@ public final class SelfTest {
                     "spawned=" + (cowShot == null ? "null" : cowShot.getType())));
             if (cowShot != null) {
                 cowShot.remove();
+            }
+            if (homingMob != null && homingMob.isValid()) {
+                // Fire +X from 2 blocks to the mob's side; only homing can curve into it.
+                fireBolt(world, at(world, bx, by, bz - 34), PLUS_X, false, "DAMAGE", "HOMING", "HOMING");
             }
             if (fireMining) {
                 fireBolt(world, at(world, bx, by, bz), PLUS_X, false, "MINING", "PIERCE");
@@ -309,6 +319,7 @@ public final class SelfTest {
                 results.add(trailWarmupSparesCaster(world, bx, by, bz - 26));
             }
             results.add(delayReDetonates(delayMob, delayMob0));
+            results.add(homingCurvesIntoTarget(homingMob, homingMob0));
         }, SETTLE + MINING_WAIT);
 
         // --- last: the persist field has finished pulsing and the gravity bolt
@@ -477,6 +488,13 @@ public final class SelfTest {
         r.add(new Result("compile:delay-child", delayOk,
                 "delayTicks=" + (delayed.spawns().isEmpty() ? "-"
                         : delayed.spawns().get(0).spawnDelayTicks())));
+
+        // HOMING is a stacking flight flag.
+        boolean homingOk = compile("DAMAGE", "HOMING").isHoming()
+                && !compile("DAMAGE").isHoming()
+                && compile("DAMAGE", "HOMING", "HOMING").homing() == 2;
+        r.add(new Result("compile:homing-flag", homingOk,
+                "homing2=" + compile("DAMAGE", "HOMING", "HOMING").homing()));
 
         // MOB:<type> parses a spawnable living entity to launch as the projectile.
         ProjectileSpec cowShot = compile("MOB:COW");
@@ -697,6 +715,16 @@ public final class SelfTest {
             log.warning(TAG + " could not spawn cow: " + e);
             return null;
         }
+    }
+
+    /** A HOMING bolt fired past the mob curves sideways into it, so its health drops. */
+    private Result homingCurvesIntoTarget(Zombie mob, double before) {
+        if (mob == null || !mob.isValid()) {
+            return new Result("homing-curves-into-target", false, "no mob");
+        }
+        boolean ok = mob.getHealth() < before;
+        return new Result("homing-curves-into-target", ok,
+                String.format("health %.1f -> %.1f", before, mob.getHealth()));
     }
 
     /** A DAMAGE DELAY DAMAGE bolt hits, then its delayed charge re-detonates — more than one burst lands. */

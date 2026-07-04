@@ -21,6 +21,7 @@ import com.xton.fusion.modifier.impl.ExpandModifier;
 import com.xton.fusion.modifier.impl.FireModifier;
 import com.xton.fusion.modifier.impl.GravityModifier;
 import com.xton.fusion.modifier.impl.HealModifier;
+import com.xton.fusion.modifier.impl.HomingModifier;
 import com.xton.fusion.modifier.impl.IceModifier;
 import com.xton.fusion.modifier.impl.InvertModifier;
 import com.xton.fusion.modifier.impl.InvisibleModifier;
@@ -64,6 +65,7 @@ class WeaponCompileTest {
                 .register(new SpreadModifier(12.0))
                 .register(new PierceModifier())
                 .register(new BounceModifier())
+                .register(new HomingModifier())
                 .register(new LifetimeModifier(12.0))
                 .register(new MiningModifier(1.0))
                 .register(new FireModifier())
@@ -277,6 +279,13 @@ class WeaponCompileTest {
         assertTrue(lob.hasVisibleTrail());
         assertEquals(0.8, lob.speed(), 1.0e-9);
         assertEquals(80, lob.lifetimeTicks());
+    }
+
+    @Test
+    void homingIsAStackingFlightFlag() {
+        assertFalse(compile("DAMAGE").isHoming());
+        assertTrue(compile("DAMAGE", "HOMING").isHoming());
+        assertEquals(2, compile("DAMAGE", "HOMING", "HOMING").homing(), "stacks sharpen the turn");
     }
 
     @Test

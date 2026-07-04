@@ -64,6 +64,10 @@ public final class FusionProjectile extends BukkitRunnable {
     private static final double BOUNCE_REST_SPEED = 0.15;
     /** Blocks of flight before TRAIL starts laying its wake, so it clears the caster. */
     private static final double TRAIL_WARMUP = 2.5;
+    /** How far a HOMING shot looks for a creature to chase. */
+    private static final double HOMING_RANGE = 12.0;
+    /** Max radians a HOMING shot turns per tick, per HOMING stack. */
+    private static final double HOMING_TURN_PER_STACK = 0.13;
 
     private final Plugin plugin;
     private final Payload payload;
@@ -109,6 +113,9 @@ public final class FusionProjectile extends BukkitRunnable {
         }
         if (spec.hasGravity()) {
             velocity.setY(velocity.getY() - GRAVITY_PER_TICK);
+        }
+        if (spec.isHoming()) {
+            homeTowardTarget();
         }
 
         double distance = velocity.length();
@@ -175,6 +182,58 @@ public final class FusionProjectile extends BukkitRunnable {
         if (++age >= Math.max(1, spec.lifetimeTicks())) {
             terminate(position.toLocation(world));
         }
+    }
+
+    /**
+     * Steer the velocity toward the nearest creature within range, turning at most
+     * a fixed angle per tick (scaled by HOMING stacks) so it curves to chase
+     * rather than snapping on. Re-acquires every tick, so a dead/fled target is
+     * dropped for the next-nearest.
+     */
+    private void homeTowardTarget() {
+        LivingEntity target = nearestTarget();
+        if (target == null) {
+            return;
+        }
+        Vector desired = target.getLocation().add(0, 0.6, 0).toVector().subtract(position);
+        if (desired.lengthSquared() < 1.0e-6) {
+            return;
+        }
+        desired.normalize();
+        double speed = velocity.length();
+        if (speed < 1.0e-6) {
+            return;
+        }
+        Vector cur = velocity.clone().multiply(1.0 / speed);
+        double maxTurn = HOMING_TURN_PER_STACK * spec.homing();
+        double dot = Math.max(-1.0, Math.min(1.0, cur.dot(desired)));
+        double angle = Math.acos(dot);
+        Vector dir;
+        if (angle <= maxTurn || angle < 1.0e-4) {
+            dir = desired; // close enough to point straight at it
+        } else {
+            double f = maxTurn / angle; // partial turn toward the target
+            dir = cur.multiply(1 - f).add(desired.multiply(f)).normalize();
+        }
+        velocity.copy(dir.multiply(speed));
+    }
+
+    /** The nearest non-caster living creature within homing range, or null. */
+    private LivingEntity nearestTarget() {
+        Location here = position.toLocation(world);
+        LivingEntity best = null;
+        double bestSq = HOMING_RANGE * HOMING_RANGE;
+        for (Entity entity : world.getNearbyEntities(here, HOMING_RANGE, HOMING_RANGE, HOMING_RANGE)) {
+            if (!(entity instanceof LivingEntity living) || living.equals(caster)) {
+                continue;
+            }
+            double distSq = entity.getLocation().toVector().distanceSquared(position);
+            if (distSq < bestSq) {
+                bestSq = distSq;
+                best = living;
+            }
+        }
+        return best;
     }
 
     private boolean inBounds(Location loc) {

@@ -30,6 +30,7 @@ public final class ProjectileSpec {
     private boolean visibleTrail = true; // render the flight trail (off for a short melee poke)
     private boolean trail;             // TRAIL: apply AOEs at every empty-air cell too
     private boolean teleport;          // TELEPORT: move the caster to the terminus
+    private int homing;                // HOMING: steer toward a nearby target (stacks = sharper turn)
 
     private int spawnDelayTicks;       // DELAY: ticks to wait before launching this child
     private EntityType mobType;        // MOB:<type>: launch this living entity as the projectile
@@ -154,6 +155,19 @@ public final class ProjectileSpec {
 
     public void setTeleport(boolean teleport) {
         this.teleport = teleport;
+    }
+
+    /** HOMING strength — how many HOMING modifiers were applied (0 = none); more = sharper turn. */
+    public int homing() {
+        return homing;
+    }
+
+    public void addHoming(int count) {
+        this.homing += count;
+    }
+
+    public boolean isHoming() {
+        return homing > 0;
     }
 
     // ----- payload accessors -----

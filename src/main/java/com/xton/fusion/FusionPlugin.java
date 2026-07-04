@@ -37,6 +37,7 @@ import com.xton.fusion.modifier.impl.ExpandModifier;
 import com.xton.fusion.modifier.impl.FireModifier;
 import com.xton.fusion.modifier.impl.GravityModifier;
 import com.xton.fusion.modifier.impl.HealModifier;
+import com.xton.fusion.modifier.impl.HomingModifier;
 import com.xton.fusion.modifier.impl.IceModifier;
 import com.xton.fusion.modifier.impl.InvertModifier;
 import com.xton.fusion.modifier.impl.InvisibleModifier;
@@ -100,6 +101,7 @@ public final class FusionPlugin extends JavaPlugin {
                         getConfig().getDouble("spread.degrees-per-apply", 12.0)))
                 .register(new PierceModifier())
                 .register(new BounceModifier())
+                .register(new HomingModifier())
                 .register(new LifetimeModifier(
                         getConfig().getDouble("lifetime.range-per-apply", 12.0)))
                 .register(new MiningModifier(

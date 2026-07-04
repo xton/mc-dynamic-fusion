@@ -4,13 +4,31 @@ Most of the weapon model is now checked automatically, so this list is only the
 things a bot/headless test **can't** judge: cosmetics, feel, and a few bits that
 depend on config or a server restart.
 
+## Fast start — fresh world + a chest of every weapon
+
+```
+make uat-newworld      # wipes the world for a clean slate, then boots the server
+```
+
+Join (you're op), then in-game:
+
+```
+/fusion showcase       # fills chests in front of you with every labelled weapon below
+```
+
+Each item is **renamed** to the **bold name** used in this checklist — grab the
+one you want and swing. The roster lives in `Showcase.java` (the smoke test
+asserts every entry still resolves, so it can't silently rot). Prefer to build
+by hand? `/fusion give <you> <base> <MOD...>`, or `/fusion give <you> <base>
+from:<item>` to pull an ingredient's latents.
+
 ## Run the automated suites first
 
 Before touching this list, run the harnesses — if they're green, the mechanics
 below the "already automated" line are covered and you can skip them:
 
 ```
-make smoke   # boots Paper + runs /fusion test: 46 in-process checks
+make smoke   # boots Paper + runs /fusion test: 47 in-process checks
 make e2e     # a real Mineflayer bot: swing/bow input + the anvil GUI (10 checks)
 ```
 
@@ -173,6 +191,12 @@ the bits that need a real player or an eye:
     Melee fires a **subtle energy ball**; all trails now **hang and fade in place**
     (no gravity), and a fused **bow left-click is a plain vanilla melee** (fusion
     only fires on the arrow).
+33. **Glowing armor (Glow Helmet).** Wear a `DIAMOND_HELMET GLOW` (or any armor
+    with `GLOW`) → you keep **night vision** in caves/at night, no torch needed.
+    Take it off and it lapses after a few seconds. Lantern is the ingredient.
+34. **Jetpack (Jet Elytra).** Wear an `ELYTRA LIFT` (or a `LIFT` chestplate) and
+    **jump** → you get a strong upward **boost**; on the elytra, jump then glide.
+    Tune `worn.jetpack-thrust` for bigger hops. Breeze Rod is the ingredient.
 
 ---
 

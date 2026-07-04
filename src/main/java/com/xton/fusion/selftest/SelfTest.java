@@ -18,6 +18,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Zombie;
 import org.bukkit.util.Vector;
 
+import com.xton.fusion.command.Showcase;
 import com.xton.fusion.modifier.AoeKind;
 import com.xton.fusion.modifier.AoeSpec;
 import com.xton.fusion.modifier.ModifierRegistry;
@@ -524,6 +525,21 @@ public final class SelfTest {
                 && compile("DAMAGE", "HOMING", "HOMING").homing() == 2;
         r.add(new Result("compile:homing-flag", homingOk,
                 "homing2=" + compile("DAMAGE", "HOMING", "HOMING").homing()));
+
+        // Every modifier in the UAT showcase roster resolves — so /fusion showcase
+        // can't silently break when a modifier is renamed.
+        boolean showcaseOk = true;
+        StringBuilder badShowcase = new StringBuilder();
+        for (Showcase.Entry entry : Showcase.roster()) {
+            for (String id : entry.modifiers()) {
+                if (!registry.isKnown(id)) {
+                    showcaseOk = false;
+                    badShowcase.append(entry.name()).append(':').append(id).append(' ');
+                }
+            }
+        }
+        r.add(new Result("compile:showcase-roster-known", showcaseOk,
+                showcaseOk ? Showcase.roster().size() + " builds all resolve" : "unknown: " + badShowcase));
 
         // MOB:<type> parses a spawnable living entity to launch as the projectile.
         ProjectileSpec cowShot = compile("MOB:COW");

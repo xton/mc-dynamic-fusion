@@ -50,6 +50,8 @@ Noita-style. Modifiers come in two kinds:
 | *xf (fly)* | **Visible** / **Invisible** | Glow Ink Sac / Ink Sac | force the flight trail on or off (override the weapon-type default) |
 | *xf (fly)* | **Speed:_n_** | *(parameterized)* | pin the launch speed to an exact value (`Speed:0.6` slow, `Speed:3` fast) |
 | *xf (fly)* | **Duration:_n_** | *(parameterized)* | pin the lifetime to _n_ seconds (`Duration:4`) — absolute, unlike Lifetime's added range |
+| **worn** | **Glow** | Lantern, Glow Berries | fused onto **armor**, keeps night vision on you — always carry a light |
+| **worn** | **Lift** | Breeze Rod | fused onto a **chestplate/elytra**, jumping thrusts you up — a jetpack hop |
 
 Because these are small primitives, weapons **compose**: a nova is
 `Push · Expand · Expand`; a fireball is `Damage · Amplify`; a shotgun is
@@ -153,7 +155,7 @@ make smoke
 It then runs an **in-process functional self-test** — `/fusion test`
 (console/op only) drives the *real* modifier compiler, projectile, and burst
 code against the live world and asserts the mechanics MockBukkit can't reach. It
-has two kinds of check (46 in total):
+has two kinds of check (47 in total):
 
 - **compile checks** pin the emitter/transform RPN semantics on the compiled
   spec — EXPAND/AMPLIFY scaling, MULTISHOT/SPREAD/LIFETIME stacking, INVERT

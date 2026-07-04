@@ -3,6 +3,8 @@ package com.xton.fusion.modifier;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.bukkit.entity.EntityType;
+
 /**
  * A compiled projectile: its <b>flight</b> (how it travels) plus its
  * <b>payload</b> (the ordered {@link AoeSpec} elements it delivers where it
@@ -25,9 +27,15 @@ public final class ProjectileSpec {
     private double pierceMaxHardness;  // blocks harder than this stop a piercing shot
     private int bounces;               // bounce seam
     private int lifetimeTicks;         // ticks before it expires & terminates
-    private boolean visibleTrail = true; // render the flight trail (off for a short melee poke)
+    private boolean visibleTrail = true; // render the FULL ranged trail (off = subtle melee energy ball)
+    private boolean hideTrail;           // INVISIBLE: render no trail at all
     private boolean trail;             // TRAIL: apply AOEs at every empty-air cell too
     private boolean teleport;          // TELEPORT: move the caster to the terminus
+    private int homing;                // HOMING: steer toward a nearby target (stacks = sharper turn)
+    private int treasure;              // TREASURE (Golden Brush): loot level — more gold = more/rarer drops
+
+    private int spawnDelayTicks;       // DELAY: ticks to wait before launching this child
+    private EntityType mobType;        // MOB:<type>: launch this living entity as the projectile
 
     // ----- payload -----
     private final List<AoeSpec> payload = new ArrayList<>();
@@ -135,6 +143,15 @@ public final class ProjectileSpec {
         this.visibleTrail = visibleTrail;
     }
 
+    /** INVISIBLE: suppress the trail entirely (even the subtle melee energy ball). */
+    public boolean isTrailHidden() {
+        return hideTrail;
+    }
+
+    public void setHideTrail(boolean hideTrail) {
+        this.hideTrail = hideTrail;
+    }
+
     public boolean isTrail() {
         return trail;
     }
@@ -149,6 +166,28 @@ public final class ProjectileSpec {
 
     public void setTeleport(boolean teleport) {
         this.teleport = teleport;
+    }
+
+    /** HOMING strength — how many HOMING modifiers were applied (0 = none); more = sharper turn. */
+    public int homing() {
+        return homing;
+    }
+
+    public void addHoming(int count) {
+        this.homing += count;
+    }
+
+    public boolean isHoming() {
+        return homing > 0;
+    }
+
+    /** TREASURE (Golden Brush) loot level — how many TREASURE modifiers were applied (0 = none). */
+    public int treasure() {
+        return treasure;
+    }
+
+    public void addTreasure(int count) {
+        this.treasure += count;
     }
 
     // ----- payload accessors -----
@@ -187,5 +226,23 @@ public final class ProjectileSpec {
     /** Register a fresh child projectile to launch at this one's terminus. */
     public void addSpawn(ProjectileSpec child) {
         spawns.add(child);
+    }
+
+    /** DELAY: ticks to wait after the parent's terminus before launching this child (0 = at once). */
+    public int spawnDelayTicks() {
+        return spawnDelayTicks;
+    }
+
+    public void setSpawnDelayTicks(int ticks) {
+        this.spawnDelayTicks = ticks;
+    }
+
+    /** MOB:&lt;type&gt;: the living entity to launch as the projectile, or null for a normal bolt. */
+    public EntityType mobType() {
+        return mobType;
+    }
+
+    public void setMobType(EntityType mobType) {
+        this.mobType = mobType;
     }
 }

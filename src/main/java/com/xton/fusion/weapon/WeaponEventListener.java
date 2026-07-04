@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -72,6 +73,11 @@ public final class WeaponEventListener implements Listener {
         if (!reader.isFused(hand)) {
             return;
         }
+        // A fused bow/crossbow left-clicks as a plain vanilla melee — its modifiers
+        // fire only on the arrow it shoots (the ProjectileListener path), not the swing.
+        if (isShootable(hand.getType())) {
+            return;
+        }
         List<String> ids = reader.readModifierIds(hand);
         ModifierStack stack = registry.resolve(ids);
         if (stack.isEmpty()) {
@@ -81,5 +87,10 @@ public final class WeaponEventListener implements Listener {
             return;
         }
         launcher.launchMelee(player, stack);
+    }
+
+    /** Ranged weapons whose fusion fires on the projectile they shoot, not on a swing. */
+    private static boolean isShootable(Material type) {
+        return type == Material.BOW || type == Material.CROSSBOW;
     }
 }

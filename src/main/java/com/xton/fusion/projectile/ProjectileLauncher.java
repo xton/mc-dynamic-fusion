@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.util.Vector;
@@ -116,6 +117,15 @@ public final class ProjectileLauncher {
         double speed = Math.max(0.05, spec.speed() * speedScale);
         int count = Math.max(1, spec.count());
 
+        // MOB shots hurl live entities instead of custom bolts — the mob is the payload.
+        if (spec.mobType() != null) {
+            for (int i = 0; i < count; i++) {
+                Vector dir = scatter(aim, spec.spreadDegrees());
+                spawnMobShot(caster.getWorld(), origin.clone(), dir.multiply(speed), spec);
+            }
+            return;
+        }
+
         // One Shot per cast: caster, generation 0, and a single shared TELEPORT
         // latch so the whole volley (and any SPAWN children) teleports at most once.
         Shot shot = new Shot(caster, 0, maxSpawnGeneration, envSettings, this, new AtomicBoolean(false));
@@ -125,6 +135,20 @@ public final class ProjectileLauncher {
             new FusionProjectile(plugin, payload, spec, caster.getWorld(),
                     origin.clone(), velocity, shot).start();
         }
+    }
+
+    /**
+     * Spawn the MOB shot's live entity at {@code origin} and fling it with
+     * {@code velocity}, letting vanilla physics carry it. Returns the entity (or
+     * null if the type is unset / the spawn fails).
+     */
+    public Entity spawnMobShot(World world, Location origin, Vector velocity, ProjectileSpec spec) {
+        if (world == null || spec.mobType() == null) {
+            return null;
+        }
+        Entity entity = world.spawnEntity(origin, spec.mobType());
+        entity.setVelocity(velocity);
+        return entity;
     }
 
     /** How far off the terminus children spawn, along their heading, to clear the impacted face. */
@@ -146,17 +170,34 @@ public final class ProjectileLauncher {
             return;
         }
         Vector aim = heading.lengthSquared() > 1.0e-6 ? heading.clone().normalize() : new Vector(0, 1, 0);
-        Location origin = at.clone().add(aim.clone().multiply(SPAWN_OFFSET));
         for (ProjectileSpec child : children) {
-            Payload payload = buildPayload(child);
-            double speed = Math.max(0.05, child.speed());
-            int count = Math.max(1, child.count());
-            for (int i = 0; i < count; i++) {
-                Vector dir = scatter(aim, child.spreadDegrees());
-                Vector velocity = dir.multiply(speed);
-                new FusionProjectile(plugin, payload, child, world,
-                        origin.clone(), velocity, childShot).start();
+            // A DELAY child detonates in place, so spawn it exactly at the terminus;
+            // a flying SPAWN child is nudged off the surface so it clears the face.
+            boolean inPlace = child.spawnDelayTicks() > 0 || child.speed() < 0.1;
+            Location origin = inPlace ? at.clone() : at.clone().add(aim.clone().multiply(SPAWN_OFFSET));
+            if (child.spawnDelayTicks() > 0) {
+                plugin.getServer().getScheduler().runTaskLater(plugin,
+                        () -> launchChildVolley(child, world, origin, aim, childShot),
+                        child.spawnDelayTicks());
+            } else {
+                launchChildVolley(child, world, origin, aim, childShot);
             }
+        }
+    }
+
+    /** Launch one child spec's volley (its MULTISHOT count, scattered by its SPREAD). */
+    private void launchChildVolley(ProjectileSpec child, World world, Location origin, Vector aim, Shot childShot) {
+        if (!world.isChunkLoaded(origin.getBlockX() >> 4, origin.getBlockZ() >> 4)) {
+            return; // the area unloaded during a DELAY — drop the charge rather than force-load
+        }
+        Payload payload = buildPayload(child);
+        double speed = Math.max(0.05, child.speed());
+        int count = Math.max(1, child.count());
+        for (int i = 0; i < count; i++) {
+            Vector dir = scatter(aim, child.spreadDegrees());
+            Vector velocity = dir.multiply(speed);
+            new FusionProjectile(plugin, payload, child, world,
+                    origin.clone(), velocity, childShot).start();
         }
     }
 

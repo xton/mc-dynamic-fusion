@@ -3,9 +3,12 @@ package com.xton.fusion.command;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;
+import java.util.Map;
 
+import org.bukkit.Material;
 import org.junit.jupiter.api.Test;
 
+import com.xton.fusion.item.LatentRegistry;
 import com.xton.fusion.modifier.ModifierRegistry;
 import com.xton.fusion.modifier.impl.ChainModifier;
 import com.xton.fusion.modifier.impl.PushModifier;
@@ -24,7 +27,7 @@ class FusionCommandParseTest {
         ModifierRegistry registry = registry();
         // args: give <player> <base> push MYSTERY chain
         String[] args = {"give", "Steve", "DIAMOND_SWORD", "push", "MYSTERY", "chain"};
-        List<String> ids = FusionCommand.knownIds(registry, args, 3);
+        List<String> ids = FusionCommand.knownIds(registry, null, args, 3);
 
         assertEquals(List.of("PUSH", "CHAIN"), ids);
     }
@@ -33,8 +36,20 @@ class FusionCommandParseTest {
     void preservesOrderAndDuplicates() {
         ModifierRegistry registry = registry();
         String[] args = {"give", "Steve", "BOW", "push", "push", "chain"};
-        List<String> ids = FusionCommand.knownIds(registry, args, 3);
+        List<String> ids = FusionCommand.knownIds(registry, null, args, 3);
 
         assertEquals(List.of("PUSH", "PUSH", "CHAIN"), ids);
+    }
+
+    @Test
+    void fromDirectiveExpandsItemLatents() {
+        ModifierRegistry registry = registry();
+        LatentRegistry latent = new LatentRegistry(
+                Map.of(Material.NETHER_STAR, List.of("PUSH", "CHAIN")));
+        // from:nether_star expands to that item's latents, composing with literal IDs.
+        String[] args = {"give", "Steve", "DIAMOND_SWORD", "from:nether_star", "push"};
+        List<String> ids = FusionCommand.knownIds(registry, latent, args, 3);
+
+        assertEquals(List.of("PUSH", "CHAIN", "PUSH"), ids);
     }
 }

@@ -53,17 +53,32 @@ public final class EnvironmentalAoe {
         double r = Math.min(aoe.radius(), settings.maxRadius());
         switch (aoe.kind()) {
             case MINING -> {
-                if (forEachBlock(where, r, this::breakSoft)) {
+                // The mining element's power carries its break-hardness cap (raised
+                // by stacking MINING / AMPLIFY), bounded by the global safety ceiling.
+                double base = aoe.power() > 0 ? aoe.power() : settings.maxHardness();
+                double cap = Math.min(base, settings.maxHardness());
+                if (forEachBlock(where, r, block -> breakSoft(block, cap))) {
                     world.playSound(where, Sound.BLOCK_STONE_BREAK, 0.6f, 0.9f);
                 }
             }
             case FIRE -> {
-                if (forEachBlock(where, r, this::ignite)) {
+                boolean any = forEachBlock(where, r, this::ignite);
+                // A flame poof sized to the blaze, so FIRE always reads even over
+                // ground with nothing to melt or ignite. Kept small so a pierce/trail
+                // draws a line of fire, not a lag storm.
+                Location c = where.clone().add(0, 0.3, 0);
+                world.spawnParticle(Particle.FLAME, c, (int) Math.max(4, r * 5), r / 2, 0.3, r / 2, 0.02);
+                world.spawnParticle(Particle.LAVA, c, (int) Math.max(1, r), r / 3, 0.2, r / 3, 0.0);
+                if (any) {
                     world.playSound(where, Sound.ITEM_FIRECHARGE_USE, 0.5f, 1.0f);
                 }
             }
             case ICE -> {
-                if (forEachBlock(where, r, this::freeze)) {
+                boolean any = forEachBlock(where, r, this::freeze);
+                Location c = where.clone().add(0, 0.3, 0);
+                world.spawnParticle(Particle.SNOWFLAKE, c, (int) Math.max(5, r * 6), r / 2, 0.3, r / 2, 0.02);
+                world.spawnParticle(Particle.ITEM_SNOWBALL, c, (int) Math.max(2, r * 2), r / 3, 0.2, r / 3, 0.0);
+                if (any) {
                     world.playSound(where, Sound.BLOCK_GLASS_PLACE, 0.5f, 1.4f);
                 }
             }
@@ -79,9 +94,9 @@ public final class EnvironmentalAoe {
         }
     }
 
-    private boolean breakSoft(Block block) {
+    private boolean breakSoft(Block block, double maxHardness) {
         Material type = block.getType();
-        if (type.isAir() || !isBreakable(type)) {
+        if (type.isAir() || !isBreakable(type, maxHardness)) {
             return false;
         }
         world.spawnParticle(Particle.BLOCK, block.getLocation().add(0.5, 0.5, 0.5),
@@ -126,7 +141,19 @@ public final class EnvironmentalAoe {
             block.setType(Material.AIR, true);
             return true;
         }
+        // Dressing: lay a thin snow layer on an exposed solid surface, so the freeze
+        // always reads even with no water/lava/fire around to transform.
+        if (type.isAir() && canHoldSnow(block.getRelative(0, -1, 0))) {
+            block.setType(Material.SNOW, true);
+            return true;
+        }
         return false;
+    }
+
+    /** True if a snow layer will sit on this block: a solid top that isn't already snowy/icy. */
+    private boolean canHoldSnow(Block below) {
+        Material b = below.getType();
+        return b.isSolid() && !isSnow(b) && !isIce(b) && b != Material.SNOW;
     }
 
     private boolean fillAir(Block block, Material material) {
@@ -192,9 +219,9 @@ public final class EnvironmentalAoe {
         return false;
     }
 
-    private boolean isBreakable(Material type) {
+    private boolean isBreakable(Material type, double maxHardness) {
         double hardness = type.getHardness();
-        return hardness >= 0 && hardness <= settings.maxHardness();
+        return hardness >= 0 && hardness <= maxHardness; // bedrock (-1) is never breakable
     }
 
     private static boolean isSnow(Material type) {

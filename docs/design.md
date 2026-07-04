@@ -151,7 +151,10 @@ and stops, no pop).
 Modifiers come in two categories (`Modifier.Category`):
 
 - **Emitters** add a concrete element to the current projectile's payload.
-  `PUSH`/`DAMAGE` append an entity-burst `AoeSpec`; the **environmental** emitters
+  `PUSH`/`DAMAGE` (and their complements `PULL`/`HEAL`) append an entity-burst
+  `AoeSpec`; `DELAY:n` pushes a timed in-place child (a SPAWN sibling); `MOB:type`
+  makes the shot a launched live entity; `TREASURE` marks a Golden Brush; the
+  **environmental** emitters
   `MINING`/`FIRE`/`ICE`/`DEPOSIT:<block>` append `AoeSpec`s that act on the world
   (break / ignite / freeze / fill) rather than shoving entities. `SPAWN` is the
   cluster-bomb emitter: it pushes a **fresh child projectile** onto the compile
@@ -160,9 +163,9 @@ Modifiers come in two categories (`Modifier.Category`):
 - **Transforms** modify the **nearest preceding emitter** (RPN, apply-to-previous).
   *AOE transforms* (`EXPAND` ×radius, `AMPLIFY` ×power/damage, `CHAIN`, `INVERT`,
   `PERSIST`) mutate the top `AoeSpec`; *flight transforms* (`MULTISHOT`, `SPREAD`,
-  `PIERCE`, `BOUNCE`, `TRAIL`, `LIFETIME`, `MINING`, `TELEPORT`, `GRAVITY`,
-  `VISIBLE`/`INVISIBLE`, and the parameterized `SPEED:n`/`DURATION:n`) mutate the
-  projectile. A
+  `PIERCE`, `BOUNCE`, `HOMING`, `TRAIL`, `LIFETIME`, `MINING`, `TELEPORT`,
+  `GRAVITY`, `VISIBLE`/`INVISIBLE`, and the parameterized `SPEED:n`/`DURATION:n`)
+  mutate the projectile. A
   transform with no matching preceding emitter is **inert** — so a burst is opt-in
   (Expand alone does nothing), and it binds to the *nearest* element only
   (`PUSH PUSH EXPAND` widens just the second push).

@@ -64,6 +64,15 @@ public final class FusionProjectile extends BukkitRunnable {
     private static final double BOUNCE_REST_SPEED = 0.15;
     /** Blocks of flight before TRAIL starts laying its wake, so it clears the caster. */
     private static final double TRAIL_WARMUP = 2.5;
+    /** In-place dust for the flight wake (no gravity — fades where it's drawn). */
+    private static final Particle.DustOptions RANGED_TRAIL =
+            new Particle.DustOptions(org.bukkit.Color.fromRGB(120, 220, 255), 1.0f);
+    private static final Particle.DustOptions MELEE_TRAIL =
+            new Particle.DustOptions(org.bukkit.Color.fromRGB(180, 190, 255), 0.7f);
+    /** How far a HOMING shot looks for a creature to chase. */
+    private static final double HOMING_RANGE = 12.0;
+    /** Max radians a HOMING shot turns per tick, per HOMING stack. */
+    private static final double HOMING_TURN_PER_STACK = 0.13;
 
     private final Plugin plugin;
     private final Payload payload;
@@ -109,6 +118,9 @@ public final class FusionProjectile extends BukkitRunnable {
         }
         if (spec.hasGravity()) {
             velocity.setY(velocity.getY() - GRAVITY_PER_TICK);
+        }
+        if (spec.isHoming()) {
+            homeTowardTarget();
         }
 
         double distance = velocity.length();
@@ -175,6 +187,58 @@ public final class FusionProjectile extends BukkitRunnable {
         if (++age >= Math.max(1, spec.lifetimeTicks())) {
             terminate(position.toLocation(world));
         }
+    }
+
+    /**
+     * Steer the velocity toward the nearest creature within range, turning at most
+     * a fixed angle per tick (scaled by HOMING stacks) so it curves to chase
+     * rather than snapping on. Re-acquires every tick, so a dead/fled target is
+     * dropped for the next-nearest.
+     */
+    private void homeTowardTarget() {
+        LivingEntity target = nearestTarget();
+        if (target == null) {
+            return;
+        }
+        Vector desired = target.getLocation().add(0, 0.6, 0).toVector().subtract(position);
+        if (desired.lengthSquared() < 1.0e-6) {
+            return;
+        }
+        desired.normalize();
+        double speed = velocity.length();
+        if (speed < 1.0e-6) {
+            return;
+        }
+        Vector cur = velocity.clone().multiply(1.0 / speed);
+        double maxTurn = HOMING_TURN_PER_STACK * spec.homing();
+        double dot = Math.max(-1.0, Math.min(1.0, cur.dot(desired)));
+        double angle = Math.acos(dot);
+        Vector dir;
+        if (angle <= maxTurn || angle < 1.0e-4) {
+            dir = desired; // close enough to point straight at it
+        } else {
+            double f = maxTurn / angle; // partial turn toward the target
+            dir = cur.multiply(1 - f).add(desired.multiply(f)).normalize();
+        }
+        velocity.copy(dir.multiply(speed));
+    }
+
+    /** The nearest non-caster living creature within homing range, or null. */
+    private LivingEntity nearestTarget() {
+        Location here = position.toLocation(world);
+        LivingEntity best = null;
+        double bestSq = HOMING_RANGE * HOMING_RANGE;
+        for (Entity entity : world.getNearbyEntities(here, HOMING_RANGE, HOMING_RANGE, HOMING_RANGE)) {
+            if (!(entity instanceof LivingEntity living) || living.equals(caster)) {
+                continue;
+            }
+            double distSq = entity.getLocation().toVector().distanceSquared(position);
+            if (distSq < bestSq) {
+                bestSq = distSq;
+                best = living;
+            }
+        }
+        return best;
     }
 
     private boolean inBounds(Location loc) {
@@ -333,15 +397,23 @@ public final class FusionProjectile extends BukkitRunnable {
     }
 
     private void trail(Location here) {
-        // A short melee poke keeps no visible trail — not even mining sparks — so
-        // it reads as an instant swing. Ranged shots render theirs.
-        if (!spec.hasVisibleTrail()) {
+        if (spec.isTrailHidden()) {
+            return; // INVISIBLE — a truly unseen bolt
+        }
+        // DUST hangs and fades where it's drawn — no gravity, so the wake dissipates
+        // in place instead of raining down after the shot passes.
+        if (spec.hasVisibleTrail()) {
+            // Ranged shots render a brighter energy wake (+ mining sparks).
+            world.spawnParticle(Particle.DUST, here, 1, 0.02, 0.02, 0.02, 0.0, RANGED_TRAIL);
+            if (spec.isMining()) {
+                world.spawnParticle(Particle.ELECTRIC_SPARK, here, 1, 0.0, 0.0, 0.0, 0.0);
+            }
             return;
         }
-        world.spawnParticle(Particle.CRIT, here, 1, 0.02, 0.02, 0.02, 0.0);
-        if (spec.isMining()) {
-            world.spawnParticle(Particle.ELECTRIC_SPARK, here, 1, 0.02, 0.02, 0.02, 0.0);
-        }
+        // A melee swing throws a subtle "energy ball" — visible enough to read on a
+        // long-range build, faint enough that a near-instant poke still looks like a
+        // swing. Much softer than the ranged wake or a burst.
+        world.spawnParticle(Particle.DUST, here, 1, 0.0, 0.0, 0.0, 0.0, MELEE_TRAIL);
     }
 
     // ----- terminus -----

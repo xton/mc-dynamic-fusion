@@ -3,14 +3,23 @@ package com.xton.fusion.projectile;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.bukkit.Color;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.entity.BlockDisplay;
+import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
+import org.bukkit.util.Transformation;
 import org.bukkit.util.Vector;
+import org.joml.Vector3f;
 
 import com.xton.fusion.modifier.AoeKind;
 import com.xton.fusion.modifier.AoeSpec;
@@ -27,6 +36,9 @@ public final class AoeBurst {
     /** Tunables resolved from config. */
     public record Settings(double chainRange, long persistIntervalTicks, boolean affectPlayers) {
     }
+
+    /** A DAMAGE burst at or above this radius grows a real explosion sprite (a base hit doesn't). */
+    private static final double DAMAGE_BLAST_RADIUS = 4.5;
 
     private final Scheduler scheduler;
     private final Settings settings;
@@ -53,11 +65,11 @@ public final class AoeBurst {
     private void schedulePersist(World world, Location where, AoeSpec spec, Player caster) {
         long interval = Math.max(1, settings.persistIntervalTicks());
         long duration = spec.persistTicks();
-        // Grenade charge-up: between pulses a glowing dot sits at the point and
-        // blinks faster and faster; on each interval it detonates (applyBurst,
-        // which draws the boom and applies the effect). Only the pulse does
-        // anything — the dot is pure visual charge, so the visuals match the
-        // mechanic instead of implying continuous damage.
+        // Grenade charge-up: a small glowing block sits at the point and swells
+        // toward each pulse, then flashes and shrinks when it detonates (applyBurst,
+        // which draws the boom and applies the effect). A BlockDisplay — no
+        // particles — so it reads as a discrete charging marker, not smoky fire.
+        BlockDisplay marker = spawnChargeMarker(world, where);
         for (long t = 1; t <= duration; t++) {
             final long tick = t;
             final long intoCycle = t % interval;
@@ -66,20 +78,48 @@ public final class AoeBurst {
             scheduler.runLater(() -> {
                 if (pulse) {
                     applyBurst(world, where, spec, caster);
+                    scaleMarker(marker, 0.85f); // flash big on the pulse
                 } else {
-                    chargeDot(world, where, toNext);
+                    pulseMarker(marker, toNext, interval);
                 }
             }, tick);
         }
+        scheduler.runLater(() -> removeMarker(marker), duration + 1);
     }
 
-    /** A glowing dot at the retrigger point that flashes faster as the pulse nears. */
-    private void chargeDot(World world, Location where, long toNext) {
-        Location dot = where.clone().add(0, 0.6, 0);
-        world.spawnParticle(Particle.SMALL_FLAME, dot, 1, 0.0, 0.0, 0.0, 0.0); // steady marker
-        long blinkPeriod = Math.max(1, Math.min(4, toNext / 3));
-        if (toNext % blinkPeriod == 0) {
-            world.spawnParticle(Particle.END_ROD, dot, 1, 0.02, 0.02, 0.02, 0.0); // accelerating blink
+    /** A small glowing block-display at the retrigger point (no particles). */
+    private BlockDisplay spawnChargeMarker(World world, Location where) {
+        try {
+            return world.spawn(where.clone().add(0, 0.4, 0), BlockDisplay.class, d -> {
+                d.setBlock(Material.REDSTONE_BLOCK.createBlockData());
+                d.setBrightness(new Display.Brightness(15, 15));
+                d.setGlowing(true);
+                scaleMarker(d, 0.2f);
+            });
+        } catch (Exception e) {
+            return null; // display entities unavailable — skip the marker, mechanic still fires
+        }
+    }
+
+    /** Swell the marker toward the next pulse (bigger as the pulse nears). */
+    private void pulseMarker(BlockDisplay marker, long toNext, long interval) {
+        double frac = 1.0 - (double) toNext / Math.max(1, interval);
+        scaleMarker(marker, (float) (0.2 + 0.5 * frac));
+    }
+
+    private void scaleMarker(BlockDisplay marker, float s) {
+        if (marker == null || !marker.isValid()) {
+            return;
+        }
+        Transformation t = marker.getTransformation();
+        marker.setTransformation(new Transformation(
+                new Vector3f(-s / 2f, 0f, -s / 2f), t.getLeftRotation(),
+                new Vector3f(s, s, s), t.getRightRotation()));
+    }
+
+    private void removeMarker(BlockDisplay marker) {
+        if (marker != null && marker.isValid()) {
+            marker.remove();
         }
     }
 
@@ -89,7 +129,7 @@ public final class AoeBurst {
 
         List<LivingEntity> hit = new ArrayList<>();
         for (Entity entity : world.getNearbyEntities(where, radius, radius, radius)) {
-            LivingEntity target = asTarget(caster, entity);
+            LivingEntity target = asTarget(caster, entity, spec);
             if (target == null) {
                 continue;
             }
@@ -103,8 +143,14 @@ public final class AoeBurst {
         }
     }
 
-    /** Apply the spec's effect to one target: a shove (PUSH) or damage (DAMAGE). */
+    /** Apply the spec's effect to one target: heal (HEAL), damage (DAMAGE), or shove (PUSH/PULL). */
     private void affect(LivingEntity target, Vector center, AoeSpec spec, Player caster) {
+        if (spec.kind() == AoeKind.HEAL) {
+            AttributeInstance attr = target.getAttribute(Attribute.MAX_HEALTH);
+            double max = attr != null ? attr.getValue() : 20.0;
+            target.setHealth(Math.min(max, target.getHealth() + spec.power()));
+            return;
+        }
         if (spec.kind() == AoeKind.DAMAGE) {
             target.damage(spec.power(), caster);
             return;
@@ -122,13 +168,25 @@ public final class AoeBurst {
         target.setVelocity(target.getVelocity().add(dir));
     }
 
-    /** Returns the entity as a valid target, or null if it should be skipped. */
-    private LivingEntity asTarget(Player caster, Entity entity) {
-        if (entity.equals(caster) || !(entity instanceof LivingEntity living)) {
+    /**
+     * Returns the entity as a valid target, or null if it should be skipped. HEAL
+     * is friendly: it mends the caster and players (regardless of affect-players)
+     * but skips hostile mobs. Every other burst never hits the caster and respects
+     * affect-players.
+     */
+    private LivingEntity asTarget(Player caster, Entity entity, AoeSpec spec) {
+        if (!(entity instanceof LivingEntity living)) {
             return null;
         }
-        if (!settings.affectPlayers() && entity instanceof Player) {
-            return null;
+        boolean heal = spec.kind() == AoeKind.HEAL;
+        if (entity.equals(caster)) {
+            return heal ? living : null; // a heal burst mends its caster too
+        }
+        if (entity instanceof Player) {
+            return (heal || settings.affectPlayers()) ? living : null;
+        }
+        if (heal && entity instanceof Monster) {
+            return null; // don't heal what's trying to kill you
         }
         return living;
     }
@@ -138,7 +196,7 @@ public final class AoeBurst {
         Location from = where;
         Vector center = where.toVector();
         for (int i = 0; i < spec.chainCount(); i++) {
-            LivingEntity next = nearestUnhit(world, caster, from, hit);
+            LivingEntity next = nearestUnhit(world, caster, from, hit, spec);
             if (next == null) {
                 break;
             }
@@ -149,12 +207,12 @@ public final class AoeBurst {
         }
     }
 
-    private LivingEntity nearestUnhit(World world, Player caster, Location from, List<LivingEntity> hit) {
+    private LivingEntity nearestUnhit(World world, Player caster, Location from, List<LivingEntity> hit, AoeSpec spec) {
         double range = settings.chainRange();
         LivingEntity best = null;
         double bestSq = range * range;
         for (Entity entity : world.getNearbyEntities(from, range, range, range)) {
-            LivingEntity target = asTarget(caster, entity);
+            LivingEntity target = asTarget(caster, entity, spec);
             if (target == null || hit.contains(target)) {
                 continue;
             }
@@ -172,16 +230,40 @@ public final class AoeBurst {
      * plus a little kind-specific flavour. Deliberately centred (not a spread of
      * sparks) so a single burst reads as a detonation at that spot.
      */
+    /**
+     * The "it goes off HERE" visual, scaled to the burst so the picture matches the
+     * magnitude: a base DAMAGE hit is just a small red spark (red = damage), and
+     * only an EXPANDed one grows a real blast; HEAL sparkles; PUSH/PULL keep the
+     * explosive shove. Centred, not a spray, so it reads as a detonation at the spot.
+     */
     private void boom(World world, Location where, AoeSpec spec) {
         Location center = where.clone().add(0, 0.5, 0);
         double radius = spec.radius();
-        world.spawnParticle(Particle.EXPLOSION, center, 1);
-        if (spec.kind() == AoeKind.DAMAGE) {
-            world.spawnParticle(Particle.CRIT, center, 10, radius / 3, 0.2, radius / 3, 0.05);
-            world.playSound(where, Sound.ENTITY_GENERIC_EXPLODE, 0.7f, 1.1f);
-        } else {
-            world.spawnParticle(Particle.SWEEP_ATTACK, center, 4, radius / 3, 0.2, radius / 3, 0.0);
-            world.playSound(where, Sound.ENTITY_GENERIC_EXPLODE, 0.6f, 1.4f);
+        switch (spec.kind()) {
+            case HEAL -> { // a friendly sparkle, no explosion
+                world.spawnParticle(Particle.HEART, center, 6, radius / 3, 0.3, radius / 3, 0.0);
+                world.spawnParticle(Particle.HAPPY_VILLAGER, center, 8, radius / 3, 0.3, radius / 3, 0.0);
+                world.playSound(where, Sound.ENTITY_PLAYER_LEVELUP, 0.5f, 1.6f);
+            }
+            case DAMAGE -> {
+                // Red spark sized to the radius; a big (EXPANDed) hit adds a blast.
+                int count = (int) Math.max(6, radius * 4);
+                float dustSize = (float) Math.min(3.0, radius / 2.0);
+                world.spawnParticle(Particle.DUST, center, count, radius / 3, 0.25, radius / 3, 0.0,
+                        new Particle.DustOptions(Color.fromRGB(220, 30, 30), dustSize));
+                world.spawnParticle(Particle.CRIT, center, count / 2, radius / 3, 0.2, radius / 3, 0.05);
+                if (radius >= DAMAGE_BLAST_RADIUS) {
+                    world.spawnParticle(Particle.EXPLOSION, center, 1);
+                    world.playSound(where, Sound.ENTITY_GENERIC_EXPLODE, 0.7f, 1.1f);
+                } else {
+                    world.playSound(where, Sound.ENTITY_PLAYER_ATTACK_CRIT, 0.6f, 0.9f);
+                }
+            }
+            default -> { // PUSH / PULL: the explosive shove
+                world.spawnParticle(Particle.EXPLOSION, center, 1);
+                world.spawnParticle(Particle.SWEEP_ATTACK, center, 4, radius / 3, 0.2, radius / 3, 0.0);
+                world.playSound(where, Sound.ENTITY_GENERIC_EXPLODE, 0.6f, 1.4f);
+            }
         }
     }
 

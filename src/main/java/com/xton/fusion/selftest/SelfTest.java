@@ -11,6 +11,9 @@ import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Cow;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Zombie;
 import org.bukkit.util.Vector;
@@ -128,6 +131,13 @@ public final class SelfTest {
         Zombie persistMob = spawnDummy(world, base.clone().add(3, 0, -10), spawned);
         toughen(persistMob, 200.0);
         final double persist0 = health(persistMob);
+        // A dummy for DELAY: a DAMAGE DELAY DAMAGE bolt should hit it, then its
+        // delayed charge re-detonates in place — so it takes more than one burst.
+        Zombie delayMob = spawnDummy(world, base.clone().add(3, 0, -30), spawned);
+        final double delayMob0 = health(delayMob);
+        // A mob off the firing line: a HOMING bolt must curve sideways into it.
+        Zombie homingMob = spawnDummy(world, base.clone().add(5, 0, -32), spawned);
+        final double homingMob0 = health(homingMob);
 
         int bx = base.getBlockX();
         int by = base.getBlockY() + 1;
@@ -169,6 +179,21 @@ public final class SelfTest {
         // A clear corridor for a DEPOSIT:DIRT PIERCE TRAIL bolt: the trail warm-up
         // should leave the caster's own tile empty and only fill downrange.
         boolean trailWarmupOk = clearRowReturn(world, bx, by, bz - 26, 8);
+        clearRow(world, bx, by, bz - 30, 5); // clear path to the DELAY dummy at dx3
+        for (int dz = 0; dz <= 3; dz++) {   // a small arena for the HOMING bolt to curve in
+            clearRow(world, bx, by, bz - 34 + dz, 6);
+        }
+        // An obsidian-plugged corridor: a deep MINING stack should chew through it.
+        boolean heavyMineOk = layHardCorridor(world, bx, by, bz - 36);
+        // A bare stone floor with a stop wall: ICE should dress it with snow.
+        boolean iceSnowOk = layIceFloor(world, bx, by, bz - 38);
+        // A hurt COW floating in open air (passive, so HEAL mends it — hostiles are
+        // skipped). Placed up high like the MOB test's cow, which spawns valid there.
+        final Cow healCow = spawnCow(world, new Location(world, bx + 2.5, by + 3, bz + 0.5));
+        if (healCow != null) {
+            healCow.setHealth(4.0);
+        }
+        final double healCow0 = healCow != null ? healCow.getHealth() : 0;
 
         final double gravityLaunchY = by + 20;
         final FusionProjectile[] gravityBolt = new FusionProjectile[1];
@@ -186,6 +211,8 @@ public final class SelfTest {
         final boolean fireBounce = bounceOk;
         final boolean fireSpawnRefl = spawnReflOk;
         final boolean fireTrailWarmup = trailWarmupOk;
+        final boolean fireHeavyMine = heavyMineOk;
+        final boolean fireIceSnow = iceSnowOk;
         scheduler.runLater(() -> {
             results.add(pushKnockback(world, pushMob));
             results.add(damageHurts(world, dmgMob));
@@ -193,6 +220,24 @@ public final class SelfTest {
             results.add(chainHopsToSecond(world, chainNear, chainFar));
             if (persistMob != null && persistMob.isValid()) {
                 burst.fire(world, persistMob.getLocation(), firstAoe("DAMAGE", "PERSIST"), null);
+            }
+            if (healCow != null && healCow.isValid()) {
+                burst.fire(world, healCow.getLocation(), firstAoe("HEAL"), null);
+            }
+            if (delayMob != null && delayMob.isValid()) {
+                fireBolt(world, at(world, bx, by, bz - 30), PLUS_X, false, "DAMAGE", "DELAY:0.5", "DAMAGE");
+            }
+            // MOB:COW launches a real cow entity as the projectile; verify one appears.
+            Entity cowShot = launcher.spawnMobShot(world,
+                    new Location(world, bx + 0.5, by + 3, bz + 0.5), PLUS_X.clone().multiply(0.4), compile("MOB:COW"));
+            results.add(new Result("mob-launches-entity", cowShot instanceof Cow && cowShot.isValid(),
+                    "spawned=" + (cowShot == null ? "null" : cowShot.getType())));
+            if (cowShot != null) {
+                cowShot.remove();
+            }
+            if (homingMob != null && homingMob.isValid()) {
+                // Fire +X from 2 blocks to the mob's side; only homing can curve into it.
+                fireBolt(world, at(world, bx, by, bz - 34), PLUS_X, false, "DAMAGE", "HOMING", "HOMING");
             }
             if (fireMining) {
                 fireBolt(world, at(world, bx, by, bz), PLUS_X, false, "MINING", "PIERCE");
@@ -231,13 +276,22 @@ public final class SelfTest {
             if (fireTrailWarmup) {
                 fireBolt(world, at(world, bx, by, bz - 26), PLUS_X, false, "DEPOSIT:DIRT", "PIERCE", "TRAIL");
             }
+            if (fireHeavyMine) { // five MININGs stack past obsidian's hardness
+                fireBolt(world, at(world, bx, by, bz - 36), PLUS_X, false,
+                        "MINING", "MINING", "MINING", "MINING", "MINING", "PIERCE");
+            }
+            if (fireIceSnow) {
+                fireBolt(world, at(world, bx, by, bz - 38), PLUS_X, false, "ICE");
+            }
             gravityBolt[0] = fireBolt(world,
                     new Location(world, bx + 0.5, gravityLaunchY, bz + 0.5), PLUS_X, true);
         }, SETTLE);
 
         // Shortly after firing: the piercing DAMAGE bolt has hit both dummies.
-        scheduler.runLater(() -> results.add(pierceDamagesBoth(pierceA, pierceB, pierceA0, pierceB0)),
-                SETTLE + 8);
+        scheduler.runLater(() -> {
+            results.add(pierceDamagesBoth(pierceA, pierceB, pierceA0, pierceB0));
+            results.add(healRestoresHealth(healCow, healCow0));
+        }, SETTLE + 8);
 
         // --- after the bolts have flown: assert blocks ---
         scheduler.runLater(() -> {
@@ -278,6 +332,14 @@ public final class SelfTest {
             if (fireTrailWarmup) {
                 results.add(trailWarmupSparesCaster(world, bx, by, bz - 26));
             }
+            if (fireHeavyMine) {
+                results.add(heavyMiningBreaksObsidian(world, bx, by, bz - 36));
+            }
+            if (fireIceSnow) {
+                results.add(iceDressesSurfaceWithSnow(world, bx, by, bz - 38));
+            }
+            results.add(delayReDetonates(delayMob, delayMob0));
+            results.add(homingCurvesIntoTarget(homingMob, homingMob0));
         }, SETTLE + MINING_WAIT);
 
         // --- last: the persist field has finished pulsing and the gravity bolt
@@ -398,6 +460,15 @@ public final class SelfTest {
                 && mining.isMining() && !mining.isPierce()
                 && miningPierce.isPierce()
                 && miningExpand.miningAoe().radius() > mining.miningAoe().radius();
+        // Stacking MINING raises its break-hardness (stored in the element's power)
+        // without adding a duplicate bore; AMPLIFY scales the same hardness.
+        double mineH1 = compile("MINING").miningAoe().power();
+        double mineH2 = compile("MINING", "MINING").miningAoe().power();
+        boolean mineHardOk = mineH1 > 0 && mineH2 > mineH1
+                && compile("MINING", "MINING").payload().size() == 1;
+        r.add(new Result("compile:mining-hardness-stacks", mineHardOk,
+                "hardness " + mineH1 + " -> " + mineH2));
+
         r.add(new Result("compile:mining-and-pierce", flagsOk,
                 "mining.pierce=" + mining.isPierce() + " miningPierce.pierce=" + miningPierce.isPierce()
                         + " mining.r=" + mining.miningAoe().radius()
@@ -427,6 +498,38 @@ public final class SelfTest {
         r.add(new Result("compile:deposit-parameterized", depositOk,
                 "material=" + (deposit.payload().isEmpty() ? "<none>"
                         : deposit.payload().get(0).material())));
+
+        // HEAL/PULL complements: HEAL is its own kind; PULL is a pre-inverted PUSH.
+        boolean complementOk = compile("HEAL").payload().get(0).kind() == AoeKind.HEAL
+                && compile("PULL").payload().get(0).kind() == AoeKind.PUSH
+                && compile("PULL").payload().get(0).inverted()
+                && !compile("PUSH").payload().get(0).inverted();
+        r.add(new Result("compile:heal-pull-complements", complementOk,
+                "healKind=" + compile("HEAL").payload().get(0).kind()
+                        + " pullInverted=" + compile("PULL").payload().get(0).inverted()));
+
+        // DELAY:n pushes a delayed, in-place child that later modifiers build.
+        ProjectileSpec delayed = compile("PULL", "DELAY:1", "DAMAGE");
+        boolean delayOk = delayed.spawns().size() == 1
+                && delayed.spawns().get(0).spawnDelayTicks() == 20
+                && delayed.spawns().get(0).payload().get(0).kind() == AoeKind.DAMAGE
+                && delayed.spawns().get(0).speed() < EPS;
+        r.add(new Result("compile:delay-child", delayOk,
+                "delayTicks=" + (delayed.spawns().isEmpty() ? "-"
+                        : delayed.spawns().get(0).spawnDelayTicks())));
+
+        // HOMING is a stacking flight flag.
+        boolean homingOk = compile("DAMAGE", "HOMING").isHoming()
+                && !compile("DAMAGE").isHoming()
+                && compile("DAMAGE", "HOMING", "HOMING").homing() == 2;
+        r.add(new Result("compile:homing-flag", homingOk,
+                "homing2=" + compile("DAMAGE", "HOMING", "HOMING").homing()));
+
+        // MOB:<type> parses a spawnable living entity to launch as the projectile.
+        ProjectileSpec cowShot = compile("MOB:COW");
+        boolean mobOk = cowShot.mobType() == EntityType.COW && compile("MOB:ENDER_DRAGON").mobType() == null;
+        r.add(new Result("compile:mob-parameterized", mobOk,
+                "cow=" + cowShot.mobType() + " dragonBlocked=" + (compile("MOB:ENDER_DRAGON").mobType() == null)));
 
         // Flight tuning: GRAVITY arcs, VISIBLE/INVISIBLE toggle the trail, and the
         // parameterized SPEED:<v>/DURATION:<s> pin absolute values.
@@ -628,6 +731,60 @@ public final class SelfTest {
         return mob == null ? 0 : mob.getHealth();
     }
 
+    /** Spawn a passive, inert cow (a valid HEAL target, unlike the hostile zombies). */
+    private Cow spawnCow(World world, Location loc) {
+        try {
+            return world.spawn(loc, Cow.class, c -> {
+                c.setAI(false);
+                c.setGravity(false);
+                c.setSilent(true);
+                c.setRemoveWhenFarAway(false);
+            });
+        } catch (Exception e) {
+            log.warning(TAG + " could not spawn cow: " + e);
+            return null;
+        }
+    }
+
+    /** A HOMING bolt fired past the mob curves sideways into it, so its health drops. */
+    private Result homingCurvesIntoTarget(Zombie mob, double before) {
+        if (mob == null || !mob.isValid()) {
+            return new Result("homing-curves-into-target", false, "no mob");
+        }
+        boolean ok = mob.getHealth() < before;
+        return new Result("homing-curves-into-target", ok,
+                String.format("health %.1f -> %.1f", before, mob.getHealth()));
+    }
+
+    /** A deep MINING stack (hardness past 50) bores through the obsidian plug the base ray stops at. */
+    private Result heavyMiningBreaksObsidian(World world, int bx, int by, int bz) {
+        Material m = world.getBlockAt(bx + 5, by, bz).getType();
+        return new Result("mining-stacks-break-obsidian", m != Material.OBSIDIAN, "obsidian=" + m);
+    }
+
+    /** A DAMAGE DELAY DAMAGE bolt hits, then its delayed charge re-detonates — more than one burst lands. */
+    private Result delayReDetonates(Zombie mob, double before) {
+        if (mob == null || !mob.isValid()) {
+            return new Result("delay-re-detonates", false, "no mob");
+        }
+        double single = firstAoe("DAMAGE").power();
+        double taken = before - mob.getHealth();
+        return new Result("delay-re-detonates", taken > single + EPS,
+                String.format("took %.1f (single burst %.1f)", taken, single));
+    }
+
+    /** A HEAL burst mends the hurt (passive) cow — its health climbs back up. */
+    private Result healRestoresHealth(Cow mob, double before) {
+        if (mob == null || !mob.isValid()) {
+            return new Result("heal-restores-health", false, "no mob");
+        }
+        double after = mob.getHealth();
+        Result res = new Result("heal-restores-health", after > before,
+                String.format("health %.1f -> %.1f", before, after));
+        mob.remove();
+        return res;
+    }
+
     /** Raise a dummy's max health and fill it, so repeated pulses can't kill it mid-test. */
     private void toughen(Zombie mob, double maxHealth) {
         if (mob == null) {
@@ -706,6 +863,27 @@ public final class SelfTest {
             log.warning(TAG + " trail-corridor setup failed: " + e);
             return false;
         }
+    }
+
+    /** A bare stone floor (air above) capped by a stop wall at dx 5 — an ICE target with nothing to freeze. */
+    private boolean layIceFloor(World world, int bx, int by, int bz) {
+        try {
+            for (int dx = 0; dx <= 6; dx++) {
+                world.getBlockAt(bx + dx, by, bz).setType(Material.AIR, false);
+                world.getBlockAt(bx + dx, by - 1, bz).setType(Material.STONE, false);
+            }
+            world.getBlockAt(bx + 5, by, bz).setType(Material.STONE, false); // stop wall
+            return world.getBlockAt(bx + 5, by, bz).getType() == Material.STONE;
+        } catch (Exception e) {
+            log.warning(TAG + " ice-floor setup failed: " + e);
+            return false;
+        }
+    }
+
+    /** ICE lays a snow layer on the exposed floor just before its wall terminus. */
+    private Result iceDressesSurfaceWithSnow(World world, int bx, int by, int bz) {
+        Material m = world.getBlockAt(bx + 4, by, bz).getType();
+        return new Result("ice-lays-snow", m == Material.SNOW, "block=" + m);
     }
 
     /** Clear a run that straddles the origin (dx -5..+6) and cap it with a wall at dx +5. */

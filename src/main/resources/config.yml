@@ -101,6 +101,13 @@ lifetime:
 mining:
   # Base tunnel radius. 1.0 = a one-block-wide bore; EXPAND widens it.
   base-radius: 1.0
+  # Break-hardness cap of a single MINING (stone 1.5, obsidian 50). Stone breaks,
+  # obsidian resists — until you stack MINING.
+  base-hardness: 3.0
+  # Each EXTRA MINING raises the break-hardness cap by this much, so MINING·MINING
+  # chews harder blocks (AMPLIFY scales the same hardness). With base 3 + 15/apply,
+  # ~MINING×4 gets through obsidian. Capped by environmental.max-hardness.
+  hardness-per-apply: 15.0
 
 # FIRE — an environmental emitter that spreads fire, melts snow/ice, and ignites
 # mobs in a radius (a touch wider than MINING). Applied along the flight like
@@ -129,14 +136,27 @@ deposit:
 environmental:
   # Hard ceiling on any environmental radius, whatever EXPAND multiplies it to.
   max-radius: 8.0
-  # Blocks harder than this are never broken by MINING (stone 1.5, obsidian 50).
-  max-hardness: 3.0
+  # Absolute safety ceiling: no MINING stack, however deep, breaks a block harder
+  # than this (bedrock is unbreakable regardless). Obsidian is 50; 100 lets a big
+  # MINING stack through it but still blocks nothing vanilla-unbreakable.
+  max-hardness: 100.0
 
 # SPAWN — an emitter that launches a fresh child projectile at the terminus.
 spawn:
   # How deep SPAWN may nest (generation cap). The launched shot is generation 0,
   # its children 1, and so on; past this a SPAWN simply doesn't fire.
   max-generation: 2
+
+# GOLDEN BRUSH — a fused BRUSH with TREASURE (from gold). Brushing any block has
+# a chance to cough up loot; more gold (TREASURE level) procs more often and
+# unlocks rarer finds.
+golden-brush:
+  # Proc chance = base + per-level × TREASURE level, clamped to the cap.
+  proc-chance-base: 0.15
+  proc-chance-per-level: 0.1
+  proc-chance-cap: 0.75
+  # Per-player cooldown between brush strokes (ms), so it isn't a firehose.
+  cooldown-ms: 250
 
 cooldown:
   # Swing cooldown in milliseconds (per player).

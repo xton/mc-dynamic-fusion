@@ -14,11 +14,14 @@ import com.xton.fusion.modifier.impl.AmplifyModifier;
 import com.xton.fusion.modifier.impl.BounceModifier;
 import com.xton.fusion.modifier.impl.ChainModifier;
 import com.xton.fusion.modifier.impl.DamageModifier;
+import com.xton.fusion.modifier.impl.DelayModifier;
 import com.xton.fusion.modifier.impl.DepositModifier;
 import com.xton.fusion.modifier.impl.DurationModifier;
 import com.xton.fusion.modifier.impl.ExpandModifier;
 import com.xton.fusion.modifier.impl.FireModifier;
 import com.xton.fusion.modifier.impl.GravityModifier;
+import com.xton.fusion.modifier.impl.HealModifier;
+import com.xton.fusion.modifier.impl.HomingModifier;
 import com.xton.fusion.modifier.impl.IceModifier;
 import com.xton.fusion.modifier.impl.InvertModifier;
 import com.xton.fusion.modifier.impl.InvisibleModifier;
@@ -27,12 +30,14 @@ import com.xton.fusion.modifier.impl.MiningModifier;
 import com.xton.fusion.modifier.impl.MultishotModifier;
 import com.xton.fusion.modifier.impl.PersistModifier;
 import com.xton.fusion.modifier.impl.PierceModifier;
+import com.xton.fusion.modifier.impl.PullModifier;
 import com.xton.fusion.modifier.impl.PushModifier;
 import com.xton.fusion.modifier.impl.SpawnModifier;
 import com.xton.fusion.modifier.impl.SpeedModifier;
 import com.xton.fusion.modifier.impl.SpreadModifier;
 import com.xton.fusion.modifier.impl.TeleportModifier;
 import com.xton.fusion.modifier.impl.TrailModifier;
+import com.xton.fusion.modifier.impl.TreasureModifier;
 import com.xton.fusion.modifier.impl.VisibleModifier;
 
 /**
@@ -49,7 +54,9 @@ class WeaponCompileTest {
     private ModifierRegistry registry() {
         return new ModifierRegistry()
                 .register(new PushModifier())
+                .register(new PullModifier())
                 .register(new DamageModifier())
+                .register(new HealModifier())
                 .register(new ExpandModifier(1.6))
                 .register(new AmplifyModifier(1.6))
                 .register(new ChainModifier(2))
@@ -59,19 +66,22 @@ class WeaponCompileTest {
                 .register(new SpreadModifier(12.0))
                 .register(new PierceModifier())
                 .register(new BounceModifier())
+                .register(new HomingModifier())
                 .register(new LifetimeModifier(12.0))
                 .register(new MiningModifier(1.0))
                 .register(new FireModifier())
                 .register(new IceModifier())
                 .register(new DepositModifier())
                 .register(new SpawnModifier())
+                .register(new DelayModifier())
                 .register(new TrailModifier())
                 .register(new TeleportModifier())
                 .register(new GravityModifier())
                 .register(new VisibleModifier())
                 .register(new InvisibleModifier())
                 .register(new SpeedModifier())
-                .register(new DurationModifier());
+                .register(new DurationModifier())
+                .register(new TreasureModifier());
     }
 
     private ProjectileSpec compile(String... ids) {
@@ -218,6 +228,42 @@ class WeaponCompileTest {
     }
 
     @Test
+    void treasureStacksTheLootLevel() {
+        assertEquals(0, compile("DAMAGE").treasure());
+        assertEquals(1, compile("TREASURE").treasure());
+        assertEquals(3, compile("TREASURE", "TREASURE", "TREASURE").treasure());
+    }
+
+    @Test
+    void healAndPullAreComplementEmitters() {
+        ProjectileSpec heal = compile("HEAL");
+        assertEquals(1, heal.payload().size());
+        assertEquals(AoeKind.HEAL, heal.topAoe().kind());
+        // HEAL scales like DAMAGE: AMPLIFY raises the amount healed.
+        assertTrue(compile("HEAL", "AMPLIFY").topAoe().power() > heal.topAoe().power());
+
+        // PULL is a PUSH pre-inverted (a vacuum); a plain PUSH is not inverted.
+        assertEquals(AoeKind.PUSH, compile("PULL").topAoe().kind());
+        assertTrue(compile("PULL").topAoe().inverted(), "PULL drags inward");
+        assertFalse(compile("PUSH").topAoe().inverted());
+    }
+
+    @Test
+    void delaySpawnsADelayedInPlaceChild() {
+        // PULL DELAY:2 DAMAGE — root gathers (PULL), the delayed child blasts (DAMAGE).
+        ProjectileSpec root = compile("PULL", "DELAY:2", "DAMAGE");
+        assertEquals(1, root.payload().size());
+        assertEquals(AoeKind.PUSH, root.topAoe().kind()); // PULL is a pre-inverted push
+        assertEquals(1, root.spawns().size());
+
+        ProjectileSpec child = root.spawns().get(0);
+        assertEquals(40, child.spawnDelayTicks(), "2s × 20 ticks");
+        assertEquals(0.0, child.speed(), 1.0e-9, "detonates in place");
+        assertEquals(1, child.lifetimeTicks(), "~zero lifetime");
+        assertEquals(AoeKind.DAMAGE, child.topAoe().kind());
+    }
+
+    @Test
     void flightTuningModifiers() {
         assertFalse(compile("DAMAGE").hasGravity());
         assertTrue(compile("DAMAGE", "GRAVITY").hasGravity(), "GRAVITY turns on the arc");
@@ -242,6 +288,13 @@ class WeaponCompileTest {
         assertTrue(lob.hasVisibleTrail());
         assertEquals(0.8, lob.speed(), 1.0e-9);
         assertEquals(80, lob.lifetimeTicks());
+    }
+
+    @Test
+    void homingIsAStackingFlightFlag() {
+        assertFalse(compile("DAMAGE").isHoming());
+        assertTrue(compile("DAMAGE", "HOMING").isHoming());
+        assertEquals(2, compile("DAMAGE", "HOMING", "HOMING").homing(), "stacks sharpen the turn");
     }
 
     @Test

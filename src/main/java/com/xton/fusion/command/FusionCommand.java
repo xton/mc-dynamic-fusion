@@ -22,6 +22,7 @@ import org.jetbrains.annotations.Nullable;
 import com.xton.fusion.fusion.FusionEngine;
 import com.xton.fusion.fusion.FusionResult;
 import com.xton.fusion.item.FusedItemFactory;
+import com.xton.fusion.item.LatentRegistry;
 import com.xton.fusion.machine.FusionMachineMenu;
 import com.xton.fusion.modifier.ModifierRegistry;
 import com.xton.fusion.selftest.SelfTest;
@@ -41,10 +42,11 @@ public final class FusionCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> SUBCOMMANDS = List.of("machine", "fuse", "give", "test");
     private static final List<String> BASE_HINTS =
-            List.of("DIAMOND_SWORD", "NETHERITE_SWORD", "DIAMOND_PICKAXE", "BOW", "DIAMOND_AXE", "TRIDENT");
+            List.of("DIAMOND_SWORD", "NETHERITE_SWORD", "DIAMOND_PICKAXE", "BOW", "DIAMOND_AXE", "TRIDENT", "BRUSH");
 
     private final FusionMachineMenu menu;
     private final ModifierRegistry registry;
+    private final LatentRegistry latent;
     private final FusedItemFactory factory;
     private final FusionEngine engine;
     private final int cost;
@@ -52,11 +54,12 @@ public final class FusionCommand implements CommandExecutor, TabCompleter {
     private final boolean debug;
     private final SelfTest selfTest;
 
-    public FusionCommand(FusionMachineMenu menu, ModifierRegistry registry,
+    public FusionCommand(FusionMachineMenu menu, ModifierRegistry registry, LatentRegistry latent,
                          FusedItemFactory factory, FusionEngine engine, int cost,
                          Logger log, boolean debug, SelfTest selfTest) {
         this.menu = menu;
         this.registry = registry;
+        this.latent = latent;
         this.factory = factory;
         this.engine = engine;
         this.cost = cost;
@@ -74,16 +77,42 @@ public final class FusionCommand implements CommandExecutor, TabCompleter {
         }
     }
 
-    /** Filter args to known modifier IDs (upper-cased), skipping anything unknown. */
-    public static List<String> knownIds(ModifierRegistry registry, String[] args, int from) {
+    /**
+     * Filter args to known modifier IDs (upper-cased), skipping anything unknown.
+     * A {@code from:<item>} token expands to all the modifiers that item carries in
+     * the latent registry (e.g. {@code from:tnt} → DAMAGE EXPAND EXPAND), composing
+     * with literal IDs in the same list.
+     */
+    public static List<String> knownIds(ModifierRegistry registry, LatentRegistry latent, String[] args, int from) {
         List<String> ids = new ArrayList<>();
         for (int i = from; i < args.length; i++) {
-            String id = args[i].toUpperCase(Locale.ROOT);
+            String arg = args[i];
+            if (arg.regionMatches(true, 0, "from:", 0, 5) && arg.length() > 5) {
+                expandFrom(registry, latent, arg.substring(5), ids);
+                continue;
+            }
+            String id = arg.toUpperCase(Locale.ROOT);
             if (registry.isKnown(id)) {
                 ids.add(id);
             }
         }
         return ids;
+    }
+
+    /** Append the modifiers the named item carries in the latent registry (known ones only). */
+    private static void expandFrom(ModifierRegistry registry, LatentRegistry latent, String itemName, List<String> out) {
+        if (latent == null) {
+            return;
+        }
+        Material mat = Material.matchMaterial(itemName.toUpperCase(Locale.ROOT));
+        if (mat == null) {
+            return;
+        }
+        for (String id : latent.get(mat)) {
+            if (registry.isKnown(id)) {
+                out.add(id);
+            }
+        }
     }
 
     @Override
@@ -176,7 +205,7 @@ public final class FusionCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(Component.text("Unknown base item: " + args[2] + ".", NamedTextColor.RED));
             return true;
         }
-        List<String> ids = knownIds(registry, args, 3);
+        List<String> ids = knownIds(registry, latent, args, 3);
         if (ids.isEmpty()) {
             sender.sendMessage(Component.text("No known modifiers given. Known: "
                     + String.join(", ", registry.ids()), NamedTextColor.RED));

@@ -30,29 +30,37 @@ import com.xton.fusion.modifier.impl.AmplifyModifier;
 import com.xton.fusion.modifier.impl.BounceModifier;
 import com.xton.fusion.modifier.impl.ChainModifier;
 import com.xton.fusion.modifier.impl.DamageModifier;
+import com.xton.fusion.modifier.impl.DelayModifier;
 import com.xton.fusion.modifier.impl.DepositModifier;
 import com.xton.fusion.modifier.impl.DurationModifier;
 import com.xton.fusion.modifier.impl.ExpandModifier;
 import com.xton.fusion.modifier.impl.FireModifier;
 import com.xton.fusion.modifier.impl.GravityModifier;
+import com.xton.fusion.modifier.impl.HealModifier;
+import com.xton.fusion.modifier.impl.HomingModifier;
 import com.xton.fusion.modifier.impl.IceModifier;
 import com.xton.fusion.modifier.impl.InvertModifier;
 import com.xton.fusion.modifier.impl.InvisibleModifier;
 import com.xton.fusion.modifier.impl.LifetimeModifier;
 import com.xton.fusion.modifier.impl.MiningModifier;
+import com.xton.fusion.modifier.impl.MobModifier;
 import com.xton.fusion.modifier.impl.MultishotModifier;
 import com.xton.fusion.modifier.impl.PersistModifier;
 import com.xton.fusion.modifier.impl.PierceModifier;
+import com.xton.fusion.modifier.impl.PullModifier;
 import com.xton.fusion.modifier.impl.PushModifier;
 import com.xton.fusion.modifier.impl.SpawnModifier;
 import com.xton.fusion.modifier.impl.SpeedModifier;
 import com.xton.fusion.modifier.impl.SpreadModifier;
 import com.xton.fusion.modifier.impl.TeleportModifier;
 import com.xton.fusion.modifier.impl.TrailModifier;
+import com.xton.fusion.modifier.impl.TreasureModifier;
 import com.xton.fusion.modifier.impl.VisibleModifier;
 import com.xton.fusion.projectile.AoeBurst;
 import com.xton.fusion.projectile.EnvironmentalAoe;
 import com.xton.fusion.projectile.ProjectileLauncher;
+import com.xton.fusion.weapon.GoldenBrush;
+import com.xton.fusion.weapon.GoldenBrushListener;
 import com.xton.fusion.selftest.SelfTest;
 import com.xton.fusion.util.BukkitTaskScheduler;
 import com.xton.fusion.util.CooldownMap;
@@ -74,9 +82,11 @@ public final class FusionPlugin extends JavaPlugin {
         boolean debug = getConfig().getBoolean("debug-logging", true);
 
         ModifierRegistry registry = new ModifierRegistry()
-                // Emitters (concrete elements).
+                // Emitters (concrete elements) and their complements.
                 .register(new PushModifier())
+                .register(new PullModifier())
                 .register(new DamageModifier())
+                .register(new HealModifier())
                 // AOE transforms (modify the nearest preceding emitter).
                 .register(new ExpandModifier(
                         getConfig().getDouble("expand.factor-per-apply", 1.6)))
@@ -94,16 +104,24 @@ public final class FusionPlugin extends JavaPlugin {
                         getConfig().getDouble("spread.degrees-per-apply", 12.0)))
                 .register(new PierceModifier())
                 .register(new BounceModifier())
+                .register(new HomingModifier())
                 .register(new LifetimeModifier(
                         getConfig().getDouble("lifetime.range-per-apply", 12.0)))
                 .register(new MiningModifier(
-                        getConfig().getDouble("mining.base-radius", 1.0)))
+                        getConfig().getDouble("mining.base-radius", 1.0),
+                        getConfig().getDouble("mining.base-hardness", 3.0),
+                        getConfig().getDouble("mining.hardness-per-apply", 15.0)))
+                // Delivery: launch a live mob as the projectile (parameterized).
+                .register(new MobModifier())
+                // Golden Brush: gold-scaled loot on brushing.
+                .register(new TreasureModifier())
                 // Environmental emitters (block/area effects along the flight).
                 .register(new FireModifier())
                 .register(new IceModifier())
                 .register(new DepositModifier())
-                // Structural: spawn children, trail, teleport.
+                // Structural: spawn children, delayed charge, trail, teleport.
                 .register(new SpawnModifier())
+                .register(new DelayModifier())
                 .register(new TrailModifier())
                 .register(new TeleportModifier())
                 // Flight tuning: gravity/lob, trail visibility, absolute speed & lifetime.
@@ -130,7 +148,7 @@ public final class FusionPlugin extends JavaPlugin {
                 getConfig().getInt("fire.burn-ticks", 100),
                 getConfig().getInt("ice.freeze-ticks", 140),
                 getConfig().getDouble("environmental.max-radius", 8.0),
-                getConfig().getDouble("environmental.max-hardness", 3.0));
+                getConfig().getDouble("environmental.max-hardness", 100.0));
         ProjectileLauncher launcher = new ProjectileLauncher(this, burst,
                 new WeaponBuilder.Defaults(
                         getConfig().getDouble("projectile.base-speed", 1.6),
@@ -154,6 +172,15 @@ public final class FusionPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(
                 new ProjectileListener(reader, registry, launcher), this);
 
+        // Golden Brush: brushing a fused BRUSH with TREASURE (gold) rolls a loot table.
+        GoldenBrush goldenBrush = new GoldenBrush(new GoldenBrush.Settings(
+                getConfig().getDouble("golden-brush.proc-chance-base", 0.15),
+                getConfig().getDouble("golden-brush.proc-chance-per-level", 0.1),
+                getConfig().getDouble("golden-brush.proc-chance-cap", 0.75)));
+        CooldownMap brushCooldown = new CooldownMap(getConfig().getLong("golden-brush.cooldown-ms", 250));
+        getServer().getPluginManager().registerEvents(
+                new GoldenBrushListener(reader, registry, launcher, goldenBrush, brushCooldown), this);
+
         // Fusion Machine: placeable enchanting table, tagged via block-entity PDC
         // (no side file), opening the anvil-style fusion GUI on right-click.
         FusionMachineMenu menu = new FusionMachineMenu(engine, keys, fusionCost, getLogger(), debug);
@@ -176,7 +203,7 @@ public final class FusionPlugin extends JavaPlugin {
         SelfTest selfTest = new SelfTest(scheduler, registry, launcher, burst, getLogger());
 
         if (getCommand("fusion") != null) {
-            FusionCommand fusionCmd = new FusionCommand(menu, registry, factory, engine, fusionCost,
+            FusionCommand fusionCmd = new FusionCommand(menu, registry, latent, factory, engine, fusionCost,
                     getLogger(), debug, selfTest);
             getCommand("fusion").setExecutor(fusionCmd);
             getCommand("fusion").setTabCompleter(fusionCmd);

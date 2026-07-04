@@ -4,6 +4,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 
 import org.bukkit.Material;
+import org.bukkit.entity.EntityType;
 
 /**
  * Compiles a modifier stack into a {@link ProjectileSpec}, RPN-style: the stack
@@ -69,9 +70,32 @@ public final class WeaponBuilder {
         return stack.peek().addAoe(new AoeSpec(AoeKind.DAMAGE, defaults.damageRadius(), defaults.damagePower()));
     }
 
-    /** Emitter: add a MINING element — a block-breaking bore of the given base radius. */
-    public AoeSpec emitMining(double radius) {
-        return stack.peek().addAoe(new AoeSpec(AoeKind.MINING, radius, 0));
+    /** Emitter: add a HEAL burst — restores health in radius (DAMAGE's complement). */
+    public AoeSpec emitHeal() {
+        return stack.peek().addAoe(new AoeSpec(AoeKind.HEAL, defaults.damageRadius(), defaults.damagePower()));
+    }
+
+    /** Emitter: add a PULL burst — a PUSH that drags entities inward (PUSH's complement). */
+    public AoeSpec emitPull() {
+        AoeSpec pull = emitPush();
+        pull.toggleInvert();
+        return pull;
+    }
+
+    /**
+     * Emitter: add a MINING element — a block-breaking bore of the given base
+     * radius, whose {@code power} carries the break-hardness cap. A repeated MINING
+     * doesn't add a duplicate bore; it <em>stacks</em> {@code hardnessPerApply}
+     * onto the existing one, so MINING·MINING chews harder blocks (AMPLIFY scales
+     * the same hardness). EXPAND still widens the radius.
+     */
+    public AoeSpec emitMining(double radius, double baseHardness, double hardnessPerApply) {
+        AoeSpec existing = stack.peek().miningAoe();
+        if (existing != null) {
+            existing.addPower(hardnessPerApply);
+            return existing;
+        }
+        return stack.peek().addAoe(new AoeSpec(AoeKind.MINING, radius, baseHardness));
     }
 
     /** Emitter: add a FIRE element — ignites blocks/mobs and melts snow/ice in radius. */
@@ -89,6 +113,11 @@ public final class WeaponBuilder {
         return stack.peek().addAoe(new AoeSpec(AoeKind.DEPOSIT, defaults.depositRadius(), 0, material));
     }
 
+    /** Emitter: launch a live {@code type} entity as the projectile (the Cow Launcher). */
+    public void emitMob(EntityType type) {
+        stack.peek().setMobType(type);
+    }
+
     /**
      * Emitter: spawn a fresh child projectile at the current one's terminus and
      * make the child current, so subsequent modifiers build it. Nothing is
@@ -96,6 +125,22 @@ public final class WeaponBuilder {
      */
     public void emitSpawn() {
         ProjectileSpec child = newProjectile();
+        stack.peek().addSpawn(child);
+        stack.push(child);
+    }
+
+    /**
+     * Emitter: like {@link #emitSpawn} but the child is launched {@code delayTicks}
+     * after the parent's terminus and detonates <em>in place</em> — it starts
+     * stationary with a 1-tick life. Later modifiers still build the child (so
+     * {@code PULL DELAY:2 DAMAGE} gathers, waits, then blasts). Give the child a
+     * SPEED to make it fly instead of sitting.
+     */
+    public void emitDelay(int delayTicks) {
+        ProjectileSpec child = newProjectile();
+        child.setSpawnDelayTicks(delayTicks);
+        child.setSpeed(0);        // detonate in place, not fly off
+        child.setLifetimeTicks(1); // ~zero lifetime: goes off the tick after it spawns
         stack.peek().addSpawn(child);
         stack.push(child);
     }

@@ -157,6 +157,15 @@ public final class SelfTest {
         boolean iceOk = layWater(world, bx, by, bz - 16, envCol);
         boolean depositOk = layStopBlock(world, bx, by, bz - 18, 5);
         boolean trailOk = clearRowReturn(world, bx, by, bz - 20, 8);
+        // A wall ahead with a mob behind the firing point: a BOUNCE bolt must
+        // rebound off the wall and hit the mob on the way back, and a SPAWN bolt's
+        // child must reflect off the wall to reach it (not crash into the wall).
+        boolean bounceOk = layBounceRange(world, bx, by, bz - 22);
+        Zombie bounceMob = spawnDummy(world, base.clone().add(-3, 1, -22), spawned);
+        final double bounceMob0 = health(bounceMob);
+        boolean spawnReflOk = layBounceRange(world, bx, by, bz - 24);
+        Zombie spawnReflMob = spawnDummy(world, base.clone().add(-3, 1, -24), spawned);
+        final double spawnReflMob0 = health(spawnReflMob);
 
         final double gravityLaunchY = by + 20;
         final FusionProjectile[] gravityBolt = new FusionProjectile[1];
@@ -171,6 +180,8 @@ public final class SelfTest {
         final boolean iceEnv = iceOk;
         final boolean depositEnv = depositOk;
         final boolean trailEnv = trailOk;
+        final boolean fireBounce = bounceOk;
+        final boolean fireSpawnRefl = spawnReflOk;
         scheduler.runLater(() -> {
             results.add(pushKnockback(world, pushMob));
             results.add(damageHurts(world, dmgMob));
@@ -206,6 +217,12 @@ public final class SelfTest {
             }
             if (trailEnv) {
                 fireBolt(world, at(world, bx, by, bz - 20), PLUS_X, false, "DEPOSIT:DIRT", "PIERCE", "TRAIL");
+            }
+            if (fireBounce) {
+                fireBolt(world, at(world, bx, by, bz - 22), PLUS_X, false, "DAMAGE", "BOUNCE");
+            }
+            if (fireSpawnRefl) {
+                fireBolt(world, at(world, bx, by, bz - 24), PLUS_X, false, "DAMAGE", "SPAWN", "DAMAGE");
             }
             gravityBolt[0] = fireBolt(world,
                     new Location(world, bx + 0.5, gravityLaunchY, bz + 0.5), PLUS_X, true);
@@ -244,6 +261,12 @@ public final class SelfTest {
             }
             if (trailEnv) {
                 results.add(trailFillsPath(world, bx, by, bz - 20, envCol));
+            }
+            if (fireBounce) {
+                results.add(damagedOnRebound("bounce-reflects-off-wall", bounceMob, bounceMob0));
+            }
+            if (fireSpawnRefl) {
+                results.add(damagedOnRebound("spawn-reflects-off-wall", spawnReflMob, spawnReflMob0));
             }
         }, SETTLE + MINING_WAIT);
 
@@ -394,6 +417,16 @@ public final class SelfTest {
         r.add(new Result("compile:deposit-parameterized", depositOk,
                 "material=" + (deposit.payload().isEmpty() ? "<none>"
                         : deposit.payload().get(0).material())));
+
+        // BOUNCE is a flight flag; a fresh SPAWN child does not inherit it.
+        ProjectileSpec bounceSpawn = compile("DAMAGE", "BOUNCE", "SPAWN", "DAMAGE");
+        boolean bounceOk = compile("DAMAGE", "BOUNCE").isBounce()
+                && !compile("DAMAGE").isBounce()
+                && bounceSpawn.isBounce()
+                && !bounceSpawn.spawns().get(0).isBounce();
+        r.add(new Result("compile:bounce-flag", bounceOk,
+                "bounce=" + compile("DAMAGE", "BOUNCE").isBounce()
+                        + " childInherits=" + bounceSpawn.spawns().get(0).isBounce()));
 
         return r;
     }
@@ -650,6 +683,30 @@ public final class SelfTest {
             log.warning(TAG + " trail-corridor setup failed: " + e);
             return false;
         }
+    }
+
+    /** Clear a run that straddles the origin (dx -5..+6) and cap it with a wall at dx +5. */
+    private boolean layBounceRange(World world, int bx, int by, int bz) {
+        try {
+            for (int dx = -5; dx <= 6; dx++) {
+                world.getBlockAt(bx + dx, by, bz).setType(Material.AIR, false);
+            }
+            world.getBlockAt(bx + 5, by, bz).setType(Material.STONE, false);
+            return world.getBlockAt(bx + 5, by, bz).getType() == Material.STONE;
+        } catch (Exception e) {
+            log.warning(TAG + " bounce-range setup failed: " + e);
+            return false;
+        }
+    }
+
+    /** A mob behind the firing point loses health, so the shot (or its child) rebounded off the wall to reach it. */
+    private Result damagedOnRebound(String name, Zombie mob, double before) {
+        if (mob == null || !mob.isValid()) {
+            return new Result(name, false, "no mob");
+        }
+        boolean ok = mob.getHealth() < before;
+        return new Result(name, ok,
+                String.format("health %.1f -> %.1f (hit on the rebound)", before, mob.getHealth()));
     }
 
     /** FIRE melts the snow on its line — the block is no longer snow. */

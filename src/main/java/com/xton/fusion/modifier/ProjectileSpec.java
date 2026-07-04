@@ -9,7 +9,8 @@ import java.util.List;
  * terminates). This is what the modifier stack compiles down to and what the
  * launcher/projectile read — the flat per-modifier context is gone.
  *
- * <p>Flight transforms (PIERCE, LIFETIME, SPREAD, MULTISHOT, MINING, gravity)
+ * <p>Flight transforms (PIERCE, BOUNCE, TRAIL, LIFETIME, SPREAD, MULTISHOT,
+ * MINING, TELEPORT, gravity)
  * mutate the flight fields here; emitter modifiers append an {@link AoeSpec} to
  * {@link #payload}; AOE transforms mutate the {@link #topAoe() top} element.
  */
@@ -89,6 +90,14 @@ public final class ProjectileSpec {
 
     public void addBounces(int count) {
         this.bounces += count;
+    }
+
+    /**
+     * True when the shot ricochets off blocks instead of terminating on them
+     * (BOUNCE) — it then only triggers at expiry or on a direct mob hit.
+     */
+    public boolean isBounce() {
+        return bounces > 0;
     }
 
     public int lifetimeTicks() {

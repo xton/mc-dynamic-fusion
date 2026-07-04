@@ -55,6 +55,10 @@ latent_modifiers:
     - PIERCE
   QUARTZ:
     - PIERCE
+  SLIME_BLOCK:            # BOUNCE — ricochet off blocks
+    - BOUNCE
+  RABBIT_HIDE:
+    - BOUNCE
   GUNPOWDER:              # LIFETIME — fly farther
     - LIFETIME
   REDSTONE:
@@ -169,3 +173,11 @@ latent_modifiers:
     - PIERCE
     - LIFETIME
     - TELEPORT
+  TNT_MINECART:           # a bouncing grenade that scatters fire where it rests
+    - DAMAGE
+    - BOUNCE
+    - LIFETIME
+    - SPAWN
+    - MULTISHOT
+    - SPREAD
+    - FIRE

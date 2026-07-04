@@ -11,6 +11,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import com.xton.fusion.modifier.impl.AmplifyModifier;
+import com.xton.fusion.modifier.impl.BounceModifier;
 import com.xton.fusion.modifier.impl.ChainModifier;
 import com.xton.fusion.modifier.impl.DamageModifier;
 import com.xton.fusion.modifier.impl.DepositModifier;
@@ -52,6 +53,7 @@ class WeaponCompileTest {
                 .register(new MultishotModifier(2))
                 .register(new SpreadModifier(12.0))
                 .register(new PierceModifier())
+                .register(new BounceModifier())
                 .register(new LifetimeModifier(12.0))
                 .register(new MiningModifier(1.0))
                 .register(new FireModifier())
@@ -203,6 +205,17 @@ class WeaponCompileTest {
         assertTrue(compile("FIRE", "TRAIL").isTrail());
         assertFalse(compile("DAMAGE").isTeleport());
         assertTrue(compile("DAMAGE", "PIERCE", "TELEPORT").isTeleport());
+    }
+
+    @Test
+    void bounceIsAFlightFlag() {
+        assertFalse(compile("DAMAGE").isBounce());
+        assertTrue(compile("DAMAGE", "BOUNCE").isBounce());
+        // BOUNCE binds to the current projectile (a flight flag), independent of
+        // any emitter, and after SPAWN it targets the child like other flight flags.
+        ProjectileSpec root = compile("DAMAGE", "BOUNCE", "SPAWN", "DAMAGE");
+        assertTrue(root.isBounce(), "the parent bounces");
+        assertFalse(root.spawns().get(0).isBounce(), "the fresh child does not inherit bounce");
     }
 
     @Test

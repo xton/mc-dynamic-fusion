@@ -36,6 +36,7 @@ Noita-style. Modifiers come in two kinds:
 | *xf (fly)* | **Multishot** | Rabbit's Foot, Slime Ball | launches extra projectiles |
 | *xf (fly)* | **Spread** | Feather, Sugar | scatters the aim |
 | *xf (fly)* | **Pierce** | Arrow, Quartz | punches through soft blocks & applies its effects at every occupied cell/entity in its path |
+| *xf (fly)* | **Bounce** | Slime Block, Rabbit Hide | ricochets off blocks instead of triggering — only goes off on expiry or a direct mob hit |
 | *xf (fly)* | **Trail** | Trident, Prismarine Shard | inverse of Pierce — applies environmental effects at every *empty-air* cell it flies through |
 | *xf (fly)* | **Lifetime** | Gunpowder, Redstone | adds a fixed range (same distance fast or slow) |
 | *xf (fly)* | **Teleport** | Ender Pearl, Eye of Ender | warps the caster to where the shot terminates (once per cast, safely offset) |
@@ -48,9 +49,17 @@ same way: a flamethrower is `Fire · Pierce · Lifetime`; a **block-replacement
 bolt** is `Mining · Pierce · Deposit:Dirt` (carve, then backfill — order
 matters); a river-layer is `Deposit:Water · Trail`; a cluster firebomb is
 `Damage · Spawn · Multishot · Spread · Fire`; a blink lance is
-`Pierce · Lifetime · Teleport`. Many ingredients are **bundles** — a ready-made
-recipe in one item (TNT = `Damage · Expand · Expand`, End Crystal = the works).
-See [`latent_registry.yml`](src/main/resources/latent_registry.yml) for the roster.
+`Pierce · Lifetime · Teleport`; a bouncing cluster grenade is
+`Damage · Bounce · Lifetime · Spawn · Multishot · Spread · Fire`. Many
+ingredients are **bundles** — a ready-made recipe in one item (TNT =
+`Damage · Expand · Expand`, End Crystal = the works). See
+[`latent_registry.yml`](src/main/resources/latent_registry.yml) for the roster.
+
+**Spawn children ricochet off surfaces.** When a shot ends against a block, its
+`Spawn` children launch along the *reflected* heading (off the impact normal) and
+just clear the face — so a cluster bomb that hits a wall scatters back into the
+open instead of wasting its children against the same block. `Bounce` uses the
+same reflection to keep a shot alive, ricocheting until it expires or hits a mob.
 
 **Environmental effects apply in stack order.** The block-affecting emitters
 (Mining/Fire/Ice/Deposit) run left-to-right at each application point, so
@@ -125,20 +134,23 @@ make smoke
 It then runs an **in-process functional self-test** — `/fusion test`
 (console/op only) drives the *real* modifier compiler, projectile, and burst
 code against the live world and asserts the mechanics MockBukkit can't reach. It
-has two kinds of check (30 in total):
+has two kinds of check (33 in total):
 
 - **compile checks** pin the emitter/transform RPN semantics on the compiled
   spec — EXPAND/AMPLIFY scaling, MULTISHOT/SPREAD/LIFETIME stacking, INVERT
-  toggling, CHAIN/PERSIST accumulation, the flight flags, the FIRE/ICE/DEPOSIT
-  emitters and TRAIL/TELEPORT/SPAWN wiring (`Deposit:Dirt` parameter parsing,
-  Spawn pushing a fresh child), and the *nearest-previous binding* (a transform
-  touches only the last emitter) that's nearly impossible to eyeball in-world;
+  toggling, CHAIN/PERSIST accumulation, the flight flags (incl. BOUNCE), the
+  FIRE/ICE/DEPOSIT emitters and TRAIL/TELEPORT/SPAWN wiring (`Deposit:Dirt`
+  parameter parsing, Spawn pushing a fresh child), and the *nearest-previous
+  binding* (a transform touches only the last emitter) that's nearly impossible
+  to eyeball in-world;
 - **runtime checks** fire real bursts/projectiles at dummies and blocks: PUSH
   knockback, DAMAGE health loss, an inverted PUSH pulling inward, a CHAIN hop to
   a second mob, a MINING ray carving a run of blocks and *stopping at obsidian*,
   a PIERCE bolt passing through two mobs, FIRE melting snow and igniting a mob,
-  ICE freezing water to ice, DEPOSIT backfilling air at its terminus, and a
-  DEPOSIT · Trail bolt filling the air it flies through.
+  ICE freezing water to ice, DEPOSIT backfilling air at its terminus, a
+  DEPOSIT · Trail bolt filling the air it flies through, a BOUNCE bolt rebounding
+  off a wall to hit a mob behind it, and a SPAWN bolt whose child ricochets off a
+  wall to strike a mob the parent couldn't reach.
 
 Results are logged as `[fusion-selftest] RESULT: PASS|FAIL`; the smoke script
 fails the build unless it sees PASS. You can run it by hand on any server too

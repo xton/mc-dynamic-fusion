@@ -10,6 +10,7 @@ import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -36,7 +37,13 @@ import com.xton.fusion.modifier.ProjectileSpec;
  * <p>Entity bursts (PUSH/DAMAGE) fire at the terminus and at each pierced
  * entity; the environmental kinds (MINING/FIRE/ICE/DEPOSIT) sweep the blocks in
  * radius (and burn/freeze mobs) at their trigger cells. At the terminus it also
- * launches any SPAWN children and, if TELEPORT, moves the caster there.
+ * launches any SPAWN children — off the <em>reflected</em> heading when it hit a
+ * block, so they don't just crash back into the same surface — and, if TELEPORT,
+ * moves the caster there.
+ *
+ * <p><b>BOUNCE</b> changes block handling: instead of terminating on a block, the
+ * shot reflects off the surface (losing a little speed) and flies on, only
+ * triggering when it finally expires or hits a mob directly.
  */
 public final class FusionProjectile extends BukkitRunnable {
 
@@ -48,6 +55,8 @@ public final class FusionProjectile extends BukkitRunnable {
     private static final double GRAVITY_PER_TICK = 0.05;
     /** Fixed nudge a piercing shot gives each entity it passes through. */
     private static final double CONTACT_IMPULSE = 0.35;
+    /** Speed retained across a BOUNCE off a block (energy loss, so it settles). */
+    private static final double BOUNCE_RESTITUTION = 0.82;
 
     private final Plugin plugin;
     private final Payload payload;
@@ -109,17 +118,41 @@ public final class FusionProjectile extends BukkitRunnable {
             trail(here);
             environmentalAlongPath(here);
             if (hitEntityStops(here, stepVec)) {
-                terminate(here);
+                terminate(here); // a direct mob hit triggers even a bouncing shot
                 return;
             }
             if (blockStops(here)) {
-                terminate(here);
+                if (spec.isBounce()) {
+                    bounceOff(here, stepVec);
+                    return; // resume next tick on the reflected heading
+                }
+                terminate(here, reflectedHeading(here)); // spawns launch off the surface
                 return;
             }
         }
 
         if (++age >= Math.max(1, spec.lifetimeTicks())) {
             terminate(position.toLocation(world)); // expired: terminate where it is
+        }
+    }
+
+    /**
+     * Ricochet off the block at {@code here}: back out of it, reflect the velocity
+     * about the surface normal (shedding a little speed), and let the next tick
+     * fly on. Still ages, so a trapped shot eventually expires and triggers.
+     */
+    private void bounceOff(Location here, Vector stepVec) {
+        position.subtract(stepVec); // step back to the last open cell
+        Vector normal = impactNormal(here);
+        double dot = velocity.dot(normal);
+        velocity.subtract(normal.clone().multiply(2 * dot)); // reflect
+        velocity.multiply(BOUNCE_RESTITUTION);
+        if (spec.hasVisibleTrail()) {
+            world.spawnParticle(Particle.CRIT, position.toLocation(world), 4, 0.1, 0.1, 0.1, 0.05);
+        }
+        world.playSound(here, Sound.BLOCK_STONE_HIT, 0.4f, 1.4f);
+        if (++age >= Math.max(1, spec.lifetimeTicks())) {
+            terminate(position.toLocation(world));
         }
     }
 
@@ -220,6 +253,49 @@ public final class FusionProjectile extends BukkitRunnable {
         return hardness >= 0 && hardness <= spec.pierceMaxHardness();
     }
 
+    /**
+     * The outward normal of the block face the shot entered — the axis it
+     * approached most strongly whose neighbour that way is open, so we reflect
+     * (and spawn) back into free air rather than into another solid.
+     */
+    private Vector impactNormal(Location impact) {
+        Block hit = impact.getBlock();
+        Vector[] faces = {
+            new Vector(-Math.signum(velocity.getX()), 0, 0),
+            new Vector(0, -Math.signum(velocity.getY()), 0),
+            new Vector(0, 0, -Math.signum(velocity.getZ())),
+        };
+        double[] mag = {Math.abs(velocity.getX()), Math.abs(velocity.getY()), Math.abs(velocity.getZ())};
+        Integer[] order = {0, 1, 2};
+        java.util.Arrays.sort(order, (a, b) -> Double.compare(mag[b], mag[a]));
+        Vector fallback = null;
+        for (int idx : order) {
+            if (mag[idx] < 1.0e-9) {
+                continue; // no approach along this axis
+            }
+            Vector n = faces[idx];
+            if (fallback == null) {
+                fallback = n;
+            }
+            if (!hit.getRelative(n.getBlockX(), n.getBlockY(), n.getBlockZ()).getType().isSolid()) {
+                return n; // this face opens onto air — bounce out here
+            }
+        }
+        return fallback != null ? fallback : new Vector(0, 1, 0);
+    }
+
+    /** The direction SPAWN children take off a block terminus: velocity reflected off the surface. */
+    private Vector reflectedHeading(Location impact) {
+        Vector normal = impactNormal(impact);
+        Vector reflected = velocity.clone().subtract(normal.clone().multiply(2 * velocity.dot(normal)));
+        return reflected.lengthSquared() > 1.0e-6 ? reflected.normalize() : normal;
+    }
+
+    /** The plain forward heading (for non-block terminations): velocity, or up if stalled. */
+    private Vector forwardHeading() {
+        return velocity.lengthSquared() > 1.0e-6 ? velocity.clone().normalize() : new Vector(0, 1, 0);
+    }
+
     private void contactShove(LivingEntity target, Vector travel) {
         Vector push = travel.clone();
         if (push.lengthSquared() < 1.0e-6) {
@@ -249,6 +325,10 @@ public final class FusionProjectile extends BukkitRunnable {
      * freeze nearby mobs, launch any SPAWN children, and TELEPORT the caster.
      */
     private void terminate(Location where) {
+        terminate(where, forwardHeading());
+    }
+
+    private void terminate(Location where, Vector childHeading) {
         try {
             if (where != null && world != null) {
                 payload.detonate(world, where, caster, shot.generation());
@@ -261,7 +341,7 @@ public final class FusionProjectile extends BukkitRunnable {
                         }
                     }
                 }
-                spawnChildren(where);
+                spawnChildren(where, childHeading);
                 maybeTeleport(where);
             }
         } finally {
@@ -269,13 +349,12 @@ public final class FusionProjectile extends BukkitRunnable {
         }
     }
 
-    private void spawnChildren(Location where) {
+    private void spawnChildren(Location where, Vector heading) {
         if (spec.spawns().isEmpty() || !shot.canSpawn()) {
             return;
         }
-        Vector heading = velocity.lengthSquared() > 1.0e-6
-                ? velocity.clone().normalize() : new Vector(0, 1, 0);
-        shot.launcher().spawnChildren(spec.spawns(), where, heading, shot);
+        Vector h = heading.lengthSquared() > 1.0e-6 ? heading.clone().normalize() : new Vector(0, 1, 0);
+        shot.launcher().spawnChildren(spec.spawns(), where, h, shot);
     }
 
     private void maybeTeleport(Location where) {

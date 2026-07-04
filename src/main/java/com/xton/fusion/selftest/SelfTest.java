@@ -131,12 +131,6 @@ public final class SelfTest {
         Zombie persistMob = spawnDummy(world, base.clone().add(3, 0, -10), spawned);
         toughen(persistMob, 200.0);
         final double persist0 = health(persistMob);
-        // A hurt COW (passive, so HEAL mends it — hostiles are skipped) to verify healing.
-        final Cow healCow = spawnCow(world, base.clone().add(3, 1, -28));
-        if (healCow != null) {
-            healCow.setHealth(4.0);
-        }
-        final double healCow0 = healCow != null ? healCow.getHealth() : 0;
         // A dummy for DELAY: a DAMAGE DELAY DAMAGE bolt should hit it, then its
         // delayed charge re-detonates in place — so it takes more than one burst.
         Zombie delayMob = spawnDummy(world, base.clone().add(3, 0, -30), spawned);
@@ -189,6 +183,13 @@ public final class SelfTest {
         for (int dz = 0; dz <= 3; dz++) {   // a small arena for the HOMING bolt to curve in
             clearRow(world, bx, by, bz - 34 + dz, 6);
         }
+        // A hurt COW floating in open air (passive, so HEAL mends it — hostiles are
+        // skipped). Placed up high like the MOB test's cow, which spawns valid there.
+        final Cow healCow = spawnCow(world, new Location(world, bx + 2.5, by + 3, bz + 0.5));
+        if (healCow != null) {
+            healCow.setHealth(4.0);
+        }
+        final double healCow0 = healCow != null ? healCow.getHealth() : 0;
 
         final double gravityLaunchY = by + 20;
         final FusionProjectile[] gravityBolt = new FusionProjectile[1];

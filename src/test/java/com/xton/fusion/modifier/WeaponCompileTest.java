@@ -19,6 +19,7 @@ import com.xton.fusion.modifier.impl.DepositModifier;
 import com.xton.fusion.modifier.impl.DurationModifier;
 import com.xton.fusion.modifier.impl.ExpandModifier;
 import com.xton.fusion.modifier.impl.FireModifier;
+import com.xton.fusion.modifier.impl.GlowModifier;
 import com.xton.fusion.modifier.impl.GravityModifier;
 import com.xton.fusion.modifier.impl.HealModifier;
 import com.xton.fusion.modifier.impl.HomingModifier;
@@ -81,7 +82,8 @@ class WeaponCompileTest {
                 .register(new InvisibleModifier())
                 .register(new SpeedModifier())
                 .register(new DurationModifier())
-                .register(new TreasureModifier());
+                .register(new TreasureModifier())
+                .register(new GlowModifier());
     }
 
     private ProjectileSpec compile(String... ids) {
@@ -225,6 +227,15 @@ class WeaponCompileTest {
         assertTrue(compile("FIRE", "TRAIL").isTrail());
         assertFalse(compile("DAMAGE").isTeleport());
         assertTrue(compile("DAMAGE", "PIERCE", "TELEPORT").isTeleport());
+    }
+
+    @Test
+    void wornEffectIsInertOnAProjectile() {
+        // GLOW is a worn-armor effect: it compiles cleanly and adds no payload/flight
+        // (it acts while equipped, via WornEffectTask, not on a swing).
+        ProjectileSpec p = compile("GLOW");
+        assertTrue(p.payload().isEmpty(), "worn effect delivers no burst");
+        assertEquals(1, p.count());
     }
 
     @Test

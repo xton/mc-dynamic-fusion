@@ -158,6 +158,11 @@ golden-brush:
   # Per-player cooldown between brush strokes (ms), so it isn't a firehose.
   cooldown-ms: 250
 
+# WORN EFFECTS — fused onto armor and applied while equipped.
+worn:
+  # How often (ticks) the worn-effect task refreshes (GLOW night vision, etc.).
+  effect-period-ticks: 100
+
 cooldown:
   # Swing cooldown in milliseconds (per player).
   swing-ms: 200

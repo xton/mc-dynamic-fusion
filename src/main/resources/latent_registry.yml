@@ -113,6 +113,10 @@ latent_modifiers:
     - DELAY:2
   COW_SPAWN_EGG:          # MOB:COW — the Cow Launcher (parameterized MOB:<type>)
     - MOB:COW
+  LANTERN:                # GLOW — worn armor keeps a light on you
+    - GLOW
+  GLOW_BERRIES:
+    - GLOW
   GOLD_INGOT:             # TREASURE — Golden Brush loot (stack more gold for rarer finds)
     - TREASURE
   GOLD_BLOCK:

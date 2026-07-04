@@ -7,8 +7,11 @@ import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 
@@ -89,7 +92,7 @@ public final class AoeBurst {
 
         List<LivingEntity> hit = new ArrayList<>();
         for (Entity entity : world.getNearbyEntities(where, radius, radius, radius)) {
-            LivingEntity target = asTarget(caster, entity);
+            LivingEntity target = asTarget(caster, entity, spec);
             if (target == null) {
                 continue;
             }
@@ -103,8 +106,14 @@ public final class AoeBurst {
         }
     }
 
-    /** Apply the spec's effect to one target: a shove (PUSH) or damage (DAMAGE). */
+    /** Apply the spec's effect to one target: heal (HEAL), damage (DAMAGE), or shove (PUSH/PULL). */
     private void affect(LivingEntity target, Vector center, AoeSpec spec, Player caster) {
+        if (spec.kind() == AoeKind.HEAL) {
+            AttributeInstance attr = target.getAttribute(Attribute.MAX_HEALTH);
+            double max = attr != null ? attr.getValue() : 20.0;
+            target.setHealth(Math.min(max, target.getHealth() + spec.power()));
+            return;
+        }
         if (spec.kind() == AoeKind.DAMAGE) {
             target.damage(spec.power(), caster);
             return;
@@ -122,13 +131,25 @@ public final class AoeBurst {
         target.setVelocity(target.getVelocity().add(dir));
     }
 
-    /** Returns the entity as a valid target, or null if it should be skipped. */
-    private LivingEntity asTarget(Player caster, Entity entity) {
-        if (entity.equals(caster) || !(entity instanceof LivingEntity living)) {
+    /**
+     * Returns the entity as a valid target, or null if it should be skipped. HEAL
+     * is friendly: it mends the caster and players (regardless of affect-players)
+     * but skips hostile mobs. Every other burst never hits the caster and respects
+     * affect-players.
+     */
+    private LivingEntity asTarget(Player caster, Entity entity, AoeSpec spec) {
+        if (!(entity instanceof LivingEntity living)) {
             return null;
         }
-        if (!settings.affectPlayers() && entity instanceof Player) {
-            return null;
+        boolean heal = spec.kind() == AoeKind.HEAL;
+        if (entity.equals(caster)) {
+            return heal ? living : null; // a heal burst mends its caster too
+        }
+        if (entity instanceof Player) {
+            return (heal || settings.affectPlayers()) ? living : null;
+        }
+        if (heal && entity instanceof Monster) {
+            return null; // don't heal what's trying to kill you
         }
         return living;
     }
@@ -138,7 +159,7 @@ public final class AoeBurst {
         Location from = where;
         Vector center = where.toVector();
         for (int i = 0; i < spec.chainCount(); i++) {
-            LivingEntity next = nearestUnhit(world, caster, from, hit);
+            LivingEntity next = nearestUnhit(world, caster, from, hit, spec);
             if (next == null) {
                 break;
             }
@@ -149,12 +170,12 @@ public final class AoeBurst {
         }
     }
 
-    private LivingEntity nearestUnhit(World world, Player caster, Location from, List<LivingEntity> hit) {
+    private LivingEntity nearestUnhit(World world, Player caster, Location from, List<LivingEntity> hit, AoeSpec spec) {
         double range = settings.chainRange();
         LivingEntity best = null;
         double bestSq = range * range;
         for (Entity entity : world.getNearbyEntities(from, range, range, range)) {
-            LivingEntity target = asTarget(caster, entity);
+            LivingEntity target = asTarget(caster, entity, spec);
             if (target == null || hit.contains(target)) {
                 continue;
             }
@@ -175,13 +196,22 @@ public final class AoeBurst {
     private void boom(World world, Location where, AoeSpec spec) {
         Location center = where.clone().add(0, 0.5, 0);
         double radius = spec.radius();
-        world.spawnParticle(Particle.EXPLOSION, center, 1);
-        if (spec.kind() == AoeKind.DAMAGE) {
-            world.spawnParticle(Particle.CRIT, center, 10, radius / 3, 0.2, radius / 3, 0.05);
-            world.playSound(where, Sound.ENTITY_GENERIC_EXPLODE, 0.7f, 1.1f);
-        } else {
-            world.spawnParticle(Particle.SWEEP_ATTACK, center, 4, radius / 3, 0.2, radius / 3, 0.0);
-            world.playSound(where, Sound.ENTITY_GENERIC_EXPLODE, 0.6f, 1.4f);
+        switch (spec.kind()) {
+            case HEAL -> { // a friendly sparkle, no explosion
+                world.spawnParticle(Particle.HEART, center, 6, radius / 3, 0.3, radius / 3, 0.0);
+                world.spawnParticle(Particle.HAPPY_VILLAGER, center, 8, radius / 3, 0.3, radius / 3, 0.0);
+                world.playSound(where, Sound.ENTITY_PLAYER_LEVELUP, 0.5f, 1.6f);
+            }
+            case DAMAGE -> {
+                world.spawnParticle(Particle.EXPLOSION, center, 1);
+                world.spawnParticle(Particle.CRIT, center, 10, radius / 3, 0.2, radius / 3, 0.05);
+                world.playSound(where, Sound.ENTITY_GENERIC_EXPLODE, 0.7f, 1.1f);
+            }
+            default -> { // PUSH / PULL
+                world.spawnParticle(Particle.EXPLOSION, center, 1);
+                world.spawnParticle(Particle.SWEEP_ATTACK, center, 4, radius / 3, 0.2, radius / 3, 0.0);
+                world.playSound(where, Sound.ENTITY_GENERIC_EXPLODE, 0.6f, 1.4f);
+            }
         }
     }
 

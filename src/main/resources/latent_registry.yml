@@ -21,6 +21,12 @@ latent_modifiers:
     - DAMAGE
   FLINT:
     - DAMAGE
+  FISHING_ROD:            # PULL — reel entities inward (PUSH's complement)
+    - PULL
+  GOLDEN_APPLE:           # HEAL — mend friendlies (DAMAGE's complement)
+    - HEAL
+  GLISTERING_MELON_SLICE:
+    - HEAL
 
   # ---- AOE transforms (reagents) ----
   HEART_OF_THE_SEA:       # EXPAND — ×radius
@@ -134,8 +140,12 @@ latent_modifiers:
     - MULTISHOT
     - SPREAD
   HONEY_BLOCK:            # a vacuum that drags things in
-    - PUSH
-    - INVERT
+    - PULL
+    - EXPAND
+  ENCHANTED_GOLDEN_APPLE: # heal bomb — a wide, strong burst of mending
+    - HEAL
+    - EXPAND
+    - AMPLIFY
   SHULKER_SHELL:          # a bouncing shove that chains
     - PUSH
     - CHAIN

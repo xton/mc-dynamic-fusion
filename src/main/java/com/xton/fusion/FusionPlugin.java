@@ -35,6 +35,7 @@ import com.xton.fusion.modifier.impl.DurationModifier;
 import com.xton.fusion.modifier.impl.ExpandModifier;
 import com.xton.fusion.modifier.impl.FireModifier;
 import com.xton.fusion.modifier.impl.GravityModifier;
+import com.xton.fusion.modifier.impl.HealModifier;
 import com.xton.fusion.modifier.impl.IceModifier;
 import com.xton.fusion.modifier.impl.InvertModifier;
 import com.xton.fusion.modifier.impl.InvisibleModifier;
@@ -43,6 +44,7 @@ import com.xton.fusion.modifier.impl.MiningModifier;
 import com.xton.fusion.modifier.impl.MultishotModifier;
 import com.xton.fusion.modifier.impl.PersistModifier;
 import com.xton.fusion.modifier.impl.PierceModifier;
+import com.xton.fusion.modifier.impl.PullModifier;
 import com.xton.fusion.modifier.impl.PushModifier;
 import com.xton.fusion.modifier.impl.SpawnModifier;
 import com.xton.fusion.modifier.impl.SpeedModifier;
@@ -74,9 +76,11 @@ public final class FusionPlugin extends JavaPlugin {
         boolean debug = getConfig().getBoolean("debug-logging", true);
 
         ModifierRegistry registry = new ModifierRegistry()
-                // Emitters (concrete elements).
+                // Emitters (concrete elements) and their complements.
                 .register(new PushModifier())
+                .register(new PullModifier())
                 .register(new DamageModifier())
+                .register(new HealModifier())
                 // AOE transforms (modify the nearest preceding emitter).
                 .register(new ExpandModifier(
                         getConfig().getDouble("expand.factor-per-apply", 1.6)))

@@ -69,6 +69,18 @@ public final class WeaponBuilder {
         return stack.peek().addAoe(new AoeSpec(AoeKind.DAMAGE, defaults.damageRadius(), defaults.damagePower()));
     }
 
+    /** Emitter: add a HEAL burst — restores health in radius (DAMAGE's complement). */
+    public AoeSpec emitHeal() {
+        return stack.peek().addAoe(new AoeSpec(AoeKind.HEAL, defaults.damageRadius(), defaults.damagePower()));
+    }
+
+    /** Emitter: add a PULL burst — a PUSH that drags entities inward (PUSH's complement). */
+    public AoeSpec emitPull() {
+        AoeSpec pull = emitPush();
+        pull.toggleInvert();
+        return pull;
+    }
+
     /** Emitter: add a MINING element — a block-breaking bore of the given base radius. */
     public AoeSpec emitMining(double radius) {
         return stack.peek().addAoe(new AoeSpec(AoeKind.MINING, radius, 0));

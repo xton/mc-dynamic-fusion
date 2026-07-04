@@ -11,6 +11,7 @@ import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Cow;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Zombie;
 import org.bukkit.util.Vector;
@@ -128,6 +129,12 @@ public final class SelfTest {
         Zombie persistMob = spawnDummy(world, base.clone().add(3, 0, -10), spawned);
         toughen(persistMob, 200.0);
         final double persist0 = health(persistMob);
+        // A hurt COW (passive, so HEAL mends it — hostiles are skipped) to verify healing.
+        final Cow healCow = spawnCow(world, base.clone().add(3, 1, -28));
+        if (healCow != null) {
+            healCow.setHealth(4.0);
+        }
+        final double healCow0 = healCow != null ? healCow.getHealth() : 0;
 
         int bx = base.getBlockX();
         int by = base.getBlockY() + 1;
@@ -194,6 +201,9 @@ public final class SelfTest {
             if (persistMob != null && persistMob.isValid()) {
                 burst.fire(world, persistMob.getLocation(), firstAoe("DAMAGE", "PERSIST"), null);
             }
+            if (healCow != null && healCow.isValid()) {
+                burst.fire(world, healCow.getLocation(), firstAoe("HEAL"), null);
+            }
             if (fireMining) {
                 fireBolt(world, at(world, bx, by, bz), PLUS_X, false, "MINING", "PIERCE");
             }
@@ -236,8 +246,10 @@ public final class SelfTest {
         }, SETTLE);
 
         // Shortly after firing: the piercing DAMAGE bolt has hit both dummies.
-        scheduler.runLater(() -> results.add(pierceDamagesBoth(pierceA, pierceB, pierceA0, pierceB0)),
-                SETTLE + 8);
+        scheduler.runLater(() -> {
+            results.add(pierceDamagesBoth(pierceA, pierceB, pierceA0, pierceB0));
+            results.add(healRestoresHealth(healCow, healCow0));
+        }, SETTLE + 8);
 
         // --- after the bolts have flown: assert blocks ---
         scheduler.runLater(() -> {
@@ -427,6 +439,15 @@ public final class SelfTest {
         r.add(new Result("compile:deposit-parameterized", depositOk,
                 "material=" + (deposit.payload().isEmpty() ? "<none>"
                         : deposit.payload().get(0).material())));
+
+        // HEAL/PULL complements: HEAL is its own kind; PULL is a pre-inverted PUSH.
+        boolean complementOk = compile("HEAL").payload().get(0).kind() == AoeKind.HEAL
+                && compile("PULL").payload().get(0).kind() == AoeKind.PUSH
+                && compile("PULL").payload().get(0).inverted()
+                && !compile("PUSH").payload().get(0).inverted();
+        r.add(new Result("compile:heal-pull-complements", complementOk,
+                "healKind=" + compile("HEAL").payload().get(0).kind()
+                        + " pullInverted=" + compile("PULL").payload().get(0).inverted()));
 
         // Flight tuning: GRAVITY arcs, VISIBLE/INVISIBLE toggle the trail, and the
         // parameterized SPEED:<v>/DURATION:<s> pin absolute values.
@@ -626,6 +647,33 @@ public final class SelfTest {
 
     private double health(Zombie mob) {
         return mob == null ? 0 : mob.getHealth();
+    }
+
+    /** Spawn a passive, inert cow (a valid HEAL target, unlike the hostile zombies). */
+    private Cow spawnCow(World world, Location loc) {
+        try {
+            return world.spawn(loc, Cow.class, c -> {
+                c.setAI(false);
+                c.setGravity(false);
+                c.setSilent(true);
+                c.setRemoveWhenFarAway(false);
+            });
+        } catch (Exception e) {
+            log.warning(TAG + " could not spawn cow: " + e);
+            return null;
+        }
+    }
+
+    /** A HEAL burst mends the hurt (passive) cow — its health climbs back up. */
+    private Result healRestoresHealth(Cow mob, double before) {
+        if (mob == null || !mob.isValid()) {
+            return new Result("heal-restores-health", false, "no mob");
+        }
+        double after = mob.getHealth();
+        Result res = new Result("heal-restores-health", after > before,
+                String.format("health %.1f -> %.1f", before, after));
+        mob.remove();
+        return res;
     }
 
     /** Raise a dummy's max health and fill it, so repeated pulses can't kill it mid-test. */

@@ -14,10 +14,12 @@ package com.xton.fusion.modifier;
  * </ul>
  */
 public enum AoeKind {
-    /** Shoves entities away from the centre (INVERT pulls them in). */
+    /** Shoves entities away from the centre (INVERT, or PULL, drags them in). */
     PUSH,
     /** Damages entities in range. */
     DAMAGE,
+    /** Heals entities in range — the complement of {@link #DAMAGE}. */
+    HEAL,
     /** Breaks the soft blocks in radius (a tunnel cross-section, widened by EXPAND). */
     MINING,
     /** Sets fire in radius: spreads fire, melts snow/ice, ignites mobs. */

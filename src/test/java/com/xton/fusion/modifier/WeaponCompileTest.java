@@ -19,6 +19,7 @@ import com.xton.fusion.modifier.impl.DurationModifier;
 import com.xton.fusion.modifier.impl.ExpandModifier;
 import com.xton.fusion.modifier.impl.FireModifier;
 import com.xton.fusion.modifier.impl.GravityModifier;
+import com.xton.fusion.modifier.impl.HealModifier;
 import com.xton.fusion.modifier.impl.IceModifier;
 import com.xton.fusion.modifier.impl.InvertModifier;
 import com.xton.fusion.modifier.impl.InvisibleModifier;
@@ -27,6 +28,7 @@ import com.xton.fusion.modifier.impl.MiningModifier;
 import com.xton.fusion.modifier.impl.MultishotModifier;
 import com.xton.fusion.modifier.impl.PersistModifier;
 import com.xton.fusion.modifier.impl.PierceModifier;
+import com.xton.fusion.modifier.impl.PullModifier;
 import com.xton.fusion.modifier.impl.PushModifier;
 import com.xton.fusion.modifier.impl.SpawnModifier;
 import com.xton.fusion.modifier.impl.SpeedModifier;
@@ -49,7 +51,9 @@ class WeaponCompileTest {
     private ModifierRegistry registry() {
         return new ModifierRegistry()
                 .register(new PushModifier())
+                .register(new PullModifier())
                 .register(new DamageModifier())
+                .register(new HealModifier())
                 .register(new ExpandModifier(1.6))
                 .register(new AmplifyModifier(1.6))
                 .register(new ChainModifier(2))
@@ -215,6 +219,20 @@ class WeaponCompileTest {
         assertTrue(compile("FIRE", "TRAIL").isTrail());
         assertFalse(compile("DAMAGE").isTeleport());
         assertTrue(compile("DAMAGE", "PIERCE", "TELEPORT").isTeleport());
+    }
+
+    @Test
+    void healAndPullAreComplementEmitters() {
+        ProjectileSpec heal = compile("HEAL");
+        assertEquals(1, heal.payload().size());
+        assertEquals(AoeKind.HEAL, heal.topAoe().kind());
+        // HEAL scales like DAMAGE: AMPLIFY raises the amount healed.
+        assertTrue(compile("HEAL", "AMPLIFY").topAoe().power() > heal.topAoe().power());
+
+        // PULL is a PUSH pre-inverted (a vacuum); a plain PUSH is not inverted.
+        assertEquals(AoeKind.PUSH, compile("PULL").topAoe().kind());
+        assertTrue(compile("PULL").topAoe().inverted(), "PULL drags inward");
+        assertFalse(compile("PUSH").topAoe().inverted());
     }
 
     @Test

@@ -189,7 +189,7 @@ public final class FusionPlugin extends JavaPlugin {
         SelfTest selfTest = new SelfTest(scheduler, registry, launcher, burst, getLogger());
 
         if (getCommand("fusion") != null) {
-            FusionCommand fusionCmd = new FusionCommand(menu, registry, factory, engine, fusionCost,
+            FusionCommand fusionCmd = new FusionCommand(menu, registry, latent, factory, engine, fusionCost,
                     getLogger(), debug, selfTest);
             getCommand("fusion").setExecutor(fusionCmd);
             getCommand("fusion").setTabCompleter(fusionCmd);

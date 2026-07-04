@@ -42,8 +42,9 @@ import com.xton.fusion.modifier.ProjectileSpec;
  * moves the caster there.
  *
  * <p><b>BOUNCE</b> changes block handling: instead of terminating on a block, the
- * shot reflects off the surface (losing a little speed) and flies on, only
- * triggering when it finally expires or hits a mob directly.
+ * shot reflects off the surface (losing a little speed, and dragging its glide on
+ * a floor bounce) and flies on, only triggering when it rolls to a rest, expires,
+ * or hits a mob directly.
  */
 public final class FusionProjectile extends BukkitRunnable {
 
@@ -57,6 +58,12 @@ public final class FusionProjectile extends BukkitRunnable {
     private static final double CONTACT_IMPULSE = 0.35;
     /** Speed retained across a BOUNCE off a block (energy loss, so it settles). */
     private static final double BOUNCE_RESTITUTION = 0.82;
+    /** Extra horizontal drag on a floor bounce, so a BOUNCE shot rolls to a stop. */
+    private static final double BOUNCE_FLOOR_FRICTION = 0.7;
+    /** Below this speed a BOUNCE shot has come to rest — it stops and triggers. */
+    private static final double BOUNCE_REST_SPEED = 0.15;
+    /** Blocks of flight before TRAIL starts laying its wake, so it clears the caster. */
+    private static final double TRAIL_WARMUP = 2.5;
 
     private final Plugin plugin;
     private final Payload payload;
@@ -73,6 +80,7 @@ public final class FusionProjectile extends BukkitRunnable {
     private final double envEntityRadius;
 
     private int age;
+    private double traveled; // cumulative flight distance, for the TRAIL warm-up
 
     public FusionProjectile(Plugin plugin, Payload payload, ProjectileSpec spec,
                             World world, Location origin, Vector velocity, Shot shot) {
@@ -106,9 +114,11 @@ public final class FusionProjectile extends BukkitRunnable {
         double distance = velocity.length();
         int steps = Math.max(1, (int) Math.ceil(distance / STEP));
         Vector stepVec = velocity.clone().multiply(1.0 / steps);
+        double stepLen = stepVec.length();
 
         for (int i = 0; i < steps; i++) {
             position.add(stepVec);
+            traveled += stepLen;
             Location here = position.toLocation(world);
 
             if (!inBounds(here)) {
@@ -139,7 +149,10 @@ public final class FusionProjectile extends BukkitRunnable {
     /**
      * Ricochet off the block at {@code here}: back out of it, reflect the velocity
      * about the surface normal (shedding a little speed), and let the next tick
-     * fly on. Still ages, so a trapped shot eventually expires and triggers.
+     * fly on. A floor bounce also drags the horizontal glide, so the shot slows to
+     * a roll and — once it's crawling — comes to rest and triggers there. Expiry
+     * is time-based (the lifetime tick cap), so pair BOUNCE with DURATION to set
+     * how long it rattles around.
      */
     private void bounceOff(Location here, Vector stepVec) {
         position.subtract(stepVec); // step back to the last open cell
@@ -147,10 +160,18 @@ public final class FusionProjectile extends BukkitRunnable {
         double dot = velocity.dot(normal);
         velocity.subtract(normal.clone().multiply(2 * dot)); // reflect
         velocity.multiply(BOUNCE_RESTITUTION);
+        if (normal.getY() > 0.5) { // bounced off a floor: rolling friction
+            velocity.setX(velocity.getX() * BOUNCE_FLOOR_FRICTION);
+            velocity.setZ(velocity.getZ() * BOUNCE_FLOOR_FRICTION);
+        }
         if (spec.hasVisibleTrail()) {
             world.spawnParticle(Particle.CRIT, position.toLocation(world), 4, 0.1, 0.1, 0.1, 0.05);
         }
         world.playSound(here, Sound.BLOCK_STONE_HIT, 0.4f, 1.4f);
+        if (velocity.length() < BOUNCE_REST_SPEED) {
+            terminate(position.toLocation(world)); // rolled to a stop — go off here
+            return;
+        }
         if (++age >= Math.max(1, spec.lifetimeTicks())) {
             terminate(position.toLocation(world));
         }
@@ -169,13 +190,18 @@ public final class FusionProjectile extends BukkitRunnable {
      * Apply the environmental block sweep at this cell if it's a trigger point:
      * an occupied cell while PIERCEing, or an empty cell while TRAILing. Mining
      * breaks here first, which is what lets the shot continue through it.
+     *
+     * <p>TRAIL has a short warm-up ({@link #TRAIL_WARMUP} blocks) so its wake
+     * begins downrange — otherwise a water/lava trail floods the caster's own tile.
      */
     private void environmentalAlongPath(Location here) {
         if (!spec.hasEnvironmental()) {
             return;
         }
         boolean occupied = !here.getBlock().getType().isAir();
-        if ((occupied && spec.isPierce()) || (!occupied && spec.isTrail())) {
+        boolean pierceHere = occupied && spec.isPierce();
+        boolean trailHere = !occupied && spec.isTrail() && traveled >= TRAIL_WARMUP;
+        if (pierceHere || trailHere) {
             applyEnvironmentalBlocks(here);
         }
     }

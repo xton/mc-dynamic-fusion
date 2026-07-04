@@ -160,7 +160,8 @@ Modifiers come in two categories (`Modifier.Category`):
 - **Transforms** modify the **nearest preceding emitter** (RPN, apply-to-previous).
   *AOE transforms* (`EXPAND` ×radius, `AMPLIFY` ×power/damage, `CHAIN`, `INVERT`,
   `PERSIST`) mutate the top `AoeSpec`; *flight transforms* (`MULTISHOT`, `SPREAD`,
-  `PIERCE`, `BOUNCE`, `TRAIL`, `LIFETIME`, `MINING`, `TELEPORT`) mutate the
+  `PIERCE`, `BOUNCE`, `TRAIL`, `LIFETIME`, `MINING`, `TELEPORT`, `GRAVITY`,
+  `VISIBLE`/`INVISIBLE`, and the parameterized `SPEED:n`/`DURATION:n`) mutate the
   projectile. A
   transform with no matching preceding emitter is **inert** — so a burst is opt-in
   (Expand alone does nothing), and it binds to the *nearest* element only

@@ -40,6 +40,10 @@ Noita-style. Modifiers come in two kinds:
 | *xf (fly)* | **Trail** | Trident, Prismarine Shard | inverse of Pierce — applies environmental effects at every *empty-air* cell it flies through |
 | *xf (fly)* | **Lifetime** | Gunpowder, Redstone | adds a fixed range (same distance fast or slow) |
 | *xf (fly)* | **Teleport** | Ender Pearl, Eye of Ender | warps the caster to where the shot terminates (once per cast, safely offset) |
+| *xf (fly)* | **Gravity** | Heavy Core, Lead | turns on the arc — lob from any weapon, no bow needed |
+| *xf (fly)* | **Visible** / **Invisible** | Glow Ink Sac / Ink Sac | force the flight trail on or off (override the weapon-type default) |
+| *xf (fly)* | **Speed:_n_** | *(parameterized)* | pin the launch speed to an exact value (`Speed:0.6` slow, `Speed:3` fast) |
+| *xf (fly)* | **Duration:_n_** | *(parameterized)* | pin the lifetime to _n_ seconds (`Duration:4`) — absolute, unlike Lifetime's added range |
 
 Because these are small primitives, weapons **compose**: a nova is
 `Push · Expand · Expand`; a fireball is `Damage · Amplify`; a shotgun is
@@ -50,7 +54,8 @@ bolt** is `Mining · Pierce · Deposit:Dirt` (carve, then backfill — order
 matters); a river-layer is `Deposit:Water · Trail`; a cluster firebomb is
 `Damage · Spawn · Multishot · Spread · Fire`; a blink lance is
 `Pierce · Lifetime · Teleport`; a bouncing cluster grenade is
-`Damage · Bounce · Lifetime · Spawn · Multishot · Spread · Fire`. Many
+`Damage · Bounce · Duration:5 · Spawn · Multishot · Spread · Fire`; a lobbed
+mortar from a plain sword is `Damage · Gravity · Visible · Speed:0.8`. Many
 ingredients are **bundles** — a ready-made recipe in one item (TNT =
 `Damage · Expand · Expand`, End Crystal = the works). See
 [`latent_registry.yml`](src/main/resources/latent_registry.yml) for the roster.
@@ -134,11 +139,12 @@ make smoke
 It then runs an **in-process functional self-test** — `/fusion test`
 (console/op only) drives the *real* modifier compiler, projectile, and burst
 code against the live world and asserts the mechanics MockBukkit can't reach. It
-has two kinds of check (33 in total):
+has two kinds of check (35 in total):
 
 - **compile checks** pin the emitter/transform RPN semantics on the compiled
   spec — EXPAND/AMPLIFY scaling, MULTISHOT/SPREAD/LIFETIME stacking, INVERT
-  toggling, CHAIN/PERSIST accumulation, the flight flags (incl. BOUNCE), the
+  toggling, CHAIN/PERSIST accumulation, the flight flags (incl. BOUNCE, GRAVITY,
+  VISIBLE/INVISIBLE and the parameterized SPEED:n/DURATION:n), the
   FIRE/ICE/DEPOSIT emitters and TRAIL/TELEPORT/SPAWN wiring (`Deposit:Dirt`
   parameter parsing, Spawn pushing a fresh child), and the *nearest-previous
   binding* (a transform touches only the last emitter) that's nearly impossible
@@ -148,9 +154,10 @@ has two kinds of check (33 in total):
   a second mob, a MINING ray carving a run of blocks and *stopping at obsidian*,
   a PIERCE bolt passing through two mobs, FIRE melting snow and igniting a mob,
   ICE freezing water to ice, DEPOSIT backfilling air at its terminus, a
-  DEPOSIT · Trail bolt filling the air it flies through, a BOUNCE bolt rebounding
-  off a wall to hit a mob behind it, and a SPAWN bolt whose child ricochets off a
-  wall to strike a mob the parent couldn't reach.
+  DEPOSIT · Trail bolt filling the air it flies through (and its warm-up sparing
+  the caster's own tile), a BOUNCE bolt rebounding off a wall to hit a mob behind
+  it, and a SPAWN bolt whose child ricochets off a wall to strike a mob the
+  parent couldn't reach.
 
 Results are logged as `[fusion-selftest] RESULT: PASS|FAIL`; the smoke script
 fails the build unless it sees PASS. You can run it by hand on any server too

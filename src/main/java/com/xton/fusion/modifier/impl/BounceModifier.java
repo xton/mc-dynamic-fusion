@@ -5,10 +5,11 @@ import com.xton.fusion.modifier.WeaponBuilder;
 
 /**
  * Flight transform: the shot ricochets off blocks instead of going off on them.
- * It reflects off each surface it hits (shedding a little speed) and keeps
- * flying, <em>only</em> triggering its payload when it finally expires or hits a
- * mob directly. Pair with LIFETIME to keep it bouncing longer, or with SPAWN for
- * a grenade that scatters children where it eventually comes to rest.
+ * It reflects off each surface it hits (shedding a little speed, and dragging its
+ * glide on a floor bounce) and keeps flying, <em>only</em> triggering its payload
+ * when it rolls to a rest, expires, or hits a mob directly. Pair with DURATION to
+ * set how long it rattles around, or with SPAWN for a grenade that scatters
+ * children where it comes to rest.
  */
 public final class BounceModifier implements Modifier {
 
@@ -31,7 +32,7 @@ public final class BounceModifier implements Modifier {
 
     @Override
     public String detailedDescription() {
-        return "The shot bounces off blocks instead of triggering on them — it only goes off when it expires or strikes a mob. Add Lifetime for more bounces, or Spawn for a scattering grenade.";
+        return "The shot bounces off blocks instead of triggering on them, rolling to a stop before it goes off (or when it strikes a mob). Add Duration to set how long it rattles, or Spawn for a scattering grenade.";
     }
 
     @Override

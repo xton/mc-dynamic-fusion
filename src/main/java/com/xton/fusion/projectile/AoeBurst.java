@@ -3,6 +3,7 @@ package com.xton.fusion.projectile;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -30,6 +31,9 @@ public final class AoeBurst {
     /** Tunables resolved from config. */
     public record Settings(double chainRange, long persistIntervalTicks, boolean affectPlayers) {
     }
+
+    /** A DAMAGE burst at or above this radius grows a real explosion sprite (a base hit doesn't). */
+    private static final double DAMAGE_BLAST_RADIUS = 4.5;
 
     private final Scheduler scheduler;
     private final Settings settings;
@@ -193,6 +197,12 @@ public final class AoeBurst {
      * plus a little kind-specific flavour. Deliberately centred (not a spread of
      * sparks) so a single burst reads as a detonation at that spot.
      */
+    /**
+     * The "it goes off HERE" visual, scaled to the burst so the picture matches the
+     * magnitude: a base DAMAGE hit is just a small red spark (red = damage), and
+     * only an EXPANDed one grows a real blast; HEAL sparkles; PUSH/PULL keep the
+     * explosive shove. Centred, not a spray, so it reads as a detonation at the spot.
+     */
     private void boom(World world, Location where, AoeSpec spec) {
         Location center = where.clone().add(0, 0.5, 0);
         double radius = spec.radius();
@@ -203,11 +213,20 @@ public final class AoeBurst {
                 world.playSound(where, Sound.ENTITY_PLAYER_LEVELUP, 0.5f, 1.6f);
             }
             case DAMAGE -> {
-                world.spawnParticle(Particle.EXPLOSION, center, 1);
-                world.spawnParticle(Particle.CRIT, center, 10, radius / 3, 0.2, radius / 3, 0.05);
-                world.playSound(where, Sound.ENTITY_GENERIC_EXPLODE, 0.7f, 1.1f);
+                // Red spark sized to the radius; a big (EXPANDed) hit adds a blast.
+                int count = (int) Math.max(6, radius * 4);
+                float dustSize = (float) Math.min(3.0, radius / 2.0);
+                world.spawnParticle(Particle.DUST, center, count, radius / 3, 0.25, radius / 3, 0.0,
+                        new Particle.DustOptions(Color.fromRGB(220, 30, 30), dustSize));
+                world.spawnParticle(Particle.CRIT, center, count / 2, radius / 3, 0.2, radius / 3, 0.05);
+                if (radius >= DAMAGE_BLAST_RADIUS) {
+                    world.spawnParticle(Particle.EXPLOSION, center, 1);
+                    world.playSound(where, Sound.ENTITY_GENERIC_EXPLODE, 0.7f, 1.1f);
+                } else {
+                    world.playSound(where, Sound.ENTITY_PLAYER_ATTACK_CRIT, 0.6f, 0.9f);
+                }
             }
-            default -> { // PUSH / PULL
+            default -> { // PUSH / PULL: the explosive shove
                 world.spawnParticle(Particle.EXPLOSION, center, 1);
                 world.spawnParticle(Particle.SWEEP_ATTACK, center, 4, radius / 3, 0.2, radius / 3, 0.0);
                 world.playSound(where, Sound.ENTITY_GENERIC_EXPLODE, 0.6f, 1.4f);

@@ -10,7 +10,7 @@ Before touching this list, run the harnesses — if they're green, the mechanics
 below the "already automated" line are covered and you can skip them:
 
 ```
-make smoke   # boots Paper + runs /fusion test: 35 in-process checks
+make smoke   # boots Paper + runs /fusion test: 46 in-process checks
 make e2e     # a real Mineflayer bot: swing/bow input + the anvil GUI (10 checks)
 ```
 
@@ -18,12 +18,14 @@ make e2e     # a real Mineflayer bot: swing/bow input + the anvil GUI (10 checks
 every transform's scaling and RPN nearest-previous binding (EXPAND, AMPLIFY,
 MULTISHOT, SPREAD, LIFETIME, INVERT, CHAIN, PERSIST), PIERCE pass-through,
 MINING carving + stopping at obsidian + no-pop terminus, FIRE melting snow &
-igniting a mob, ICE freezing water, DEPOSIT backfilling air, DEPOSIT·TRAIL
-filling the flight path, a BOUNCE bolt rebounding off a wall into a mob, a SPAWN
-child ricocheting off a wall, the DEPOSIT:<block> parameter parsing and
-BOUNCE/SPAWN wiring at compile time, the swing and bow input paths, and the anvil
-machine: shows-result, take ("Fusion complete!"), rejects-junk (red barrier),
-and close-returns-inputs. See `SelfTest.java` and `mineflayer/e2e.js`.
+igniting a mob, ICE freezing water (and dressing bare ground with snow), DEPOSIT backfilling air,
+DEPOSIT·TRAIL filling the flight path, a BOUNCE rebound, a SPAWN child ricocheting
+off a wall, a HEAL mending a hurt cow, a DELAY charge re-detonating, a HOMING bolt
+curving into an off-axis mob, a MOB:Cow launch, a deep MINING stack boring through
+obsidian, the parameter parsing (`Deposit:Dirt`/`Mob:Cow`) and complement/flag
+wiring at compile time, the swing and bow input paths, and the anvil machine:
+shows-result, take ("Fusion complete!"), rejects-junk (red barrier), and
+close-returns-inputs. See `SelfTest.java` and `mineflayer/e2e.js`.
 
 Build test weapons the fast way: `/fusion give <you> <BASE> <MOD...>` (op only).
 
@@ -140,6 +142,37 @@ player; SPAWN clusters are best judged by eye) still want a look:
 25. **Absolute Speed / Duration.** `SPEED:3` is a fast bolt, `SPEED:0.4` a crawl;
     `DURATION:5` makes it live ~5s regardless of range. Handy on a `BOUNCE` build
     to set how long it rattles before it rolls to rest and goes off.
+
+## E. Latest batch — feel & the player-facing bits
+
+The mechanics below are asserted headlessly; these notes are the feel/looks and
+the bits that need a real player or an eye:
+
+26. **Heal is friendly.** `DIAMOND_SWORD HEAL AMPLIFY` on a hurt **animal/teammate**
+    mends them (and you), with hearts — hostiles are skipped. `Pull` (Fishing Rod)
+    vacuums entities *inward* where `Push` shoves out.
+27. **Lure-and-blast (Delay).** `DIAMOND_SWORD PULL DELAY:2 DAMAGE EXPAND` → gathers
+    mobs, waits ~2s (a glowing charge marker sits there), then blasts them. The
+    `SCULK_CATALYST` bundle is the ready-made version.
+28. **Cow Launcher (Mob).** A bow with `MOB:COW` **fires a live cow** that arcs,
+    lands, and wanders off. `MULTISHOT` throws a herd. (Bosses are blocked.)
+29. **Homing.** `BOW DAMAGE HOMING LIFETIME` → the bolt should **curve to chase**
+    the nearest creature, not snap onto it. Stack `HOMING` for a tighter turn.
+30. **Break harder blocks (stacked Mining).** `DIAMOND_PICKAXE MINING PIERCE` still
+    stops at obsidian; add more `MINING` (≈×4) and it **chews through** it. Bedrock
+    is always safe.
+31. **Golden Brush (son's toy).** Fuse a **Brush** with gold: `BRUSH TREASURE
+    TREASURE` (or `from:gold_block`). Right-click/brush **any** block → a chance to
+    drop loot with a sparkle. More gold = procs more often *and* rarer finds
+    (diamonds, enchanted apples at the top). Watch the cooldown so it's not a
+    firehose.
+32. **VFX pass (by eye).** A base `DAMAGE` hit is a small **red spark** (not an
+    explosion) — `EXPAND` it a few times to grow a real blast; `PUSH` keeps the
+    explosive shove. `FIRE`/`ICE` now show a flame/frost **poof**. The `PERSIST`
+    charge is a **glowing block** that swells to each pulse (no smoky fire).
+    Melee fires a **subtle energy ball**; all trails now **hang and fade in place**
+    (no gravity), and a fused **bow left-click is a plain vanilla melee** (fusion
+    only fires on the arrow).
 
 ---
 

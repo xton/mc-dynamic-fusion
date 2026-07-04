@@ -22,12 +22,17 @@ Noita-style. Modifiers come in two kinds:
 | | Modifier | Sample ingredients | Effect |
 |---|---|---|---|
 | **emit** | **Push** | Nether Star, Piston | a knockback burst where it lands |
+| **emit** | **Pull** | Fishing Rod | a vacuum burst — drags entities inward (Push's complement) |
 | **emit** | **Damage** | Fire Charge, Flint | a damaging burst where it lands |
-| **emit** | **Mining** | Amethyst Shard | carves a tunnel along the flight (Expand widens it) — add Pierce to bore through |
+| **emit** | **Heal** | Golden Apple | mends friendly entities & the caster; skips hostiles (Damage's complement) |
+| **emit** | **Mining** | Amethyst Shard | carves a tunnel along the flight (Expand widens it); **stack Mining to break harder blocks** — add Pierce to bore through |
 | **emit** | **Fire** | Flint and Steel, Magma Block | spreads fire, melts snow/ice, ignites mobs in a radius (a touch wider than Mining) |
 | **emit** | **Ice** | Blue Ice, Snowball | freezes water→ice, lava→obsidian, snuffs fire, chills mobs |
 | **emit** | **Deposit:_block_** | Dirt, Sand, Water/Lava Bucket, Cobweb | fills the empty air in a radius with that block (`Deposit:Dirt`, `Deposit:Water`, …) |
 | **emit** | **Spawn** | Firework Rocket, Egg | at the terminus, bursts into a fresh child built from every modifier *after* Spawn |
+| **emit** | **Delay:_n_** | Clock | like Spawn, but the child waits _n_ s then goes off in place (lure-then-blast) |
+| **emit** | **Mob:_type_** | Cow Spawn Egg | launches a live creature as the projectile — vanilla physics carry it (the Cow Launcher) |
+| **emit** | **Treasure** | Gold Ingot/Block | on a **Brush**, sweeping any block may cough up loot; more gold → rarer finds |
 | *xf (aoe)* | **Expand** | Heart of the Sea, Magma Cream | ×radius of the previous burst |
 | *xf (aoe)* | **Amplify** | Glowstone Dust, Blaze Powder | ×force/damage of the previous burst |
 | *xf (aoe)* | **Chain** | String, Echo Shard | previous burst hops to more entities |
@@ -36,7 +41,8 @@ Noita-style. Modifiers come in two kinds:
 | *xf (fly)* | **Multishot** | Rabbit's Foot, Slime Ball | launches extra projectiles |
 | *xf (fly)* | **Spread** | Feather, Sugar | scatters the aim |
 | *xf (fly)* | **Pierce** | Arrow, Quartz | punches through soft blocks & applies its effects at every occupied cell/entity in its path |
-| *xf (fly)* | **Bounce** | Slime Block, Rabbit Hide | ricochets off blocks instead of triggering — only goes off on expiry or a direct mob hit |
+| *xf (fly)* | **Bounce** | Slime Block, Rabbit Hide | ricochets off blocks, rolling to a rest before it goes off (or on a direct mob hit) |
+| *xf (fly)* | **Homing** | Compass | curves to chase the nearest creature mid-flight (stacks sharpen the turn) |
 | *xf (fly)* | **Trail** | Trident, Prismarine Shard | inverse of Pierce — applies environmental effects at every *empty-air* cell it flies through |
 | *xf (fly)* | **Lifetime** | Gunpowder, Redstone | adds a fixed range (same distance fast or slow) |
 | *xf (fly)* | **Teleport** | Ender Pearl, Eye of Ender | warps the caster to where the shot terminates (once per cast, safely offset) |
@@ -55,10 +61,18 @@ matters); a river-layer is `Deposit:Water · Trail`; a cluster firebomb is
 `Damage · Spawn · Multishot · Spread · Fire`; a blink lance is
 `Pierce · Lifetime · Teleport`; a bouncing cluster grenade is
 `Damage · Bounce · Duration:5 · Spawn · Multishot · Spread · Fire`; a lobbed
-mortar from a plain sword is `Damage · Gravity · Visible · Speed:0.8`. Many
+mortar from a plain sword is `Damage · Gravity · Visible · Speed:0.8`; a
+gravity-well grenade is `Pull · Expand · Delay:2 · Damage · Amplify` (gather,
+wait, blast); a heal bomb is `Heal · Expand · Amplify`; a seeking bolt is
+`Damage · Homing · Lifetime`; the Cow Launcher is a bow with `Mob:Cow`. Many
 ingredients are **bundles** — a ready-made recipe in one item (TNT =
 `Damage · Expand · Expand`, End Crystal = the works). See
 [`latent_registry.yml`](src/main/resources/latent_registry.yml) for the roster.
+
+**Complements, not just Invert.** Where it reads clearer, atoms come in pairs:
+`Push`↔`Pull` (shove vs. vacuum), `Damage`↔`Heal`, `Fire`↔`Ice`,
+`Visible`↔`Invisible`. (`Invert` still flips a Push for back-compat, but `Pull`
+is the explicit way.)
 
 **Spawn children ricochet off surfaces.** When a shot ends against a block, its
 `Spawn` children launch along the *reflected* heading (off the impact normal) and
@@ -139,25 +153,26 @@ make smoke
 It then runs an **in-process functional self-test** — `/fusion test`
 (console/op only) drives the *real* modifier compiler, projectile, and burst
 code against the live world and asserts the mechanics MockBukkit can't reach. It
-has two kinds of check (35 in total):
+has two kinds of check (46 in total):
 
 - **compile checks** pin the emitter/transform RPN semantics on the compiled
   spec — EXPAND/AMPLIFY scaling, MULTISHOT/SPREAD/LIFETIME stacking, INVERT
-  toggling, CHAIN/PERSIST accumulation, the flight flags (incl. BOUNCE, GRAVITY,
-  VISIBLE/INVISIBLE and the parameterized SPEED:n/DURATION:n), the
-  FIRE/ICE/DEPOSIT emitters and TRAIL/TELEPORT/SPAWN wiring (`Deposit:Dirt`
-  parameter parsing, Spawn pushing a fresh child), and the *nearest-previous
-  binding* (a transform touches only the last emitter) that's nearly impossible
-  to eyeball in-world;
+  toggling, CHAIN/PERSIST accumulation, the flight flags (incl. BOUNCE, HOMING,
+  GRAVITY, VISIBLE/INVISIBLE and the parameterized SPEED:n/DURATION:n), the
+  HEAL/PULL complements, MINING hardness stacking, the FIRE/ICE/DEPOSIT emitters
+  and TRAIL/TELEPORT/SPAWN/DELAY/MOB wiring (`Deposit:Dirt` / `Mob:Cow` parameter
+  parsing, Spawn/Delay pushing a fresh child), and the *nearest-previous binding*
+  (a transform touches only the last emitter) that's nearly impossible to eyeball
+  in-world;
 - **runtime checks** fire real bursts/projectiles at dummies and blocks: PUSH
-  knockback, DAMAGE health loss, an inverted PUSH pulling inward, a CHAIN hop to
-  a second mob, a MINING ray carving a run of blocks and *stopping at obsidian*,
-  a PIERCE bolt passing through two mobs, FIRE melting snow and igniting a mob,
-  ICE freezing water to ice, DEPOSIT backfilling air at its terminus, a
-  DEPOSIT · Trail bolt filling the air it flies through (and its warm-up sparing
-  the caster's own tile), a BOUNCE bolt rebounding off a wall to hit a mob behind
-  it, and a SPAWN bolt whose child ricochets off a wall to strike a mob the
-  parent couldn't reach.
+  knockback, DAMAGE health loss, an inverted PUSH pulling inward, a CHAIN hop, a
+  MINING ray carving and *stopping at obsidian* (and a deep MINING stack *boring
+  through* it), a PIERCE bolt through two mobs, FIRE melting snow + igniting a
+  mob, ICE freezing water and dressing bare ground with snow, DEPOSIT backfilling
+  air, a DEPOSIT · Trail wake (its warm-up sparing the caster), a BOUNCE rebound,
+  a SPAWN child ricocheting off a wall, a HEAL mending a hurt cow, a DELAY charge
+  re-detonating, a HOMING bolt curving into an off-axis mob, and a MOB:Cow launch
+  spawning a live cow.
 
 Results are logged as `[fusion-selftest] RESULT: PASS|FAIL`; the smoke script
 fails the build unless it sees PASS. You can run it by hand on any server too

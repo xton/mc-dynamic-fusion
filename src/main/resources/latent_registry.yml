@@ -117,6 +117,8 @@ latent_modifiers:
     - GLOW
   GLOW_BERRIES:
     - GLOW
+  BREEZE_ROD:             # LIFT — worn chestplate/elytra thrusts up on jump (Jetpack)
+    - LIFT
   GOLD_INGOT:             # TREASURE — Golden Brush loot (stack more gold for rarer finds)
     - TREASURE
   GOLD_BLOCK:

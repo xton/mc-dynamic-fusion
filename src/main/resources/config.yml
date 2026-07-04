@@ -162,6 +162,9 @@ golden-brush:
 worn:
   # How often (ticks) the worn-effect task refreshes (GLOW night vision, etc.).
   effect-period-ticks: 100
+  # Jetpack (LIFT): upward velocity added when a wearer jumps. ~0.42 is a normal
+  # jump; 0.7 gives a strong boost. Crank it for moon jumps.
+  jetpack-thrust: 0.7
 
 cooldown:
   # Swing cooldown in milliseconds (per player).

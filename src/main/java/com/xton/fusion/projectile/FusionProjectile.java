@@ -392,15 +392,21 @@ public final class FusionProjectile extends BukkitRunnable {
     }
 
     private void trail(Location here) {
-        // A short melee poke keeps no visible trail — not even mining sparks — so
-        // it reads as an instant swing. Ranged shots render theirs.
-        if (!spec.hasVisibleTrail()) {
+        if (spec.isTrailHidden()) {
+            return; // INVISIBLE — a truly unseen bolt
+        }
+        if (spec.hasVisibleTrail()) {
+            // Ranged shots render a bright crit trail (+ mining sparks).
+            world.spawnParticle(Particle.CRIT, here, 1, 0.02, 0.02, 0.02, 0.0);
+            if (spec.isMining()) {
+                world.spawnParticle(Particle.ELECTRIC_SPARK, here, 1, 0.02, 0.02, 0.02, 0.0);
+            }
             return;
         }
-        world.spawnParticle(Particle.CRIT, here, 1, 0.02, 0.02, 0.02, 0.0);
-        if (spec.isMining()) {
-            world.spawnParticle(Particle.ELECTRIC_SPARK, here, 1, 0.02, 0.02, 0.02, 0.0);
-        }
+        // A melee swing throws a subtle "energy ball" — visible enough to read on a
+        // long-range build, faint enough that a near-instant poke still looks like a
+        // swing. Much softer than the ranged trail or a burst.
+        world.spawnParticle(Particle.ENCHANTED_HIT, here, 1, 0.0, 0.0, 0.0, 0.0);
     }
 
     // ----- terminus -----

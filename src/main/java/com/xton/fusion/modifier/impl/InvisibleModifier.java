@@ -40,5 +40,6 @@ public final class InvisibleModifier implements Modifier {
     @Override
     public void apply(WeaponBuilder builder) {
         builder.projectile().setVisibleTrail(false);
+        builder.projectile().setHideTrail(true);
     }
 }

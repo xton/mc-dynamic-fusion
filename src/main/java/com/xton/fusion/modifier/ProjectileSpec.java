@@ -27,7 +27,8 @@ public final class ProjectileSpec {
     private double pierceMaxHardness;  // blocks harder than this stop a piercing shot
     private int bounces;               // bounce seam
     private int lifetimeTicks;         // ticks before it expires & terminates
-    private boolean visibleTrail = true; // render the flight trail (off for a short melee poke)
+    private boolean visibleTrail = true; // render the FULL ranged trail (off = subtle melee energy ball)
+    private boolean hideTrail;           // INVISIBLE: render no trail at all
     private boolean trail;             // TRAIL: apply AOEs at every empty-air cell too
     private boolean teleport;          // TELEPORT: move the caster to the terminus
     private int homing;                // HOMING: steer toward a nearby target (stacks = sharper turn)
@@ -139,6 +140,15 @@ public final class ProjectileSpec {
 
     public void setVisibleTrail(boolean visibleTrail) {
         this.visibleTrail = visibleTrail;
+    }
+
+    /** INVISIBLE: suppress the trail entirely (even the subtle melee energy ball). */
+    public boolean isTrailHidden() {
+        return hideTrail;
+    }
+
+    public void setHideTrail(boolean hideTrail) {
+        this.hideTrail = hideTrail;
     }
 
     public boolean isTrail() {

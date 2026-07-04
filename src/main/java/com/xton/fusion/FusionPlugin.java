@@ -29,7 +29,10 @@ import com.xton.fusion.modifier.WeaponBuilder;
 import com.xton.fusion.modifier.impl.AmplifyModifier;
 import com.xton.fusion.modifier.impl.ChainModifier;
 import com.xton.fusion.modifier.impl.DamageModifier;
+import com.xton.fusion.modifier.impl.DepositModifier;
 import com.xton.fusion.modifier.impl.ExpandModifier;
+import com.xton.fusion.modifier.impl.FireModifier;
+import com.xton.fusion.modifier.impl.IceModifier;
 import com.xton.fusion.modifier.impl.InvertModifier;
 import com.xton.fusion.modifier.impl.LifetimeModifier;
 import com.xton.fusion.modifier.impl.MiningModifier;
@@ -37,8 +40,12 @@ import com.xton.fusion.modifier.impl.MultishotModifier;
 import com.xton.fusion.modifier.impl.PersistModifier;
 import com.xton.fusion.modifier.impl.PierceModifier;
 import com.xton.fusion.modifier.impl.PushModifier;
+import com.xton.fusion.modifier.impl.SpawnModifier;
 import com.xton.fusion.modifier.impl.SpreadModifier;
+import com.xton.fusion.modifier.impl.TeleportModifier;
+import com.xton.fusion.modifier.impl.TrailModifier;
 import com.xton.fusion.projectile.AoeBurst;
+import com.xton.fusion.projectile.EnvironmentalAoe;
 import com.xton.fusion.projectile.ProjectileLauncher;
 import com.xton.fusion.selftest.SelfTest;
 import com.xton.fusion.util.BukkitTaskScheduler;
@@ -83,7 +90,15 @@ public final class FusionPlugin extends JavaPlugin {
                 .register(new LifetimeModifier(
                         getConfig().getDouble("lifetime.range-per-apply", 12.0)))
                 .register(new MiningModifier(
-                        getConfig().getDouble("mining.base-radius", 1.0)));
+                        getConfig().getDouble("mining.base-radius", 1.0)))
+                // Environmental emitters (block/area effects along the flight).
+                .register(new FireModifier())
+                .register(new IceModifier())
+                .register(new DepositModifier())
+                // Structural: spawn children, trail, teleport.
+                .register(new SpawnModifier())
+                .register(new TrailModifier())
+                .register(new TeleportModifier());
 
         LatentRegistry latent = loadLatentRegistry(registry);
 
@@ -98,6 +113,11 @@ public final class FusionPlugin extends JavaPlugin {
                 getConfig().getDouble("chain.range", 6.0),
                 getConfig().getLong("persist.interval-ticks", 20),
                 getConfig().getBoolean("effect.affect-players", false)));
+        EnvironmentalAoe.Settings envSettings = new EnvironmentalAoe.Settings(
+                getConfig().getInt("fire.burn-ticks", 100),
+                getConfig().getInt("ice.freeze-ticks", 140),
+                getConfig().getDouble("environmental.max-radius", 8.0),
+                getConfig().getDouble("environmental.max-hardness", 3.0));
         ProjectileLauncher launcher = new ProjectileLauncher(this, burst,
                 new WeaponBuilder.Defaults(
                         getConfig().getDouble("projectile.base-speed", 1.6),
@@ -106,7 +126,12 @@ public final class FusionPlugin extends JavaPlugin {
                         getConfig().getDouble("push.radius", 2.0),
                         getConfig().getDouble("push.power", 1.0),
                         getConfig().getDouble("damage.radius", 2.5),
-                        getConfig().getDouble("damage.power", 4.0)),
+                        getConfig().getDouble("damage.power", 4.0),
+                        getConfig().getDouble("fire.base-radius", 1.5),
+                        getConfig().getDouble("ice.base-radius", 1.5),
+                        getConfig().getDouble("deposit.base-radius", 1.5)),
+                envSettings,
+                getConfig().getInt("spawn.max-generation", 2),
                 getConfig().getInt("projectile.melee-lifetime-ticks", 1),
                 getConfig().getDouble("projectile.melee-speed", 4.0));
 

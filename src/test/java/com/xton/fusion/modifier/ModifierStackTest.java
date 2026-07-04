@@ -29,4 +29,63 @@ class ModifierStackTest {
 
         assertEquals(List.of("PUSH", "PUSH"), stack.ids());
     }
+
+    @Test
+    void resolvesParameterizedIdsFromTemplate() {
+        // A BASE:PARAM id resolves the template registered under BASE and mints a
+        // concrete instance whose own id carries the parameter back (PDC round-trip).
+        ModifierRegistry registry = new ModifierRegistry().register(new StubParam());
+
+        assertTrue(registry.isKnown("STUB:X"), "valid param resolves");
+        assertFalse(registry.isKnown("STUB:BAD"), "invalid param is unknown");
+        assertEquals("STUB:X", registry.get("STUB:X").orElseThrow().id());
+        assertEquals(List.of("STUB:X"), registry.resolve(List.of("STUB:X", "STUB:BAD")).ids());
+    }
+
+    /** A parameterized modifier that accepts only the parameter {@code X}. */
+    private static final class StubParam implements ParameterizedModifier {
+        private final String param;
+
+        StubParam() {
+            this(null);
+        }
+
+        private StubParam(String param) {
+            this.param = param;
+        }
+
+        @Override
+        public Modifier withParameter(String p) {
+            return "X".equals(p) ? new StubParam(p) : null;
+        }
+
+        @Override
+        public String id() {
+            return param == null ? "STUB" : "STUB:" + param;
+        }
+
+        @Override
+        public String displayName() {
+            return "Stub";
+        }
+
+        @Override
+        public String description() {
+            return "stub";
+        }
+
+        @Override
+        public String detailedDescription() {
+            return "stub";
+        }
+
+        @Override
+        public Category category() {
+            return Category.EMITTER;
+        }
+
+        @Override
+        public void apply(WeaponBuilder builder) {
+        }
+    }
 }

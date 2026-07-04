@@ -244,19 +244,20 @@ async function machineFusion(bot) {
   try { await bot.closeWindow(window); } catch (_) { /* best-effort */ }
 }
 
-// Scenario D: a junk ingredient (dirt, no latent magic) yields a non-takeable
-// red BARRIER in the result slot naming the reason — never a fused weapon. This
-// is the in-GUI "why can't I fuse this" feedback.
+// Scenario D: a junk ingredient (cobblestone, no latent magic) yields a
+// non-takeable red BARRIER in the result slot naming the reason — never a fused
+// weapon. This is the in-GUI "why can't I fuse this" feedback. (Plain dirt is a
+// real DEPOSIT:DIRT reagent now, so the junk item has to be something inert.)
 async function machineRejectsJunk(bot) {
   const label = 'machine-rejects-junk';
   const block = await giveAndPlaceMachine(bot, label);
   if (!block) return;
   await cmd(bot, `give ${USER} minecraft:diamond_sword`);
-  await cmd(bot, `give ${USER} minecraft:dirt`);
+  await cmd(bot, `give ${USER} minecraft:cobblestone`);
   const haveSword = await waitForItem(bot, (i) => i.name === 'diamond_sword');
-  const haveDirt = await waitForItem(bot, (i) => i.name === 'dirt');
-  if (!haveSword || !haveDirt) {
-    return record(label, false, `missing inputs (sword=${!!haveSword} dirt=${!!haveDirt})`);
+  const haveJunk = await waitForItem(bot, (i) => i.name === 'cobblestone');
+  if (!haveSword || !haveJunk) {
+    return record(label, false, `missing inputs (sword=${!!haveSword} cobblestone=${!!haveJunk})`);
   }
   let window;
   try {
@@ -265,13 +266,13 @@ async function machineRejectsJunk(bot) {
     return record(label, false, 'openBlock failed: ' + (e && e.message));
   }
   const swordSlot = findWindowSlot(window, 'diamond_sword');
-  const dirtSlot = findWindowSlot(window, 'dirt');
-  if (swordSlot < 0 || dirtSlot < 0) {
-    return record(label, false, `inputs not in window (sword=${swordSlot} dirt=${dirtSlot})`);
+  const junkSlot = findWindowSlot(window, 'cobblestone');
+  if (swordSlot < 0 || junkSlot < 0) {
+    return record(label, false, `inputs not in window (sword=${swordSlot} cobblestone=${junkSlot})`);
   }
   await bot.moveSlotItem(swordSlot, 0);
   await sleep(400);
-  await bot.moveSlotItem(dirtSlot, 1);
+  await bot.moveSlotItem(junkSlot, 1);
   // A barrier should appear in the result slot; a weapon must NOT.
   const res = await waitForCondition(
     () => (window.slots[2] && window.slots[2].name === 'barrier' ? window.slots[2] : null), 5000);

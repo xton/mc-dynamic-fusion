@@ -102,6 +102,42 @@ mining:
   # Base tunnel radius. 1.0 = a one-block-wide bore; EXPAND widens it.
   base-radius: 1.0
 
+# FIRE — an environmental emitter that spreads fire, melts snow/ice, and ignites
+# mobs in a radius (a touch wider than MINING). Applied along the flight like
+# MINING (terminus, each pierced cell, and — with TRAIL — the air it flies).
+fire:
+  # Base blaze radius. Slightly larger than the mining bore. EXPAND widens it.
+  base-radius: 1.5
+  # How long (ticks) a mob the fire touches keeps burning (20 ticks = 1s).
+  burn-ticks: 100
+
+# ICE — the inverse of FIRE: freezes water→ice, lava→obsidian, snuffs fire, and
+# chills mobs (vanilla powder-snow freeze) in a radius.
+ice:
+  base-radius: 1.5
+  # Freeze ticks applied to a chilled mob (7 ticks/heart of freeze damage once
+  # past the mob's freeze threshold; 140 ≈ full freeze effect).
+  freeze-ticks: 140
+
+# DEPOSIT:<BLOCK> — an environmental emitter that fills the empty cells in a
+# radius with a block. The block is named in the modifier ID (DEPOSIT:DIRT).
+deposit:
+  base-radius: 1.5
+
+# Shared safety caps for every environmental emitter (FIRE/ICE/MINING/DEPOSIT),
+# so EXPAND stacks can't grief the whole world in one shot.
+environmental:
+  # Hard ceiling on any environmental radius, whatever EXPAND multiplies it to.
+  max-radius: 8.0
+  # Blocks harder than this are never broken by MINING (stone 1.5, obsidian 50).
+  max-hardness: 3.0
+
+# SPAWN — an emitter that launches a fresh child projectile at the terminus.
+spawn:
+  # How deep SPAWN may nest (generation cap). The launched shot is generation 0,
+  # its children 1, and so on; past this a SPAWN simply doesn't fire.
+  max-generation: 2
+
 cooldown:
   # Swing cooldown in milliseconds (per player).
   swing-ms: 200

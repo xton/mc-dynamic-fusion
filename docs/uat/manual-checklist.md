@@ -10,17 +10,19 @@ Before touching this list, run the harnesses — if they're green, the mechanics
 below the "already automated" line are covered and you can skip them:
 
 ```
-make smoke   # boots Paper + runs /fusion test: 18 in-process checks
-make e2e     # a real Mineflayer bot: swing/bow input + the anvil GUI (8 checks)
+make smoke   # boots Paper + runs /fusion test: 30 in-process checks
+make e2e     # a real Mineflayer bot: swing/bow input + the anvil GUI (10 checks)
 ```
 
 **Already automated (don't hand-test these):** emitter bursts (PUSH/DAMAGE),
 every transform's scaling and RPN nearest-previous binding (EXPAND, AMPLIFY,
 MULTISHOT, SPREAD, LIFETIME, INVERT, CHAIN, PERSIST), PIERCE pass-through,
-MINING carving + stopping at obsidian + no-pop terminus, the swing and bow input
-paths, and the anvil machine: shows-result, take ("Fusion complete!"),
-rejects-junk (red barrier), and close-returns-inputs. See `SelfTest.java` and
-`mineflayer/e2e.js`.
+MINING carving + stopping at obsidian + no-pop terminus, FIRE melting snow &
+igniting a mob, ICE freezing water, DEPOSIT backfilling air, DEPOSIT·TRAIL
+filling the flight path, the DEPOSIT:<block> parameter parsing and SPAWN
+child-wiring at compile time, the swing and bow input paths, and the anvil
+machine: shows-result, take ("Fusion complete!"), rejects-junk (red barrier),
+and close-returns-inputs. See `SelfTest.java` and `mineflayer/e2e.js`.
 
 Build test weapons the fast way: `/fusion give <you> <BASE> <MOD...>` (op only).
 
@@ -86,6 +88,37 @@ Build test weapons the fast way: `/fusion give <you> <BASE> <MOD...>` (op only).
     right: **Nether Star → Push**, **TNT → Damage·Expand·Expand**, **Amethyst
     Shard → Mining**. (A custom `latent_registry.yml`, if you make one, *fully
     replaces* the defaults — copy the example and edit.)
+
+## D. New emitters — feel & the player-only bits (worth a manual pass)
+
+The block/mob *outcomes* of FIRE/ICE/DEPOSIT/TRAIL are asserted headlessly, but
+their **feel**, spread, and the **caster-facing** effects (TELEPORT needs a real
+player; SPAWN clusters are best judged by eye) still want a look:
+
+14. **Fire feels like fire.** `DIAMOND_SWORD FIRE PIERCE LIFETIME` swept across
+    grass/snow → it should **spread** real fire, melt snow/ice, and set mobs
+    alight. Radius reads a touch wider than a bare MINING bore. (Grief check: real
+    fire spreads — try it somewhere you don't mind.)
+15. **Ice is the inverse.** `... ICE PIERCE` over water → freezes to ice; over
+    lava → obsidian; over a fire → snuffs it; mobs get the blue **freeze** shiver.
+16. **Deposit mounds & traps.** `DEPOSIT:DIRT` raises a dirt blob where it lands;
+    `DEPOSIT:SAND` over a mob's head drops suffocating sand; `DEPOSIT:WATER` /
+    `DEPOSIT:LAVA` splash a pool. Only **air** is filled — it never replaces your
+    build.
+17. **Block-replacement bolt (order matters).** `DIAMOND_PICKAXE MINING PIERCE
+    DEPOSIT:DIRT` bores *and* backfills in one pass (solid tunnel of dirt). Swap to
+    `DEPOSIT:DIRT ... MINING` and it fills then re-digs — confirm order is honored.
+18. **Trail lays a line.** `DEPOSIT:WATER TRAIL` (or `FIRE TRAIL`) draws a
+    continuous wake along the whole flight, not just at the end. Deduped, so no
+    spammy stutter.
+19. **Spawn cluster.** `DIAMOND_SWORD DAMAGE SPAWN MULTISHOT SPREAD FIRE` → where
+    the first bolt lands it should **burst into a fanned volley** of fiery
+    children. Bump `spawn.max-generation` for more chaos; confirm it can't run away.
+20. **Teleport (player-only).** `DIAMOND_SWORD TELEPORT` → you warp to where the
+    bolt lands. `... PIERCE LIFETIME TELEPORT` blinks you to the **far end of a
+    bored tunnel**. Under `MULTISHOT` you teleport **once** (first bolt to land),
+    and you never end up stuck in a wall or a mob (safe offset). Ender Pearl is the
+    ingredient.
 
 ---
 

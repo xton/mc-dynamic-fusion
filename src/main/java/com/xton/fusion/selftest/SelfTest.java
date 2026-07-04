@@ -8,6 +8,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Zombie;
@@ -19,7 +21,6 @@ import com.xton.fusion.modifier.ModifierRegistry;
 import com.xton.fusion.modifier.ProjectileSpec;
 import com.xton.fusion.projectile.AoeBurst;
 import com.xton.fusion.projectile.FusionProjectile;
-import com.xton.fusion.projectile.Payload;
 import com.xton.fusion.projectile.ProjectileLauncher;
 import com.xton.fusion.util.Scheduler;
 
@@ -120,7 +121,12 @@ public final class SelfTest {
         final double pierceA0 = health(pierceA);
         final double pierceB0 = health(pierceB);
         // An isolated dummy for a lingering DAMAGE PERSIST field.
+        // The PERSIST dummy takes several un-mitigated DAMAGE pulses (i-frames are
+        // off so each one lands), so a vanilla 20-HP zombie can die before the
+        // final assertion — leaving "no mob". Give it a big health pool so it
+        // survives the whole field and we can measure the cumulative damage.
         Zombie persistMob = spawnDummy(world, base.clone().add(3, 0, -10), spawned);
+        toughen(persistMob, 200.0);
         final double persist0 = health(persistMob);
 
         int bx = base.getBlockX();
@@ -142,6 +148,15 @@ public final class SelfTest {
         // A grass plant (non-solid) on the flight line with ground beneath: a
         // mining ray should carve through the plant AND the ground it hides.
         boolean vegOk = layVegetation(world, bx, by, bz - 12, plusCol);
+        // Environmental emitters: snow to melt (FIRE), water to freeze (ICE), an
+        // air pocket ending in a wall to backfill (DEPOSIT), and a clear corridor
+        // to fill along its wake (DEPOSIT + TRAIL). A mob on the FIRE line to ignite.
+        final int envCol = 3;
+        boolean fireOk = laySnow(world, bx, by, bz - 14, envCol);
+        Zombie fireMob = spawnDummy(world, base.clone().add(5, 1, -14), spawned);
+        boolean iceOk = layWater(world, bx, by, bz - 16, envCol);
+        boolean depositOk = layStopBlock(world, bx, by, bz - 18, 5);
+        boolean trailOk = clearRowReturn(world, bx, by, bz - 20, 8);
 
         final double gravityLaunchY = by + 20;
         final FusionProjectile[] gravityBolt = new FusionProjectile[1];
@@ -152,6 +167,10 @@ public final class SelfTest {
         final boolean fireAlone = aloneOk;
         final boolean firePlus = plusOk;
         final boolean fireVeg = vegOk;
+        final boolean fireEnv = fireOk;
+        final boolean iceEnv = iceOk;
+        final boolean depositEnv = depositOk;
+        final boolean trailEnv = trailOk;
         scheduler.runLater(() -> {
             results.add(pushKnockback(world, pushMob));
             results.add(damageHurts(world, dmgMob));
@@ -175,6 +194,18 @@ public final class SelfTest {
             }
             if (fireVeg) {
                 fireBolt(world, at(world, bx, by, bz - 12), PLUS_X, false, "MINING", "PIERCE", "EXPAND");
+            }
+            if (fireEnv) {
+                fireBolt(world, at(world, bx, by, bz - 14), PLUS_X, false, "FIRE", "PIERCE");
+            }
+            if (iceEnv) {
+                fireBolt(world, at(world, bx, by, bz - 16), PLUS_X, false, "ICE", "PIERCE");
+            }
+            if (depositEnv) {
+                fireBolt(world, at(world, bx, by, bz - 18), PLUS_X, false, "DEPOSIT:DIRT");
+            }
+            if (trailEnv) {
+                fireBolt(world, at(world, bx, by, bz - 20), PLUS_X, false, "DEPOSIT:DIRT", "PIERCE", "TRAIL");
             }
             gravityBolt[0] = fireBolt(world,
                     new Location(world, bx + 0.5, gravityLaunchY, bz + 0.5), PLUS_X, true);
@@ -200,6 +231,19 @@ public final class SelfTest {
             }
             if (fireVeg) {
                 results.add(miningClearsVegetation(world, bx, by, bz - 12, plusCol));
+            }
+            if (fireEnv) {
+                results.add(fireMeltsSnow(world, bx, by, bz - 14, envCol));
+                results.add(fireIgnitesMob(fireMob));
+            }
+            if (iceEnv) {
+                results.add(iceFreezesWater(world, bx, by, bz - 16, envCol));
+            }
+            if (depositEnv) {
+                results.add(depositFillsAir(world, bx, by, bz - 18, 4));
+            }
+            if (trailEnv) {
+                results.add(trailFillsPath(world, bx, by, bz - 20, envCol));
             }
         }, SETTLE + MINING_WAIT);
 
@@ -325,6 +369,31 @@ public final class SelfTest {
                 "mining.pierce=" + mining.isPierce() + " miningPierce.pierce=" + miningPierce.isPierce()
                         + " mining.r=" + mining.miningAoe().radius()
                         + " miningExpand.r=" + miningExpand.miningAoe().radius()));
+
+        // FIRE/ICE are environmental emitters; TRAIL/TELEPORT are flight flags;
+        // SPAWN pushes a fresh child that every later modifier builds instead.
+        ProjectileSpec fire = compile("FIRE");
+        ProjectileSpec cluster = compile("DAMAGE", "SPAWN", "FIRE", "PIERCE");
+        boolean structOk = fire.hasEnvironmental() && fire.payload().get(0).kind() == AoeKind.FIRE
+                && compile("ICE").payload().get(0).kind() == AoeKind.ICE
+                && compile("FIRE", "TRAIL").isTrail()
+                && compile("DAMAGE", "TELEPORT").isTeleport()
+                && cluster.spawns().size() == 1
+                && !cluster.isPierce() // PIERCE after SPAWN targets the child, not the root
+                && cluster.spawns().get(0).payload().get(0).kind() == AoeKind.FIRE
+                && cluster.spawns().get(0).isPierce();
+        r.add(new Result("compile:environmental-and-structural", structOk,
+                "fire.env=" + fire.hasEnvironmental() + " cluster.children=" + cluster.spawns().size()
+                        + " child.pierce=" + cluster.spawns().get(0).isPierce()));
+
+        // DEPOSIT:<block> resolves a parameterized ID to a material-bound emitter.
+        ProjectileSpec deposit = compile("DEPOSIT:DIRT");
+        boolean depositOk = deposit.payload().size() == 1
+                && deposit.payload().get(0).kind() == AoeKind.DEPOSIT
+                && deposit.payload().get(0).material() == Material.DIRT;
+        r.add(new Result("compile:deposit-parameterized", depositOk,
+                "material=" + (deposit.payload().isEmpty() ? "<none>"
+                        : deposit.payload().get(0).material())));
 
         return r;
     }
@@ -458,12 +527,8 @@ public final class SelfTest {
     private FusionProjectile fireBolt(World world, Location origin, Vector dir, boolean gravity, String... ids) {
         ProjectileSpec spec = compile(ids);
         spec.setGravity(gravity);
-        Payload payload = launcher.buildPayload(spec);
         Vector velocity = dir.clone().normalize().multiply(spec.speed());
-        FusionProjectile bolt = new FusionProjectile(
-                launcher.plugin(), payload, spec, world, origin, velocity, null, 0);
-        bolt.start();
-        return bolt;
+        return launcher.fireDirect(world, origin, velocity, spec);
     }
 
     /** A two-block dirt run at dx 3-4; bare MINING should break only the first. */
@@ -507,6 +572,18 @@ public final class SelfTest {
         return mob == null ? 0 : mob.getHealth();
     }
 
+    /** Raise a dummy's max health and fill it, so repeated pulses can't kill it mid-test. */
+    private void toughen(Zombie mob, double maxHealth) {
+        if (mob == null) {
+            return;
+        }
+        AttributeInstance attr = mob.getAttribute(Attribute.MAX_HEALTH);
+        if (attr != null) {
+            attr.setBaseValue(maxHealth);
+            mob.setHealth(maxHealth);
+        }
+    }
+
     /** A grass plant (non-solid) on the flight line at {@code col}, with ground beneath. */
     private boolean layVegetation(World world, int bx, int by, int bz, int col) {
         try {
@@ -520,6 +597,91 @@ public final class SelfTest {
             log.warning(TAG + " vegetation setup failed: " + e);
             return false;
         }
+    }
+
+    /** Clear a row and place a SNOW_BLOCK on the flight line at {@code col} (for FIRE). */
+    private boolean laySnow(World world, int bx, int by, int bz, int col) {
+        try {
+            for (int dx = 0; dx <= 8; dx++) {
+                world.getBlockAt(bx + dx, by, bz).setType(Material.AIR, false);
+            }
+            world.getBlockAt(bx + col, by, bz).setType(Material.SNOW_BLOCK, false);
+            return world.getBlockAt(bx + col, by, bz).getType() == Material.SNOW_BLOCK;
+        } catch (Exception e) {
+            log.warning(TAG + " snow setup failed: " + e);
+            return false;
+        }
+    }
+
+    /** Clear a row and place a WATER source on the flight line at {@code col} (for ICE). */
+    private boolean layWater(World world, int bx, int by, int bz, int col) {
+        try {
+            for (int dx = 0; dx <= 8; dx++) {
+                world.getBlockAt(bx + dx, by, bz).setType(Material.AIR, false);
+            }
+            world.getBlockAt(bx + col, by, bz).setType(Material.WATER, false);
+            return world.getBlockAt(bx + col, by, bz).getType() == Material.WATER;
+        } catch (Exception e) {
+            log.warning(TAG + " water setup failed: " + e);
+            return false;
+        }
+    }
+
+    /** Clear a row and cap it with a solid stone wall at {@code col} (a DEPOSIT terminus). */
+    private boolean layStopBlock(World world, int bx, int by, int bz, int col) {
+        try {
+            for (int dx = 0; dx <= 8; dx++) {
+                world.getBlockAt(bx + dx, by, bz).setType(Material.AIR, false);
+            }
+            world.getBlockAt(bx + col, by, bz).setType(Material.STONE, false);
+            return world.getBlockAt(bx + col, by, bz).getType() == Material.STONE;
+        } catch (Exception e) {
+            log.warning(TAG + " stop-block setup failed: " + e);
+            return false;
+        }
+    }
+
+    /** Clear a straight air corridor and report success (for the TRAIL fill test). */
+    private boolean clearRowReturn(World world, int bx, int by, int bz, int length) {
+        try {
+            clearRow(world, bx, by, bz, length);
+            return world.getBlockAt(bx + 1, by, bz).getType().isAir();
+        } catch (Exception e) {
+            log.warning(TAG + " trail-corridor setup failed: " + e);
+            return false;
+        }
+    }
+
+    /** FIRE melts the snow on its line — the block is no longer snow. */
+    private Result fireMeltsSnow(World world, int bx, int by, int bz, int col) {
+        Material m = world.getBlockAt(bx + col, by, bz).getType();
+        return new Result("fire-melts-snow", m != Material.SNOW_BLOCK, "block=" + m);
+    }
+
+    /** FIRE ignites the mob it passes through — it's left burning. */
+    private Result fireIgnitesMob(Zombie mob) {
+        if (mob == null || !mob.isValid()) {
+            return new Result("fire-ignites-mob", false, "no mob");
+        }
+        return new Result("fire-ignites-mob", mob.getFireTicks() > 0, "fireTicks=" + mob.getFireTicks());
+    }
+
+    /** ICE freezes the water on its line to solid ice. */
+    private Result iceFreezesWater(World world, int bx, int by, int bz, int col) {
+        Material m = world.getBlockAt(bx + col, by, bz).getType();
+        return new Result("ice-freezes-water", m == Material.ICE, "block=" + m);
+    }
+
+    /** DEPOSIT backfills the air just before its wall terminus with the deposited block. */
+    private Result depositFillsAir(World world, int bx, int by, int bz, int col) {
+        Material m = world.getBlockAt(bx + col, by, bz).getType();
+        return new Result("deposit-fills-air", m == Material.DIRT, "block=" + m);
+    }
+
+    /** DEPOSIT + TRAIL fills the empty air it flies through, so a mid-corridor cell is filled. */
+    private Result trailFillsPath(World world, int bx, int by, int bz, int col) {
+        Material m = world.getBlockAt(bx + col, by, bz).getType();
+        return new Result("trail-fills-path", m == Material.DIRT, "block=" + m);
     }
 
     /** A mining ray through a plant clears the plant AND carves the ground it hid. */

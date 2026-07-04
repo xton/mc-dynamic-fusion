@@ -18,11 +18,29 @@ public final class ModifierRegistry {
     }
 
     public Optional<Modifier> get(String id) {
-        return Optional.ofNullable(byId.get(id));
+        return Optional.ofNullable(resolveOne(id));
     }
 
     public boolean isKnown(String id) {
-        return byId.containsKey(id);
+        return resolveOne(id) != null;
+    }
+
+    /**
+     * Resolve a single ID to its implementation, or null if none. A plain ID is a
+     * direct lookup; a {@code BASE:PARAM} ID (e.g. {@code DEPOSIT:DIRT}) resolves
+     * the {@link ParameterizedModifier} template registered under {@code BASE} and
+     * asks it to mint the concrete instance.
+     */
+    private Modifier resolveOne(String id) {
+        Modifier direct = byId.get(id);
+        if (direct != null) {
+            return direct;
+        }
+        int colon = id.indexOf(':');
+        if (colon > 0 && byId.get(id.substring(0, colon)) instanceof ParameterizedModifier template) {
+            return template.withParameter(id.substring(colon + 1));
+        }
+        return null;
     }
 
     /** All registered modifier IDs, in registration order. */
@@ -37,7 +55,7 @@ public final class ModifierRegistry {
     public ModifierStack resolve(List<String> ids) {
         List<Modifier> resolved = new ArrayList<>(ids.size());
         for (String id : ids) {
-            Modifier m = byId.get(id);
+            Modifier m = resolveOne(id);
             if (m != null) {
                 resolved.add(m);
             }

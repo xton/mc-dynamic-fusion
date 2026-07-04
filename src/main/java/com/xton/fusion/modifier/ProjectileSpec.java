@@ -25,9 +25,13 @@ public final class ProjectileSpec {
     private int bounces;               // bounce seam
     private int lifetimeTicks;         // ticks before it expires & terminates
     private boolean visibleTrail = true; // render the flight trail (off for a short melee poke)
+    private boolean trail;             // TRAIL: apply AOEs at every empty-air cell too
+    private boolean teleport;          // TELEPORT: move the caster to the terminus
 
     // ----- payload -----
     private final List<AoeSpec> payload = new ArrayList<>();
+    // ----- child projectiles spawned at the terminus (SPAWN / cluster) -----
+    private final List<ProjectileSpec> spawns = new ArrayList<>();
 
     // ----- flight accessors -----
 
@@ -122,6 +126,22 @@ public final class ProjectileSpec {
         this.visibleTrail = visibleTrail;
     }
 
+    public boolean isTrail() {
+        return trail;
+    }
+
+    public void setTrail(boolean trail) {
+        this.trail = trail;
+    }
+
+    public boolean isTeleport() {
+        return teleport;
+    }
+
+    public void setTeleport(boolean teleport) {
+        this.teleport = teleport;
+    }
+
     // ----- payload accessors -----
 
     public List<AoeSpec> payload() {
@@ -137,5 +157,26 @@ public final class ProjectileSpec {
     /** The nearest preceding AOE element (the last one added), or null if none. */
     public AoeSpec topAoe() {
         return payload.isEmpty() ? null : payload.get(payload.size() - 1);
+    }
+
+    /** True when any environmental AOE (MINING/FIRE/ICE/DEPOSIT) is present. */
+    public boolean hasEnvironmental() {
+        for (AoeSpec aoe : payload) {
+            if (aoe.kind().isEnvironmental()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // ----- child projectiles (SPAWN) -----
+
+    public List<ProjectileSpec> spawns() {
+        return spawns;
+    }
+
+    /** Register a fresh child projectile to launch at this one's terminus. */
+    public void addSpawn(ProjectileSpec child) {
+        spawns.add(child);
     }
 }

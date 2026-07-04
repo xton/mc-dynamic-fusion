@@ -32,6 +32,7 @@ public final class ProjectileSpec {
     private boolean trail;             // TRAIL: apply AOEs at every empty-air cell too
     private boolean teleport;          // TELEPORT: move the caster to the terminus
     private int homing;                // HOMING: steer toward a nearby target (stacks = sharper turn)
+    private int treasure;              // TREASURE (Golden Brush): loot level — more gold = more/rarer drops
 
     private int spawnDelayTicks;       // DELAY: ticks to wait before launching this child
     private EntityType mobType;        // MOB:<type>: launch this living entity as the projectile

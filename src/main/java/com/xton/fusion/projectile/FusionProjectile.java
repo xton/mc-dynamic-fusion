@@ -64,6 +64,11 @@ public final class FusionProjectile extends BukkitRunnable {
     private static final double BOUNCE_REST_SPEED = 0.15;
     /** Blocks of flight before TRAIL starts laying its wake, so it clears the caster. */
     private static final double TRAIL_WARMUP = 2.5;
+    /** In-place dust for the flight wake (no gravity — fades where it's drawn). */
+    private static final Particle.DustOptions RANGED_TRAIL =
+            new Particle.DustOptions(org.bukkit.Color.fromRGB(120, 220, 255), 1.0f);
+    private static final Particle.DustOptions MELEE_TRAIL =
+            new Particle.DustOptions(org.bukkit.Color.fromRGB(180, 190, 255), 0.7f);
     /** How far a HOMING shot looks for a creature to chase. */
     private static final double HOMING_RANGE = 12.0;
     /** Max radians a HOMING shot turns per tick, per HOMING stack. */
@@ -395,18 +400,20 @@ public final class FusionProjectile extends BukkitRunnable {
         if (spec.isTrailHidden()) {
             return; // INVISIBLE — a truly unseen bolt
         }
+        // DUST hangs and fades where it's drawn — no gravity, so the wake dissipates
+        // in place instead of raining down after the shot passes.
         if (spec.hasVisibleTrail()) {
-            // Ranged shots render a bright crit trail (+ mining sparks).
-            world.spawnParticle(Particle.CRIT, here, 1, 0.02, 0.02, 0.02, 0.0);
+            // Ranged shots render a brighter energy wake (+ mining sparks).
+            world.spawnParticle(Particle.DUST, here, 1, 0.02, 0.02, 0.02, 0.0, RANGED_TRAIL);
             if (spec.isMining()) {
-                world.spawnParticle(Particle.ELECTRIC_SPARK, here, 1, 0.02, 0.02, 0.02, 0.0);
+                world.spawnParticle(Particle.ELECTRIC_SPARK, here, 1, 0.0, 0.0, 0.0, 0.0);
             }
             return;
         }
         // A melee swing throws a subtle "energy ball" — visible enough to read on a
         // long-range build, faint enough that a near-instant poke still looks like a
-        // swing. Much softer than the ranged trail or a burst.
-        world.spawnParticle(Particle.ENCHANTED_HIT, here, 1, 0.0, 0.0, 0.0, 0.0);
+        // swing. Much softer than the ranged wake or a burst.
+        world.spawnParticle(Particle.DUST, here, 1, 0.0, 0.0, 0.0, 0.0, MELEE_TRAIL);
     }
 
     // ----- terminus -----

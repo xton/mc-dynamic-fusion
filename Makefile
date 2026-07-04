@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 COMPOSE := docker compose -f docker/docker-compose.yml
 
-.PHONY: help build jar test smoke e2e docker-up cloud-setup uat uat-fresh rebuild down logs clean
+.PHONY: help build jar test smoke e2e docker-up cloud-setup uat uat-fresh uat-newworld rebuild down logs clean
 
 help:
 	@echo "Targets:"
@@ -14,6 +14,7 @@ help:
 	@echo "  cloud-setup - one-time cache warm for running the harness in the cloud sandbox"
 	@echo "  uat       - rebuild the jar and bounce the server (fast restart), then follow logs"
 	@echo "  uat-fresh - rebuild the jar and fully recreate the container, then follow logs"
+	@echo "  uat-newworld - wipe the world for a clean slate, then start (run /fusion showcase in-game)"
 	@echo "  rebuild   - rebuild the jar and restart the server in place (no log follow)"
 	@echo "  down      - stop and remove the UAT server"
 	@echo "  logs      - follow the UAT server logs"
@@ -69,6 +70,16 @@ uat: _stage-plugin
 # too), then follow logs.
 uat-fresh: _stage-plugin
 	$(COMPOSE) up -d --force-recreate
+	$(COMPOSE) logs -f mc
+
+# Clean slate: stop the server, delete the world folders, then boot fresh so
+# every manual test starts on a brand-new world. Once in-game, run
+# `/fusion showcase` (op) to fill chests with every labelled checklist weapon.
+uat-newworld: _stage-plugin
+	@echo "==> Wiping the UAT world for a fresh slate"
+	-$(COMPOSE) down
+	rm -rf docker/data/world docker/data/world_nether docker/data/world_the_end
+	$(COMPOSE) up -d
 	$(COMPOSE) logs -f mc
 
 rebuild: _stage-plugin

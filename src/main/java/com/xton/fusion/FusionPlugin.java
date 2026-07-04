@@ -35,6 +35,7 @@ import com.xton.fusion.modifier.impl.DepositModifier;
 import com.xton.fusion.modifier.impl.DurationModifier;
 import com.xton.fusion.modifier.impl.ExpandModifier;
 import com.xton.fusion.modifier.impl.FireModifier;
+import com.xton.fusion.modifier.impl.GlowModifier;
 import com.xton.fusion.modifier.impl.GravityModifier;
 import com.xton.fusion.modifier.impl.HealModifier;
 import com.xton.fusion.modifier.impl.HomingModifier;
@@ -42,6 +43,7 @@ import com.xton.fusion.modifier.impl.IceModifier;
 import com.xton.fusion.modifier.impl.InvertModifier;
 import com.xton.fusion.modifier.impl.InvisibleModifier;
 import com.xton.fusion.modifier.impl.LifetimeModifier;
+import com.xton.fusion.modifier.impl.LiftModifier;
 import com.xton.fusion.modifier.impl.MiningModifier;
 import com.xton.fusion.modifier.impl.MobModifier;
 import com.xton.fusion.modifier.impl.MultishotModifier;
@@ -65,6 +67,8 @@ import com.xton.fusion.selftest.SelfTest;
 import com.xton.fusion.util.BukkitTaskScheduler;
 import com.xton.fusion.util.CooldownMap;
 import com.xton.fusion.util.Scheduler;
+import com.xton.fusion.wearable.JetpackListener;
+import com.xton.fusion.wearable.WornEffectTask;
 import com.xton.fusion.weapon.ProjectileListener;
 import com.xton.fusion.weapon.ShedParticleTask;
 import com.xton.fusion.weapon.WeaponEventListener;
@@ -115,6 +119,9 @@ public final class FusionPlugin extends JavaPlugin {
                 .register(new MobModifier())
                 // Golden Brush: gold-scaled loot on brushing.
                 .register(new TreasureModifier())
+                // Worn effects (fused onto armor).
+                .register(new GlowModifier())
+                .register(new LiftModifier())
                 // Environmental emitters (block/area effects along the flight).
                 .register(new FireModifier())
                 .register(new IceModifier())
@@ -197,6 +204,14 @@ public final class FusionPlugin extends JavaPlugin {
             scheduler.runRepeating(new MachineGlowTask(menu), 60,
                     getConfig().getLong("effect.machine-glow-period-ticks", 15));
         }
+
+        // Worn-armor effects (GLOW keeps night vision on the wearer), refreshed on a repeat.
+        scheduler.runRepeating(new WornEffectTask(reader), 40,
+                getConfig().getLong("worn.effect-period-ticks", 100));
+
+        // Jetpack: a fused LIFT chestplate/elytra thrusts you up on jump.
+        getServer().getPluginManager().registerEvents(
+                new JetpackListener(reader, getConfig().getDouble("worn.jetpack-thrust", 0.7)), this);
 
         // Headless functional self-test (`/fusion test`), driving the real
         // projectile/burst code against a live world — used by the smoke boot.

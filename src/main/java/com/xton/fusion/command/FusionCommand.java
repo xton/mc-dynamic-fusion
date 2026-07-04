@@ -10,6 +10,9 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
+import org.bukkit.block.Chest;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -29,6 +32,7 @@ import com.xton.fusion.selftest.SelfTest;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 
 /**
  * Admin command (op-only):
@@ -40,9 +44,10 @@ import net.kyori.adventure.text.format.NamedTextColor;
  */
 public final class FusionCommand implements CommandExecutor, TabCompleter {
 
-    private static final List<String> SUBCOMMANDS = List.of("machine", "fuse", "give", "test");
+    private static final List<String> SUBCOMMANDS = List.of("machine", "fuse", "give", "test", "showcase");
     private static final List<String> BASE_HINTS =
-            List.of("DIAMOND_SWORD", "NETHERITE_SWORD", "DIAMOND_PICKAXE", "BOW", "DIAMOND_AXE", "TRIDENT", "BRUSH");
+            List.of("DIAMOND_SWORD", "NETHERITE_SWORD", "DIAMOND_PICKAXE", "BOW", "DIAMOND_AXE", "TRIDENT",
+                    "BRUSH", "ELYTRA", "DIAMOND_CHESTPLATE", "DIAMOND_HELMET");
 
     private final FusionMachineMenu menu;
     private final ModifierRegistry registry;
@@ -135,11 +140,65 @@ public final class FusionCommand implements CommandExecutor, TabCompleter {
             selfTest.run(sender);
             return true;
         }
+        if (args.length >= 1 && args[0].equalsIgnoreCase("showcase")) {
+            return showcase(sender);
+        }
         sender.sendMessage(Component.text(
                 "Usage: /fusion machine | /fusion fuse | /fusion give <player> <base> <MODIFIER...>"
                         + " | /fusion test",
                 NamedTextColor.GRAY));
         return true;
+    }
+
+    /**
+     * Fill chests in front of the player with a labelled showcase of every notable
+     * build (see {@link Showcase}) — a fast start for manual UAT: grab the item the
+     * checklist names by its display name and swing.
+     */
+    private boolean showcase(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(Component.text("Only a player can spawn the showcase chests.", NamedTextColor.RED));
+            return true;
+        }
+        List<Showcase.Entry> roster = Showcase.roster();
+        List<ItemStack> items = new ArrayList<>(roster.size());
+        for (Showcase.Entry e : roster) {
+            ItemStack item = factory.create(e.base(), e.modifiers(), "showcase");
+            item.editMeta(meta -> meta.displayName(Component.text(e.name(), NamedTextColor.AQUA)
+                    .decoration(TextDecoration.ITALIC, false)));
+            items.add(item);
+        }
+
+        // A row of chests two blocks in front, extending to the player's right.
+        BlockFace facing = player.getFacing();
+        BlockFace right = rightOf(facing);
+        Block origin = player.getLocation().getBlock().getRelative(facing, 2);
+        int perChest = 27;
+        int chestCount = (items.size() + perChest - 1) / perChest;
+        int placed = 0;
+        for (int c = 0; c < chestCount; c++) {
+            Block block = origin.getRelative(right, c);
+            block.setType(Material.CHEST);
+            if (block.getState() instanceof Chest chest) {
+                for (int i = 0; i < perChest && placed < items.size(); i++, placed++) {
+                    chest.getInventory().addItem(items.get(placed));
+                }
+            }
+        }
+        player.sendMessage(Component.text("Placed " + chestCount + " showcase chest(s) — "
+                + items.size() + " labelled weapons — in front of you.", NamedTextColor.GREEN));
+        return true;
+    }
+
+    /** The block face 90° clockwise from {@code facing} (its right-hand side). */
+    private static BlockFace rightOf(BlockFace facing) {
+        return switch (facing) {
+            case NORTH -> BlockFace.EAST;
+            case EAST -> BlockFace.SOUTH;
+            case SOUTH -> BlockFace.WEST;
+            case WEST -> BlockFace.NORTH;
+            default -> BlockFace.EAST;
+        };
     }
 
     private boolean giveMachine(CommandSender sender) {

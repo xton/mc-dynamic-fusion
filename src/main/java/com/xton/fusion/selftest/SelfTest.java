@@ -185,6 +185,8 @@ public final class SelfTest {
         }
         // An obsidian-plugged corridor: a deep MINING stack should chew through it.
         boolean heavyMineOk = layHardCorridor(world, bx, by, bz - 36);
+        // A bare stone floor with a stop wall: ICE should dress it with snow.
+        boolean iceSnowOk = layIceFloor(world, bx, by, bz - 38);
         // A hurt COW floating in open air (passive, so HEAL mends it — hostiles are
         // skipped). Placed up high like the MOB test's cow, which spawns valid there.
         final Cow healCow = spawnCow(world, new Location(world, bx + 2.5, by + 3, bz + 0.5));
@@ -210,6 +212,7 @@ public final class SelfTest {
         final boolean fireSpawnRefl = spawnReflOk;
         final boolean fireTrailWarmup = trailWarmupOk;
         final boolean fireHeavyMine = heavyMineOk;
+        final boolean fireIceSnow = iceSnowOk;
         scheduler.runLater(() -> {
             results.add(pushKnockback(world, pushMob));
             results.add(damageHurts(world, dmgMob));
@@ -277,6 +280,9 @@ public final class SelfTest {
                 fireBolt(world, at(world, bx, by, bz - 36), PLUS_X, false,
                         "MINING", "MINING", "MINING", "MINING", "MINING", "PIERCE");
             }
+            if (fireIceSnow) {
+                fireBolt(world, at(world, bx, by, bz - 38), PLUS_X, false, "ICE");
+            }
             gravityBolt[0] = fireBolt(world,
                     new Location(world, bx + 0.5, gravityLaunchY, bz + 0.5), PLUS_X, true);
         }, SETTLE);
@@ -328,6 +334,9 @@ public final class SelfTest {
             }
             if (fireHeavyMine) {
                 results.add(heavyMiningBreaksObsidian(world, bx, by, bz - 36));
+            }
+            if (fireIceSnow) {
+                results.add(iceDressesSurfaceWithSnow(world, bx, by, bz - 38));
             }
             results.add(delayReDetonates(delayMob, delayMob0));
             results.add(homingCurvesIntoTarget(homingMob, homingMob0));
@@ -854,6 +863,27 @@ public final class SelfTest {
             log.warning(TAG + " trail-corridor setup failed: " + e);
             return false;
         }
+    }
+
+    /** A bare stone floor (air above) capped by a stop wall at dx 5 — an ICE target with nothing to freeze. */
+    private boolean layIceFloor(World world, int bx, int by, int bz) {
+        try {
+            for (int dx = 0; dx <= 6; dx++) {
+                world.getBlockAt(bx + dx, by, bz).setType(Material.AIR, false);
+                world.getBlockAt(bx + dx, by - 1, bz).setType(Material.STONE, false);
+            }
+            world.getBlockAt(bx + 5, by, bz).setType(Material.STONE, false); // stop wall
+            return world.getBlockAt(bx + 5, by, bz).getType() == Material.STONE;
+        } catch (Exception e) {
+            log.warning(TAG + " ice-floor setup failed: " + e);
+            return false;
+        }
+    }
+
+    /** ICE lays a snow layer on the exposed floor just before its wall terminus. */
+    private Result iceDressesSurfaceWithSnow(World world, int bx, int by, int bz) {
+        Material m = world.getBlockAt(bx + 4, by, bz).getType();
+        return new Result("ice-lays-snow", m == Material.SNOW, "block=" + m);
     }
 
     /** Clear a run that straddles the origin (dx -5..+6) and cap it with a wall at dx +5. */

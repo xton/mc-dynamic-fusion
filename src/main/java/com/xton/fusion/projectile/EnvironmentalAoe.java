@@ -130,7 +130,19 @@ public final class EnvironmentalAoe {
             block.setType(Material.AIR, true);
             return true;
         }
+        // Dressing: lay a thin snow layer on an exposed solid surface, so the freeze
+        // always reads even with no water/lava/fire around to transform.
+        if (type.isAir() && canHoldSnow(block.getRelative(0, -1, 0))) {
+            block.setType(Material.SNOW, true);
+            return true;
+        }
         return false;
+    }
+
+    /** True if a snow layer will sit on this block: a solid top that isn't already snowy/icy. */
+    private boolean canHoldSnow(Block below) {
+        Material b = below.getType();
+        return b.isSolid() && !isSnow(b) && !isIce(b) && b != Material.SNOW;
     }
 
     private boolean fillAir(Block block, Material material) {

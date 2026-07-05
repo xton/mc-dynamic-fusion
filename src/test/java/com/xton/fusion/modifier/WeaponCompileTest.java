@@ -292,6 +292,19 @@ class WeaponCompileTest {
     }
 
     @Test
+    void numericParamsClampAndRejectGarbage() {
+        // DURATION clamps to its 30s ceiling and 0.05s floor (converted to ticks).
+        assertEquals(600, compile("DURATION:9999").lifetimeTicks());
+        assertEquals(1, compile("DURATION:0.001").lifetimeTicks());
+        assertEquals(30, compile("DURATION:xyz").lifetimeTicks(), "bad param leaves the base lifetime");
+
+        // DELAY clamps the same way on its child's spawn delay.
+        assertEquals(600, compile("DELAY:9999", "DAMAGE").spawns().get(0).spawnDelayTicks());
+        assertEquals(1, compile("DELAY:0.001", "DAMAGE").spawns().get(0).spawnDelayTicks());
+        assertTrue(compile("DELAY:xyz").spawns().isEmpty(), "bad param spawns no child");
+    }
+
+    @Test
     void visibleLobBundleComposes() {
         // The SPLASH_POTION bundle: GRAVITY + VISIBLE + slow SPEED + a long DURATION.
         ProjectileSpec lob = compile("GRAVITY", "VISIBLE", "SPEED:0.8", "DURATION:4");

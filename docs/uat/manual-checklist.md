@@ -200,9 +200,13 @@ the bits that need a real player or an eye:
     with `GLOW`) → you get a **strong glowing outline** (the vanilla
     see-through-walls Glowing effect) for as long as it's on. Take it off and it
     lapses after a few seconds. Lantern is the ingredient.
-34. **Jetpack (Jet Elytra).** Wear an `ELYTRA LIFT` (or a `LIFT` chestplate) and
-    **jump** → you get a strong upward **boost**; on the elytra, jump then glide.
-    Tune `worn.jetpack-thrust` for bigger hops. Breeze Rod is the ingredient.
+34. **Jetpack (Jet Elytra).** Wear an `ELYTRA LIFT` (or a `LIFT` chestplate) →
+    a normal ground jump is unchanged (tap, hop, land — vanilla). Jump, then
+    **hold jump while airborne**: you should rise smoothly and slowly, capped at
+    a max climb speed, for as long as you hold it — release to fall normally.
+    On the elytra, climb a bit then deploy for a running start. Tune
+    `worn.jetpack-thrust-per-tick` / `worn.jetpack-max-velocity`. Breeze Rod is
+    the ingredient.
 
 ---
 

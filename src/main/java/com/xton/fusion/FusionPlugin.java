@@ -67,7 +67,7 @@ import com.xton.fusion.selftest.SelfTest;
 import com.xton.fusion.util.BukkitTaskScheduler;
 import com.xton.fusion.util.CooldownMap;
 import com.xton.fusion.util.Scheduler;
-import com.xton.fusion.wearable.JetpackListener;
+import com.xton.fusion.wearable.JetpackTask;
 import com.xton.fusion.wearable.WornEffectTask;
 import com.xton.fusion.weapon.ProjectileListener;
 import com.xton.fusion.weapon.ShedParticleTask;
@@ -209,9 +209,11 @@ public final class FusionPlugin extends JavaPlugin {
         scheduler.runRepeating(new WornEffectTask(reader), 40,
                 getConfig().getLong("worn.effect-period-ticks", 100));
 
-        // Jetpack: a fused LIFT chestplate/elytra thrusts you up on jump.
-        getServer().getPluginManager().registerEvents(
-                new JetpackListener(reader, getConfig().getDouble("worn.jetpack-thrust", 0.7)), this);
+        // Jetpack: a fused LIFT chestplate/elytra ramps a slow rise while airborne
+        // and holding jump. Ticked every tick so the ramp feels smooth.
+        scheduler.runRepeating(new JetpackTask(reader,
+                getConfig().getDouble("worn.jetpack-thrust-per-tick", 0.03),
+                getConfig().getDouble("worn.jetpack-max-velocity", 0.5)), 0, 1);
 
         // Headless functional self-test (`/fusion test`), driving the real
         // projectile/burst code against a live world — used by the smoke boot.

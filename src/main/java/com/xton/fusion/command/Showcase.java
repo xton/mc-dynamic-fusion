@@ -63,7 +63,7 @@ public final class Showcase {
                 new Entry(Material.DIAMOND_SWORD, List.of("PIERCE", "LIFETIME", "TELEPORT"), "Blink Lance"),
                 // --- bows ---
                 new Entry(Material.BOW, List.of("DAMAGE", "HOMING", "LIFETIME"), "Homing Bow"),
-                new Entry(Material.BOW, List.of("MOB:COW", "MULTISHOT"), "Cow Launcher"),
+                new Entry(Material.BOW, List.of("MOB:COW", "MULTISHOT", "SPREAD"), "Cow Launcher"),
                 // --- tools & worn ---
                 new Entry(Material.BRUSH, List.of("TREASURE", "TREASURE", "TREASURE"), "Golden Brush"),
                 new Entry(Material.DIAMOND_HELMET, List.of("GLOW"), "Glow Helmet"),

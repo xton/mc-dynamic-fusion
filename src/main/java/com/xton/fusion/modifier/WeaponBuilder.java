@@ -145,9 +145,9 @@ public final class WeaponBuilder {
         stack.push(child);
     }
 
-    /** Walk the stack in order, letting each modifier act, and return the root. */
-    public ProjectileSpec compile(ModifierStack stack) {
-        for (Modifier modifier : stack.modifiers()) {
+    /** Walk the modifiers in order, letting each act, and return the root. */
+    public ProjectileSpec compile(ModifierStack modifiers) {
+        for (Modifier modifier : modifiers.modifiers()) {
             modifier.apply(this);
         }
         return root;

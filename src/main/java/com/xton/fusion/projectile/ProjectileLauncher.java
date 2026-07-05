@@ -217,7 +217,7 @@ public final class ProjectileLauncher {
     }
 
     private static double clamp01(double force) {
-        return force < 0 ? 0.0 : Math.min(1.0, force);
+        return Math.clamp(force, 0.0, 1.0);
     }
 
     /** Offset a direction by a random angle within a {@code spreadDegrees} cone. */

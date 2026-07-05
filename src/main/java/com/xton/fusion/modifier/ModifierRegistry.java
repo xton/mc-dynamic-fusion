@@ -2,6 +2,7 @@ package com.xton.fusion.modifier;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -45,7 +46,7 @@ public final class ModifierRegistry {
 
     /** All registered modifier IDs, in registration order. */
     public Set<String> ids() {
-        return new java.util.LinkedHashSet<>(byId.keySet());
+        return new LinkedHashSet<>(byId.keySet());
     }
 
     /**

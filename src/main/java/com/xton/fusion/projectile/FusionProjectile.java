@@ -11,6 +11,7 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -232,6 +233,9 @@ public final class FusionProjectile extends BukkitRunnable {
         for (Entity entity : world.getNearbyEntities(here, HOMING_RANGE, HOMING_RANGE, HOMING_RANGE)) {
             if (!(entity instanceof LivingEntity living) || living.equals(caster)) {
                 continue;
+            }
+            if (living instanceof ArmorStand) {
+                continue; // technically a LivingEntity, but chasing a statue reads as a miss
             }
             double distSq = entity.getLocation().toVector().distanceSquared(position);
             if (distSq < bestSq) {

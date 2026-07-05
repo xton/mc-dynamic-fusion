@@ -4,10 +4,11 @@ import com.xton.fusion.modifier.Modifier;
 import com.xton.fusion.modifier.WeaponBuilder;
 
 /**
- * Worn effect: fused onto a piece of armor, it keeps a light on you — you always
- * carry your own night vision, so caves and nights are lit. Unlike the weapon
- * modifiers it does nothing on a swing; the worn-effect task applies it while the
- * armor is equipped. (Harmless if fused onto a weapon — it just won't do anything.)
+ * Worn effect: fused onto a piece of armor, it makes the wearer glow — a strong,
+ * persistent Glowing effect (the vanilla see-through-walls outline), not night
+ * vision. Unlike the weapon modifiers it does nothing on a swing; the
+ * worn-effect task applies it while the armor is equipped. (Harmless if fused
+ * onto a weapon — it just won't do anything.)
  */
 public final class GlowModifier implements Modifier {
 
@@ -25,12 +26,12 @@ public final class GlowModifier implements Modifier {
 
     @Override
     public String description() {
-        return "always carry a light";
+        return "makes you glow";
     }
 
     @Override
     public String detailedDescription() {
-        return "Worn as armor, keeps night vision on you so you're never in the dark. No effect on a weapon.";
+        return "Worn as armor, gives you a powerful glowing outline for as long as it's equipped. No effect on a weapon.";
     }
 
     @Override

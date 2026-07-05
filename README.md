@@ -50,7 +50,7 @@ Noita-style. Modifiers come in two kinds:
 | *xf (fly)* | **Visible** / **Invisible** | Glow Ink Sac / Ink Sac | force the flight trail on or off (override the weapon-type default) |
 | *xf (fly)* | **Speed:_n_** | *(parameterized)* | pin the launch speed to an exact value (`Speed:0.6` slow, `Speed:3` fast) |
 | *xf (fly)* | **Duration:_n_** | *(parameterized)* | pin the lifetime to _n_ seconds (`Duration:4`) — absolute, unlike Lifetime's added range |
-| **worn** | **Glow** | Lantern, Glow Berries | fused onto **armor**, keeps night vision on you — always carry a light |
+| **worn** | **Glow** | Lantern, Glow Berries | fused onto **armor**, gives you a powerful glowing outline for as long as it's worn |
 | **worn** | **Lift** | Breeze Rod | fused onto a **chestplate/elytra**, jumping thrusts you up — a jetpack hop |
 
 Because these are small primitives, weapons **compose**: a nova is

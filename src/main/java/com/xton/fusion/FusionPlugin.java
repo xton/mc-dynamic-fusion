@@ -205,7 +205,7 @@ public final class FusionPlugin extends JavaPlugin {
                     getConfig().getLong("effect.machine-glow-period-ticks", 15));
         }
 
-        // Worn-armor effects (GLOW keeps night vision on the wearer), refreshed on a repeat.
+        // Worn-armor effects (GLOW makes the wearer glow), refreshed on a repeat.
         scheduler.runRepeating(new WornEffectTask(reader), 40,
                 getConfig().getLong("worn.effect-period-ticks", 100));
 

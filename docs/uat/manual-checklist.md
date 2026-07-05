@@ -194,8 +194,9 @@ the bits that need a real player or an eye:
     (no gravity), and a fused **bow left-click is a plain vanilla melee** (fusion
     only fires on the arrow).
 33. **Glowing armor (Glow Helmet).** Wear a `DIAMOND_HELMET GLOW` (or any armor
-    with `GLOW`) → you keep **night vision** in caves/at night, no torch needed.
-    Take it off and it lapses after a few seconds. Lantern is the ingredient.
+    with `GLOW`) → you get a **strong glowing outline** (the vanilla
+    see-through-walls Glowing effect) for as long as it's on. Take it off and it
+    lapses after a few seconds. Lantern is the ingredient.
 34. **Jetpack (Jet Elytra).** Wear an `ELYTRA LIFT` (or a `LIFT` chestplate) and
     **jump** → you get a strong upward **boost**; on the elytra, jump then glide.
     Tune `worn.jetpack-thrust` for bigger hops. Breeze Rod is the ingredient.

@@ -14,6 +14,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Cow;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Zombie;
 import org.bukkit.util.Vector;
@@ -107,6 +108,16 @@ public final class SelfTest {
         final int ccx = base.getBlockX() >> 4;
         final int ccz = base.getBlockZ() >> 4;
         forceLoad(world, ccx, ccz, true);
+
+        // Interlopers flake the runtime checks: a naturally-spawned mob wandering
+        // into a corridor stops a bolt mid-flight (its terminus lands short) or
+        // soaks a burst meant for a dummy. Sweep the whole arena before laying it
+        // out — our own dummies are spawned after this.
+        for (Entity interloper : world.getNearbyEntities(base, 24, 16, 48)) {
+            if (interloper instanceof LivingEntity living && !(living instanceof Player)) {
+                living.remove();
+            }
+        }
 
         List<Result> results = new ArrayList<>();
         List<Zombie> spawned = new ArrayList<>();

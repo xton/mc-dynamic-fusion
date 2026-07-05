@@ -33,6 +33,7 @@ docker run -d --name "$NAME" \
   -e EULA=TRUE -e TYPE=PAPER -e VERSION="$VERSION" \
   -e ONLINE_MODE=FALSE -e MEMORY=2G \
   -e ENABLE_RCON=TRUE -e RCON_PASSWORD=smoke \
+  -e SPAWN_MONSTERS=FALSE \
   ${SANDBOX_DOCKER_ARGS[@]:+"${SANDBOX_DOCKER_ARGS[@]}"} \
   -v "$(cd "$(dirname "$JAR")" && pwd)/$(basename "$JAR")":/data/plugins/DynamicFusion.jar:ro \
   "$IMAGE" >/dev/null

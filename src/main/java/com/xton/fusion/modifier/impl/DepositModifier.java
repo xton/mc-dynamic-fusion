@@ -7,6 +7,7 @@ import org.bukkit.Material;
 import com.xton.fusion.modifier.Modifier;
 import com.xton.fusion.modifier.ParameterizedModifier;
 import com.xton.fusion.modifier.WeaponBuilder;
+import com.xton.fusion.util.Format;
 
 /**
  * Emitter: adds a DEPOSIT element — an environmental burst that fills the empty
@@ -58,12 +59,12 @@ public final class DepositModifier implements ParameterizedModifier {
 
     @Override
     public String displayName() {
-        return material == null ? "Deposit" : "Deposit " + prettify(material);
+        return material == null ? "Deposit" : "Deposit " + Format.prettyName(material.name());
     }
 
     @Override
     public String description() {
-        return material == null ? "fills the air with a block" : "fills the air with " + prettify(material).toLowerCase(Locale.ROOT);
+        return material == null ? "fills the air with a block" : "fills the air with " + Format.prettyName(material.name()).toLowerCase(Locale.ROOT);
     }
 
     @Override
@@ -83,19 +84,4 @@ public final class DepositModifier implements ParameterizedModifier {
         }
     }
 
-    /** {@code POWDER_SNOW} → {@code "Powder Snow"} for readable lore. */
-    private static String prettify(Material m) {
-        String[] words = m.name().toLowerCase(Locale.ROOT).split("_");
-        StringBuilder sb = new StringBuilder();
-        for (String w : words) {
-            if (w.isEmpty()) {
-                continue;
-            }
-            if (sb.length() > 0) {
-                sb.append(' ');
-            }
-            sb.append(Character.toUpperCase(w.charAt(0))).append(w.substring(1));
-        }
-        return sb.toString();
-    }
 }

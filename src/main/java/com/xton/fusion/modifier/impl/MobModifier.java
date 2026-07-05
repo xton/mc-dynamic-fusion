@@ -9,6 +9,7 @@ import org.bukkit.entity.EntityType;
 import com.xton.fusion.modifier.Modifier;
 import com.xton.fusion.modifier.ParameterizedModifier;
 import com.xton.fusion.modifier.WeaponBuilder;
+import com.xton.fusion.util.Format;
 
 /**
  * Emitter: launches a live entity as the projectile — the Cow Launcher. The type
@@ -69,12 +70,12 @@ public final class MobModifier implements ParameterizedModifier {
 
     @Override
     public String displayName() {
-        return type == null ? "Launch Mob" : "Launch " + prettify(type.name());
+        return type == null ? "Launch Mob" : "Launch " + Format.prettyName(type.name());
     }
 
     @Override
     public String description() {
-        return type == null ? "hurls a live mob" : "hurls a live " + prettify(type.name()).toLowerCase(Locale.ROOT);
+        return type == null ? "hurls a live mob" : "hurls a live " + Format.prettyName(type.name()).toLowerCase(Locale.ROOT);
     }
 
     @Override
@@ -94,19 +95,4 @@ public final class MobModifier implements ParameterizedModifier {
         }
     }
 
-    /** {@code MUSHROOM_COW} → {@code "Mushroom Cow"} for readable lore. */
-    private static String prettify(String name) {
-        String[] words = name.toLowerCase(Locale.ROOT).split("_");
-        StringBuilder sb = new StringBuilder();
-        for (String w : words) {
-            if (w.isEmpty()) {
-                continue;
-            }
-            if (sb.length() > 0) {
-                sb.append(' ');
-            }
-            sb.append(Character.toUpperCase(w.charAt(0))).append(w.substring(1));
-        }
-        return sb.toString();
-    }
 }

@@ -10,6 +10,7 @@ import com.xton.fusion.item.FusedItemFactory;
 import com.xton.fusion.item.FusedItemReader;
 import com.xton.fusion.item.LatentRegistry;
 import com.xton.fusion.item.Lineage;
+import com.xton.fusion.util.Format;
 
 /**
  * Core merge logic. Fusion is asymmetric: the Target defines the output base
@@ -85,17 +86,6 @@ public final class FusionEngine {
 
     /** {@code NETHER_STAR} -> {@code "Nether Star"}. */
     static String pretty(Material material) {
-        String[] words = material.name().toLowerCase().split("_");
-        StringBuilder sb = new StringBuilder();
-        for (String word : words) {
-            if (word.isEmpty()) {
-                continue;
-            }
-            if (sb.length() > 0) {
-                sb.append(' ');
-            }
-            sb.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
-        }
-        return sb.toString();
+        return Format.prettyName(material.name());
     }
 }

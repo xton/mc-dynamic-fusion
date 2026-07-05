@@ -7,9 +7,10 @@ import org.bukkit.entity.Player;
 import com.xton.fusion.modifier.AoeSpec;
 
 /**
- * Payload effect that fires one {@link AoeSpec} burst (PUSH or DAMAGE) at the
- * termination point. A projectile's payload holds one of these per AOE emitter
- * in its stack, so a shot can deliver several bursts at once.
+ * Payload effect that fires one {@link AoeSpec} entity burst (PUSH/PULL,
+ * DAMAGE, or HEAL) at the termination point. A projectile's payload holds one
+ * of these per burst emitter in its stack, so a shot can deliver several at
+ * once.
  */
 public final class BurstEffect implements PayloadEffect {
 
@@ -22,7 +23,7 @@ public final class BurstEffect implements PayloadEffect {
     }
 
     @Override
-    public void deliver(World world, Location where, Player caster, int generation) {
+    public void deliver(World world, Location where, Player caster) {
         burst.fire(world, where, spec, caster);
     }
 }

@@ -15,6 +15,7 @@ import org.bukkit.util.Vector;
 import com.xton.fusion.modifier.AoeSpec;
 import com.xton.fusion.modifier.ModifierStack;
 import com.xton.fusion.modifier.ProjectileSpec;
+import com.xton.fusion.modifier.TrailStyle;
 import com.xton.fusion.modifier.WeaponBuilder;
 
 /**
@@ -22,7 +23,9 @@ import com.xton.fusion.modifier.WeaponBuilder;
  * or bow shot calls {@link #launch}: the stack compiles into a
  * {@link ProjectileSpec} (flight + payload), and one projectile per MULTISHOT
  * count is spawned, each aimed with the SPREAD cone and carrying a
- * {@link Payload} built from the spec's AOE emitters.
+ * {@link Payload} built from the spec's burst emitters. A MOB:&lt;type&gt; spec
+ * hurls live entities instead; SPAWN/DELAY children come back through
+ * {@link #spawnChildren} at their parent's terminus.
  *
  * <p>{@link #compile} and {@link #buildPayload} are pure (no world), so what a
  * stack produces is unit-testable without a server.
@@ -79,11 +82,11 @@ public final class ProjectileLauncher {
 
     /**
      * A melee swing: a short, gravity-free poke that delivers its payload at
-     * arm's length with no visible flight trail. Flight transforms (LIFETIME,
-     * MINING, ...) extend it from there.
+     * arm's length with only a subtle energy-ball wake. Flight transforms
+     * (LIFETIME, MINING, ...) extend it from there.
      */
     public void launchMelee(Player caster, ModifierStack stack) {
-        launch(caster, stack, 1.0, false, meleeLifetimeTicks, meleeSpeed, false);
+        launch(caster, stack, 1.0, false, meleeLifetimeTicks, meleeSpeed, TrailStyle.SUBTLE);
     }
 
     /**
@@ -94,7 +97,8 @@ public final class ProjectileLauncher {
         double speedScale = 0.35 + 0.65 * clamp01(force);
         // Bow shots arc (gravity on); a melee poke stays straight. Gravity is
         // purely the launcher's call — no modifier touches it (yet).
-        launch(caster, stack, speedScale, true, defaults.baseLifetimeTicks(), defaults.baseSpeed(), true);
+        launch(caster, stack, speedScale, true, defaults.baseLifetimeTicks(), defaults.baseSpeed(),
+                TrailStyle.BRIGHT);
     }
 
     /**
@@ -103,12 +107,12 @@ public final class ProjectileLauncher {
      * modifier stack compiles, so flight transforms build on top of it.
      */
     private void launch(Player caster, ModifierStack stack, double speedScale,
-                        boolean gravity, int baseLifetimeTicks, double baseSpeed, boolean visibleTrail) {
+                        boolean gravity, int baseLifetimeTicks, double baseSpeed, TrailStyle trail) {
         WeaponBuilder builder = new WeaponBuilder(defaults);
         builder.projectile().setSpeed(baseSpeed);
         builder.projectile().setLifetimeTicks(baseLifetimeTicks);
         builder.projectile().setGravity(gravity);
-        builder.projectile().setVisibleTrail(visibleTrail);
+        builder.projectile().setTrailStyle(trail);
         ProjectileSpec spec = builder.compile(stack);
 
         Payload payload = buildPayload(spec);
@@ -215,7 +219,7 @@ public final class ProjectileLauncher {
     }
 
     private static double clamp01(double force) {
-        return force < 0 ? 0.0 : Math.min(1.0, force);
+        return Math.clamp(force, 0.0, 1.0);
     }
 
     /** Offset a direction by a random angle within a {@code spreadDegrees} cone. */
@@ -224,17 +228,21 @@ public final class ProjectileLauncher {
             return aim.clone();
         }
         ThreadLocalRandom rng = ThreadLocalRandom.current();
-        double dyaw = Math.toRadians((rng.nextDouble() * 2 - 1) * spreadDegrees);
-        double dpitch = Math.toRadians((rng.nextDouble() * 2 - 1) * spreadDegrees);
+        double polar = Math.toRadians(rng.nextDouble() * spreadDegrees);
+        double azimuth = rng.nextDouble() * 2 * Math.PI;
 
-        Vector dir = aim.clone();
+        // Any axis perpendicular to the aim will do — the azimuth roll below hides
+        // which one was picked.
         Vector right = aim.clone().crossProduct(new Vector(0, 1, 0));
         if (right.lengthSquared() < 1.0e-6) {
-            right = new Vector(1, 0, 0); // aim was vertical; pick any horizontal axis
+            right = new Vector(1, 0, 0); // aim is vertical; any horizontal axis is perpendicular
         }
         right.normalize();
-        dir.rotateAroundY(dyaw);
-        dir.rotateAroundAxis(right, dpitch);
-        return dir.normalize();
+
+        // Tip the aim by the polar angle, then roll that tilt around the original
+        // aim — a uniform cone whatever direction the shot faces (a world-yaw
+        // rotation, by contrast, degenerates to a no-op on a vertical aim).
+        Vector dir = aim.clone().rotateAroundAxis(right, polar);
+        return dir.rotateAroundAxis(aim, azimuth).normalize();
     }
 }

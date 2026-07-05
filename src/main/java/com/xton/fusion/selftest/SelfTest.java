@@ -14,6 +14,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Cow;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Zombie;
 import org.bukkit.util.Vector;
@@ -23,6 +24,7 @@ import com.xton.fusion.modifier.AoeKind;
 import com.xton.fusion.modifier.AoeSpec;
 import com.xton.fusion.modifier.ModifierRegistry;
 import com.xton.fusion.modifier.ProjectileSpec;
+import com.xton.fusion.modifier.TrailStyle;
 import com.xton.fusion.projectile.AoeBurst;
 import com.xton.fusion.projectile.FusionProjectile;
 import com.xton.fusion.projectile.ProjectileLauncher;
@@ -106,6 +108,16 @@ public final class SelfTest {
         final int ccx = base.getBlockX() >> 4;
         final int ccz = base.getBlockZ() >> 4;
         forceLoad(world, ccx, ccz, true);
+
+        // Interlopers flake the runtime checks: a naturally-spawned mob wandering
+        // into a corridor stops a bolt mid-flight (its terminus lands short) or
+        // soaks a burst meant for a dummy. Sweep the whole arena before laying it
+        // out — our own dummies are spawned after this.
+        for (Entity interloper : world.getNearbyEntities(base, 24, 16, 48)) {
+            if (interloper instanceof LivingEntity living && !(living instanceof Player)) {
+                living.remove();
+            }
+        }
 
         List<Result> results = new ArrayList<>();
         List<Zombie> spawned = new ArrayList<>();
@@ -551,8 +563,8 @@ public final class SelfTest {
         // parameterized SPEED:<v>/DURATION:<s> pin absolute values.
         boolean tuneOk = compile("DAMAGE", "GRAVITY").hasGravity()
                 && !compile("DAMAGE").hasGravity()
-                && !compile("DAMAGE", "INVISIBLE").hasVisibleTrail()
-                && compile("DAMAGE", "INVISIBLE", "VISIBLE").hasVisibleTrail()
+                && compile("DAMAGE", "INVISIBLE").trailStyle() == TrailStyle.HIDDEN
+                && compile("DAMAGE", "INVISIBLE", "VISIBLE").trailStyle() == TrailStyle.BRIGHT
                 && Math.abs(compile("SPEED:0.8").speed() - 0.8) < EPS
                 && compile("DURATION:3").lifetimeTicks() == 60;
         r.add(new Result("compile:flight-tuning", tuneOk,

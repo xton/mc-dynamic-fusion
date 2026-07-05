@@ -1,6 +1,5 @@
 package com.xton.fusion.modifier;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -20,20 +19,11 @@ public final class ModifierStack {
     }
 
     public List<String> ids() {
-        List<String> ids = new ArrayList<>(modifiers.size());
-        for (Modifier m : modifiers) {
-            ids.add(m.id());
-        }
-        return ids;
+        return modifiers.stream().map(Modifier::id).toList();
     }
 
     public boolean contains(String id) {
-        for (Modifier m : modifiers) {
-            if (m.id().equals(id)) {
-                return true;
-            }
-        }
-        return false;
+        return modifiers.stream().anyMatch(m -> m.id().equals(id));
     }
 
     public boolean isEmpty() {

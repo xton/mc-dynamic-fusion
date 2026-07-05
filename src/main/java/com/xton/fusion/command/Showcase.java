@@ -24,7 +24,10 @@ public final class Showcase {
 
     /** The full roster, grouped roughly by theme (order = fill order in the chests). */
     public static List<Entry> roster() {
-        return List.of(
+        return ROSTER;
+    }
+
+    private static final List<Entry> ROSTER = List.of(
                 // --- classic composed weapons ---
                 new Entry(Material.DIAMOND_SWORD, List.of("PUSH", "EXPAND", "EXPAND"), "Nova"),
                 new Entry(Material.DIAMOND_SWORD, List.of("PULL", "EXPAND"), "Vacuum"),
@@ -59,5 +62,4 @@ public final class Showcase {
                 new Entry(Material.BRUSH, List.of("TREASURE", "TREASURE", "TREASURE"), "Golden Brush"),
                 new Entry(Material.DIAMOND_HELMET, List.of("GLOW"), "Glow Helmet"),
                 new Entry(Material.ELYTRA, List.of("LIFT"), "Jet Elytra"));
-    }
 }

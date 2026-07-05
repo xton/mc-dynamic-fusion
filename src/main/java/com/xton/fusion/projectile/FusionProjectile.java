@@ -1,9 +1,12 @@
 package com.xton.fusion.projectile;
 
+import java.util.Comparator;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Stream;
 
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -11,6 +14,7 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -21,6 +25,7 @@ import org.bukkit.util.Vector;
 import com.xton.fusion.modifier.AoeKind;
 import com.xton.fusion.modifier.AoeSpec;
 import com.xton.fusion.modifier.ProjectileSpec;
+import com.xton.fusion.modifier.TrailStyle;
 
 /**
  * A custom, particle-rendered projectile ticked entirely by us — no Bukkit
@@ -176,7 +181,7 @@ public final class FusionProjectile extends BukkitRunnable {
             velocity.setX(velocity.getX() * BOUNCE_FLOOR_FRICTION);
             velocity.setZ(velocity.getZ() * BOUNCE_FLOOR_FRICTION);
         }
-        if (spec.hasVisibleTrail()) {
+        if (spec.trailStyle() != TrailStyle.HIDDEN) {
             world.spawnParticle(Particle.CRIT, position.toLocation(world), 4, 0.1, 0.1, 0.1, 0.05);
         }
         world.playSound(here, Sound.BLOCK_STONE_HIT, 0.4f, 1.4f);
@@ -211,8 +216,7 @@ public final class FusionProjectile extends BukkitRunnable {
         }
         Vector cur = velocity.clone().multiply(1.0 / speed);
         double maxTurn = HOMING_TURN_PER_STACK * spec.homing();
-        double dot = Math.max(-1.0, Math.min(1.0, cur.dot(desired)));
-        double angle = Math.acos(dot);
+        double angle = Math.acos(Math.clamp(cur.dot(desired), -1.0, 1.0));
         Vector dir;
         if (angle <= maxTurn || angle < 1.0e-4) {
             dir = desired; // close enough to point straight at it
@@ -231,6 +235,9 @@ public final class FusionProjectile extends BukkitRunnable {
         for (Entity entity : world.getNearbyEntities(here, HOMING_RANGE, HOMING_RANGE, HOMING_RANGE)) {
             if (!(entity instanceof LivingEntity living) || living.equals(caster)) {
                 continue;
+            }
+            if (living instanceof ArmorStand) {
+                continue; // technically a LivingEntity, but chasing a statue reads as a miss
             }
             double distSq = entity.getLocation().toVector().distanceSquared(position);
             if (distSq < bestSq) {
@@ -319,7 +326,7 @@ public final class FusionProjectile extends BukkitRunnable {
             if (!spec.isPierce()) {
                 return true; // stop at the first entity; the terminus acts here
             }
-            payload.detonate(world, here, caster, shot.generation());
+            payload.detonate(world, here, caster);
             applyEnvironmentalEntity(living);
             contactShove(living, travel);
         }
@@ -343,6 +350,10 @@ public final class FusionProjectile extends BukkitRunnable {
         return hardness >= 0 && hardness <= spec.pierceMaxHardness();
     }
 
+    /** One candidate impact face: its outward normal and how hard the shot approached it. */
+    private record Face(Vector normal, double approach) {
+    }
+
     /**
      * The outward normal of the block face the shot entered — the axis it
      * approached most strongly whose neighbour that way is open, so we reflect
@@ -350,28 +361,22 @@ public final class FusionProjectile extends BukkitRunnable {
      */
     private Vector impactNormal(Location impact) {
         Block hit = impact.getBlock();
-        Vector[] faces = {
-            new Vector(-Math.signum(velocity.getX()), 0, 0),
-            new Vector(0, -Math.signum(velocity.getY()), 0),
-            new Vector(0, 0, -Math.signum(velocity.getZ())),
-        };
-        double[] mag = {Math.abs(velocity.getX()), Math.abs(velocity.getY()), Math.abs(velocity.getZ())};
-        Integer[] order = {0, 1, 2};
-        java.util.Arrays.sort(order, (a, b) -> Double.compare(mag[b], mag[a]));
-        Vector fallback = null;
-        for (int idx : order) {
-            if (mag[idx] < 1.0e-9) {
-                continue; // no approach along this axis
-            }
-            Vector n = faces[idx];
-            if (fallback == null) {
-                fallback = n;
-            }
+        List<Face> faces = Stream.of(
+                        new Face(new Vector(-Math.signum(velocity.getX()), 0, 0), Math.abs(velocity.getX())),
+                        new Face(new Vector(0, -Math.signum(velocity.getY()), 0), Math.abs(velocity.getY())),
+                        new Face(new Vector(0, 0, -Math.signum(velocity.getZ())), Math.abs(velocity.getZ())))
+                .filter(face -> face.approach() >= 1.0e-9) // no approach along this axis
+                .sorted(Comparator.comparingDouble(Face::approach).reversed())
+                .toList();
+        for (Face face : faces) {
+            Vector n = face.normal();
             if (!hit.getRelative(n.getBlockX(), n.getBlockY(), n.getBlockZ()).getType().isSolid()) {
                 return n; // this face opens onto air — bounce out here
             }
         }
-        return fallback != null ? fallback : new Vector(0, 1, 0);
+        // Every candidate neighbour is solid (a pocket): reflect off the strongest
+        // approach anyway, or straight up if the shot somehow had no velocity.
+        return faces.isEmpty() ? new Vector(0, 1, 0) : faces.get(0).normal();
     }
 
     /** The direction SPAWN children take off a block terminus: velocity reflected off the surface. */
@@ -397,23 +402,24 @@ public final class FusionProjectile extends BukkitRunnable {
     }
 
     private void trail(Location here) {
-        if (spec.isTrailHidden()) {
-            return; // INVISIBLE — a truly unseen bolt
-        }
         // DUST hangs and fades where it's drawn — no gravity, so the wake dissipates
         // in place instead of raining down after the shot passes.
-        if (spec.hasVisibleTrail()) {
-            // Ranged shots render a brighter energy wake (+ mining sparks).
-            world.spawnParticle(Particle.DUST, here, 1, 0.02, 0.02, 0.02, 0.0, RANGED_TRAIL);
-            if (spec.isMining()) {
-                world.spawnParticle(Particle.ELECTRIC_SPARK, here, 1, 0.0, 0.0, 0.0, 0.0);
+        switch (spec.trailStyle()) {
+            case HIDDEN -> {
+                // INVISIBLE — a truly unseen bolt.
             }
-            return;
+            case BRIGHT -> {
+                // Ranged shots render a brighter energy wake (+ mining sparks).
+                world.spawnParticle(Particle.DUST, here, 1, 0.02, 0.02, 0.02, 0.0, RANGED_TRAIL);
+                if (spec.isMining()) {
+                    world.spawnParticle(Particle.ELECTRIC_SPARK, here, 1, 0.0, 0.0, 0.0, 0.0);
+                }
+            }
+            // A melee swing throws a subtle "energy ball" — visible enough to read
+            // on a long-range build, faint enough that a near-instant poke still
+            // looks like a swing. Much softer than the ranged wake or a burst.
+            case SUBTLE -> world.spawnParticle(Particle.DUST, here, 1, 0.0, 0.0, 0.0, 0.0, MELEE_TRAIL);
         }
-        // A melee swing throws a subtle "energy ball" — visible enough to read on a
-        // long-range build, faint enough that a near-instant poke still looks like a
-        // swing. Much softer than the ranged wake or a burst.
-        world.spawnParticle(Particle.DUST, here, 1, 0.0, 0.0, 0.0, 0.0, MELEE_TRAIL);
     }
 
     // ----- terminus -----
@@ -429,7 +435,7 @@ public final class FusionProjectile extends BukkitRunnable {
     private void terminate(Location where, Vector childHeading) {
         try {
             if (where != null && world != null) {
-                payload.detonate(world, where, caster, shot.generation());
+                payload.detonate(world, where, caster);
                 if (spec.hasEnvironmental()) {
                     applyEnvironmentalBlocks(where);
                     for (Entity entity : world.getNearbyEntities(where,

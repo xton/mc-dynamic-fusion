@@ -9,12 +9,13 @@ import org.bukkit.entity.EntityType;
  * A compiled projectile: its <b>flight</b> (how it travels) plus its
  * <b>payload</b> (the ordered {@link AoeSpec} elements it delivers where it
  * terminates). This is what the modifier stack compiles down to and what the
- * launcher/projectile read — the flat per-modifier context is gone.
+ * launcher/projectile read.
  *
- * <p>Flight transforms (PIERCE, BOUNCE, TRAIL, LIFETIME, SPREAD, MULTISHOT,
- * MINING, TELEPORT, gravity)
- * mutate the flight fields here; emitter modifiers append an {@link AoeSpec} to
- * {@link #payload}; AOE transforms mutate the {@link #topAoe() top} element.
+ * <p>Flight transforms (PIERCE, BOUNCE, HOMING, TRAIL, TELEPORT, MULTISHOT,
+ * SPREAD, LIFETIME, GRAVITY, VISIBLE/INVISIBLE, SPEED:n, DURATION:n) mutate the
+ * flight fields here; emitter modifiers append an {@link AoeSpec} to
+ * {@link #payload} (or set the mob type / register a SPAWN child); AOE
+ * transforms mutate the {@link #topAoe() top} element.
  */
 public final class ProjectileSpec {
 
@@ -27,8 +28,7 @@ public final class ProjectileSpec {
     private double pierceMaxHardness;  // blocks harder than this stop a piercing shot
     private int bounces;               // bounce seam
     private int lifetimeTicks;         // ticks before it expires & terminates
-    private boolean visibleTrail = true; // render the FULL ranged trail (off = subtle melee energy ball)
-    private boolean hideTrail;           // INVISIBLE: render no trail at all
+    private TrailStyle trailStyle = TrailStyle.BRIGHT; // how the flight wake renders
     private boolean trail;             // TRAIL: apply AOEs at every empty-air cell too
     private boolean teleport;          // TELEPORT: move the caster to the terminus
     private int homing;                // HOMING: steer toward a nearby target (stacks = sharper turn)
@@ -135,21 +135,13 @@ public final class ProjectileSpec {
         return miningAoe() != null;
     }
 
-    public boolean hasVisibleTrail() {
-        return visibleTrail;
+    /** How the flight wake renders — seeded by weapon type, overridden by VISIBLE/INVISIBLE. */
+    public TrailStyle trailStyle() {
+        return trailStyle;
     }
 
-    public void setVisibleTrail(boolean visibleTrail) {
-        this.visibleTrail = visibleTrail;
-    }
-
-    /** INVISIBLE: suppress the trail entirely (even the subtle melee energy ball). */
-    public boolean isTrailHidden() {
-        return hideTrail;
-    }
-
-    public void setHideTrail(boolean hideTrail) {
-        this.hideTrail = hideTrail;
+    public void setTrailStyle(TrailStyle trailStyle) {
+        this.trailStyle = trailStyle;
     }
 
     public boolean isTrail() {

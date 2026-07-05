@@ -26,10 +26,11 @@ import com.xton.fusion.modifier.AoeSpec;
 import com.xton.fusion.util.Scheduler;
 
 /**
- * Fires a single {@link AoeSpec} area burst where a projectile terminates: it
- * shoves (PUSH) or damages (DAMAGE) the entities in range, optionally chaining
- * to further entities and re-pulsing (PERSIST). Each burst element in a
- * projectile's payload is fired through here.
+ * Fires a single {@link AoeSpec} entity burst where a projectile terminates: it
+ * shoves (PUSH — or drags, when inverted as PULL), damages (DAMAGE), or mends
+ * (HEAL) the entities in range, optionally chaining to further entities and
+ * re-pulsing (PERSIST). Each burst element in a projectile's payload is fired
+ * through here.
  */
 public final class AoeBurst {
 

@@ -207,6 +207,16 @@ the bits that need a real player or an eye:
     On the elytra, climb a bit then deploy for a running start. Tune
     `worn.jetpack-thrust-per-tick` / `worn.jetpack-max-velocity`. Breeze Rod is
     the ingredient.
+35. **World filter (`allowed-worlds`).** Set `allowed-worlds: [world]` and
+    restart. In `world`, fusion still works as normal (swing/shoot a fused
+    weapon, wear GLOW/LIFT armor, brush a Golden Brush). Teleport or portal to
+    any other world (e.g. the Nether) with the same fused gear: swings/shots
+    should act **plain vanilla** (a fused sword just swings, a fused bow just
+    shoots a normal arrow — no cancelled arrow, no burst), GLOW/LIFT/particle
+    shedding/machine glow should all stop, and Golden Brush shouldn't drop
+    loot. The item itself is untouched — bring it back to `world` and
+    everything works again. Set `allowed-worlds: []` (the default) to lift the
+    restriction entirely.
 
 ---
 

@@ -19,6 +19,7 @@ import com.xton.fusion.modifier.ModifierRegistry;
 import com.xton.fusion.modifier.ModifierStack;
 import com.xton.fusion.projectile.ProjectileLauncher;
 import com.xton.fusion.util.CooldownMap;
+import com.xton.fusion.util.WorldFilter;
 
 /**
  * The Golden Brush: right-clicking (brushing) with a fused {@code BRUSH} that
@@ -34,15 +35,18 @@ public final class GoldenBrushListener implements Listener {
     private final ProjectileLauncher launcher;
     private final GoldenBrush brush;
     private final CooldownMap cooldown;
+    private final WorldFilter worldFilter;
     private final Random rng = new Random();
 
     public GoldenBrushListener(FusedItemReader reader, ModifierRegistry registry,
-                               ProjectileLauncher launcher, GoldenBrush brush, CooldownMap cooldown) {
+                               ProjectileLauncher launcher, GoldenBrush brush, CooldownMap cooldown,
+                               WorldFilter worldFilter) {
         this.reader = reader;
         this.registry = registry;
         this.launcher = launcher;
         this.brush = brush;
         this.cooldown = cooldown;
+        this.worldFilter = worldFilter;
     }
 
     @EventHandler
@@ -54,6 +58,9 @@ public final class GoldenBrushListener implements Listener {
             return; // main-hand only — don't double-fire on the off-hand pass
         }
         Player player = event.getPlayer();
+        if (!worldFilter.isAllowed(player.getWorld())) {
+            return; // outside the allowed worlds — brushing finds nothing
+        }
         ItemStack hand = player.getInventory().getItemInMainHand();
         if (hand.getType() != Material.BRUSH || !reader.isFused(hand)) {
             return;

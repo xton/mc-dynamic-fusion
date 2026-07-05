@@ -21,6 +21,7 @@ import com.xton.fusion.modifier.ModifierRegistry;
 import com.xton.fusion.modifier.ModifierStack;
 import com.xton.fusion.projectile.ProjectileLauncher;
 import com.xton.fusion.util.CooldownMap;
+import com.xton.fusion.util.WorldFilter;
 
 /**
  * Routes melee swings of fused weapons into launched projectiles. A swing fires
@@ -34,6 +35,7 @@ public final class WeaponEventListener implements Listener {
     private final ModifierRegistry registry;
     private final ProjectileLauncher launcher;
     private final CooldownMap cooldown;
+    private final WorldFilter worldFilter;
 
     /** Tick of each player's last right-click, to filter out the arm-swing that
      *  a right-click interaction (e.g. opening the Fusion Machine) produces. */
@@ -42,11 +44,13 @@ public final class WeaponEventListener implements Listener {
     public WeaponEventListener(FusedItemReader reader,
                                ModifierRegistry registry,
                                ProjectileLauncher launcher,
-                               CooldownMap cooldown) {
+                               CooldownMap cooldown,
+                               WorldFilter worldFilter) {
         this.reader = reader;
         this.registry = registry;
         this.launcher = launcher;
         this.cooldown = cooldown;
+        this.worldFilter = worldFilter;
     }
 
     @EventHandler
@@ -63,6 +67,9 @@ public final class WeaponEventListener implements Listener {
             return;
         }
         Player player = event.getPlayer();
+        if (!worldFilter.isAllowed(player.getWorld())) {
+            return; // outside the allowed worlds — swing stays plain vanilla
+        }
         // Right-clicking an interactive block (like the machine) also fires an
         // arm swing — ignore that so opening the GUI doesn't trigger the weapon.
         Integer rightClick = lastRightClickTick.get(player.getUniqueId());

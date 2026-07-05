@@ -7,6 +7,7 @@ import org.bukkit.util.Vector;
 
 import com.xton.fusion.item.FusedItemReader;
 import com.xton.fusion.modifier.impl.LiftModifier;
+import com.xton.fusion.util.WorldFilter;
 
 /**
  * The Jetpack: while airborne and holding jump, a player wearing a fused
@@ -26,17 +27,20 @@ public final class JetpackTask implements Runnable {
     private final FusedItemReader reader;
     private final double thrustPerTick;
     private final double maxVelocity;
+    private final WorldFilter worldFilter;
 
-    public JetpackTask(FusedItemReader reader, double thrustPerTick, double maxVelocity) {
+    public JetpackTask(FusedItemReader reader, double thrustPerTick, double maxVelocity, WorldFilter worldFilter) {
         this.reader = reader;
         this.thrustPerTick = thrustPerTick;
         this.maxVelocity = maxVelocity;
+        this.worldFilter = worldFilter;
     }
 
     @Override
     public void run() {
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (player.isOnGround() || !player.getCurrentInput().isJump() || !wearsLift(player)) {
+            if (player.isOnGround() || !player.getCurrentInput().isJump() || !wearsLift(player)
+                    || !worldFilter.isAllowed(player.getWorld())) {
                 continue; // grounded jumps stay vanilla; not holding jump just falls normally
             }
             Vector v = player.getVelocity();

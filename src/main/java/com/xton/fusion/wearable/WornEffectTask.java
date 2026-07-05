@@ -8,6 +8,7 @@ import org.bukkit.potion.PotionEffectType;
 
 import com.xton.fusion.item.FusedItemReader;
 import com.xton.fusion.modifier.impl.GlowModifier;
+import com.xton.fusion.util.WorldFilter;
 
 /**
  * Applies the passive effects of <b>worn</b> fused armor, ticked on a repeat. For
@@ -25,15 +26,17 @@ public final class WornEffectTask implements Runnable {
     private static final int GLOW_AMPLIFIER = 4;
 
     private final FusedItemReader reader;
+    private final WorldFilter worldFilter;
 
-    public WornEffectTask(FusedItemReader reader) {
+    public WornEffectTask(FusedItemReader reader, WorldFilter worldFilter) {
         this.reader = reader;
+        this.worldFilter = worldFilter;
     }
 
     @Override
     public void run() {
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (wearsModifier(player, GlowModifier.ID)) {
+            if (worldFilter.isAllowed(player.getWorld()) && wearsModifier(player, GlowModifier.ID)) {
                 player.addPotionEffect(new PotionEffect(
                         PotionEffectType.GLOWING, GLOW_DURATION_TICKS, GLOW_AMPLIFIER, true, false, false));
             }

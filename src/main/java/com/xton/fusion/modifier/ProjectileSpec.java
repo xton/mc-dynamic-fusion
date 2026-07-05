@@ -9,12 +9,13 @@ import org.bukkit.entity.EntityType;
  * A compiled projectile: its <b>flight</b> (how it travels) plus its
  * <b>payload</b> (the ordered {@link AoeSpec} elements it delivers where it
  * terminates). This is what the modifier stack compiles down to and what the
- * launcher/projectile read — the flat per-modifier context is gone.
+ * launcher/projectile read.
  *
- * <p>Flight transforms (PIERCE, BOUNCE, TRAIL, LIFETIME, SPREAD, MULTISHOT,
- * MINING, TELEPORT, gravity)
- * mutate the flight fields here; emitter modifiers append an {@link AoeSpec} to
- * {@link #payload}; AOE transforms mutate the {@link #topAoe() top} element.
+ * <p>Flight transforms (PIERCE, BOUNCE, HOMING, TRAIL, TELEPORT, MULTISHOT,
+ * SPREAD, LIFETIME, GRAVITY, VISIBLE/INVISIBLE, SPEED:n, DURATION:n) mutate the
+ * flight fields here; emitter modifiers append an {@link AoeSpec} to
+ * {@link #payload} (or set the mob type / register a SPAWN child); AOE
+ * transforms mutate the {@link #topAoe() top} element.
  */
 public final class ProjectileSpec {
 

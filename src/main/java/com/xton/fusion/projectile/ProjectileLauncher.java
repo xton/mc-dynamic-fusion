@@ -23,7 +23,9 @@ import com.xton.fusion.modifier.WeaponBuilder;
  * or bow shot calls {@link #launch}: the stack compiles into a
  * {@link ProjectileSpec} (flight + payload), and one projectile per MULTISHOT
  * count is spawned, each aimed with the SPREAD cone and carrying a
- * {@link Payload} built from the spec's AOE emitters.
+ * {@link Payload} built from the spec's burst emitters. A MOB:&lt;type&gt; spec
+ * hurls live entities instead; SPAWN/DELAY children come back through
+ * {@link #spawnChildren} at their parent's terminus.
  *
  * <p>{@link #compile} and {@link #buildPayload} are pure (no world), so what a
  * stack produces is unit-testable without a server.

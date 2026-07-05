@@ -3,6 +3,7 @@ package com.xton.fusion.modifier.impl;
 import com.xton.fusion.modifier.Modifier;
 import com.xton.fusion.modifier.ParameterizedModifier;
 import com.xton.fusion.modifier.WeaponBuilder;
+import com.xton.fusion.util.Format;
 
 /**
  * Flight transform: sets the shot's launch speed to an <em>absolute</em> value

@@ -3,6 +3,7 @@ package com.xton.fusion.modifier.impl;
 import com.xton.fusion.modifier.Modifier;
 import com.xton.fusion.modifier.ParameterizedModifier;
 import com.xton.fusion.modifier.WeaponBuilder;
+import com.xton.fusion.util.Format;
 
 /**
  * Emitter: like SPAWN, but the fresh child waits {@code n} seconds after the

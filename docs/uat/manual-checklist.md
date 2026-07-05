@@ -140,7 +140,10 @@ player; SPAWN clusters are best judged by eye) still want a look:
     bolt lands. `... PIERCE LIFETIME TELEPORT` blinks you to the **far end of a
     bored tunnel**. Under `MULTISHOT` you teleport **once** (first bolt to land),
     and you never end up stuck in a wall or a mob (safe offset). Ender Pearl is the
-    ingredient.
+    ingredient. **Velocity check:** jump off a ledge (or teleport yourself high up)
+    and fire a `TELEPORT` shot on the way down — you should land at a dead stop,
+    with **no fall damage** and no residual momentum, not keep falling from where
+    you land.
 21. **Bounce feel.** `DIAMOND_SWORD DAMAGE BOUNCE LIFETIME` → the bolt should
     **ricochet** off floors/walls (a soft *tick* and crit sparks at each bounce),
     losing a little speed each time, and **only go off** when it finally expires

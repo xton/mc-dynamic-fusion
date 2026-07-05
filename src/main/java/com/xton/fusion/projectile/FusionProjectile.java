@@ -475,6 +475,10 @@ public final class FusionProjectile extends BukkitRunnable {
         }
         safe.setDirection(caster.getLocation().getDirection());
         caster.teleport(safe);
+        // Land at rest: whatever speed the caster was carrying before (a long
+        // fall, a shove) shouldn't carry over — a blink shouldn't also save a
+        // fall only to have it resume the instant they land.
+        caster.setVelocity(new Vector(0, 0, 0));
         world.spawnParticle(Particle.PORTAL, safe.clone().add(0, 1, 0), 30, 0.3, 0.6, 0.3, 0.1);
         world.playSound(safe, Sound.ENTITY_ENDERMAN_TELEPORT, 0.8f, 1.0f);
     }

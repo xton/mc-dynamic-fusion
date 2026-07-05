@@ -1,6 +1,7 @@
 package com.xton.fusion.modifier.impl;
 
 import com.xton.fusion.modifier.Modifier;
+import com.xton.fusion.modifier.TrailStyle;
 import com.xton.fusion.modifier.WeaponBuilder;
 
 /**
@@ -39,7 +40,6 @@ public final class InvisibleModifier implements Modifier {
 
     @Override
     public void apply(WeaponBuilder builder) {
-        builder.projectile().setVisibleTrail(false);
-        builder.projectile().setHideTrail(true);
+        builder.projectile().setTrailStyle(TrailStyle.HIDDEN);
     }
 }

@@ -15,6 +15,7 @@ import org.bukkit.util.Vector;
 import com.xton.fusion.modifier.AoeSpec;
 import com.xton.fusion.modifier.ModifierStack;
 import com.xton.fusion.modifier.ProjectileSpec;
+import com.xton.fusion.modifier.TrailStyle;
 import com.xton.fusion.modifier.WeaponBuilder;
 
 /**
@@ -79,11 +80,11 @@ public final class ProjectileLauncher {
 
     /**
      * A melee swing: a short, gravity-free poke that delivers its payload at
-     * arm's length with no visible flight trail. Flight transforms (LIFETIME,
-     * MINING, ...) extend it from there.
+     * arm's length with only a subtle energy-ball wake. Flight transforms
+     * (LIFETIME, MINING, ...) extend it from there.
      */
     public void launchMelee(Player caster, ModifierStack stack) {
-        launch(caster, stack, 1.0, false, meleeLifetimeTicks, meleeSpeed, false);
+        launch(caster, stack, 1.0, false, meleeLifetimeTicks, meleeSpeed, TrailStyle.SUBTLE);
     }
 
     /**
@@ -94,7 +95,8 @@ public final class ProjectileLauncher {
         double speedScale = 0.35 + 0.65 * clamp01(force);
         // Bow shots arc (gravity on); a melee poke stays straight. Gravity is
         // purely the launcher's call — no modifier touches it (yet).
-        launch(caster, stack, speedScale, true, defaults.baseLifetimeTicks(), defaults.baseSpeed(), true);
+        launch(caster, stack, speedScale, true, defaults.baseLifetimeTicks(), defaults.baseSpeed(),
+                TrailStyle.BRIGHT);
     }
 
     /**
@@ -103,12 +105,12 @@ public final class ProjectileLauncher {
      * modifier stack compiles, so flight transforms build on top of it.
      */
     private void launch(Player caster, ModifierStack stack, double speedScale,
-                        boolean gravity, int baseLifetimeTicks, double baseSpeed, boolean visibleTrail) {
+                        boolean gravity, int baseLifetimeTicks, double baseSpeed, TrailStyle trail) {
         WeaponBuilder builder = new WeaponBuilder(defaults);
         builder.projectile().setSpeed(baseSpeed);
         builder.projectile().setLifetimeTicks(baseLifetimeTicks);
         builder.projectile().setGravity(gravity);
-        builder.projectile().setVisibleTrail(visibleTrail);
+        builder.projectile().setTrailStyle(trail);
         ProjectileSpec spec = builder.compile(stack);
 
         Payload payload = buildPayload(spec);

@@ -23,6 +23,7 @@ import com.xton.fusion.modifier.AoeKind;
 import com.xton.fusion.modifier.AoeSpec;
 import com.xton.fusion.modifier.ModifierRegistry;
 import com.xton.fusion.modifier.ProjectileSpec;
+import com.xton.fusion.modifier.TrailStyle;
 import com.xton.fusion.projectile.AoeBurst;
 import com.xton.fusion.projectile.FusionProjectile;
 import com.xton.fusion.projectile.ProjectileLauncher;
@@ -551,8 +552,8 @@ public final class SelfTest {
         // parameterized SPEED:<v>/DURATION:<s> pin absolute values.
         boolean tuneOk = compile("DAMAGE", "GRAVITY").hasGravity()
                 && !compile("DAMAGE").hasGravity()
-                && !compile("DAMAGE", "INVISIBLE").hasVisibleTrail()
-                && compile("DAMAGE", "INVISIBLE", "VISIBLE").hasVisibleTrail()
+                && compile("DAMAGE", "INVISIBLE").trailStyle() == TrailStyle.HIDDEN
+                && compile("DAMAGE", "INVISIBLE", "VISIBLE").trailStyle() == TrailStyle.BRIGHT
                 && Math.abs(compile("SPEED:0.8").speed() - 0.8) < EPS
                 && compile("DURATION:3").lifetimeTicks() == 60;
         r.add(new Result("compile:flight-tuning", tuneOk,

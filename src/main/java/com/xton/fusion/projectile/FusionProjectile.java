@@ -21,6 +21,7 @@ import org.bukkit.util.Vector;
 import com.xton.fusion.modifier.AoeKind;
 import com.xton.fusion.modifier.AoeSpec;
 import com.xton.fusion.modifier.ProjectileSpec;
+import com.xton.fusion.modifier.TrailStyle;
 
 /**
  * A custom, particle-rendered projectile ticked entirely by us — no Bukkit
@@ -176,7 +177,7 @@ public final class FusionProjectile extends BukkitRunnable {
             velocity.setX(velocity.getX() * BOUNCE_FLOOR_FRICTION);
             velocity.setZ(velocity.getZ() * BOUNCE_FLOOR_FRICTION);
         }
-        if (spec.hasVisibleTrail()) {
+        if (spec.trailStyle() != TrailStyle.HIDDEN) {
             world.spawnParticle(Particle.CRIT, position.toLocation(world), 4, 0.1, 0.1, 0.1, 0.05);
         }
         world.playSound(here, Sound.BLOCK_STONE_HIT, 0.4f, 1.4f);
@@ -397,23 +398,24 @@ public final class FusionProjectile extends BukkitRunnable {
     }
 
     private void trail(Location here) {
-        if (spec.isTrailHidden()) {
-            return; // INVISIBLE — a truly unseen bolt
-        }
         // DUST hangs and fades where it's drawn — no gravity, so the wake dissipates
         // in place instead of raining down after the shot passes.
-        if (spec.hasVisibleTrail()) {
-            // Ranged shots render a brighter energy wake (+ mining sparks).
-            world.spawnParticle(Particle.DUST, here, 1, 0.02, 0.02, 0.02, 0.0, RANGED_TRAIL);
-            if (spec.isMining()) {
-                world.spawnParticle(Particle.ELECTRIC_SPARK, here, 1, 0.0, 0.0, 0.0, 0.0);
+        switch (spec.trailStyle()) {
+            case HIDDEN -> {
+                // INVISIBLE — a truly unseen bolt.
             }
-            return;
+            case BRIGHT -> {
+                // Ranged shots render a brighter energy wake (+ mining sparks).
+                world.spawnParticle(Particle.DUST, here, 1, 0.02, 0.02, 0.02, 0.0, RANGED_TRAIL);
+                if (spec.isMining()) {
+                    world.spawnParticle(Particle.ELECTRIC_SPARK, here, 1, 0.0, 0.0, 0.0, 0.0);
+                }
+            }
+            // A melee swing throws a subtle "energy ball" — visible enough to read
+            // on a long-range build, faint enough that a near-instant poke still
+            // looks like a swing. Much softer than the ranged wake or a burst.
+            case SUBTLE -> world.spawnParticle(Particle.DUST, here, 1, 0.0, 0.0, 0.0, 0.0, MELEE_TRAIL);
         }
-        // A melee swing throws a subtle "energy ball" — visible enough to read on a
-        // long-range build, faint enough that a near-instant poke still looks like a
-        // swing. Much softer than the ranged wake or a burst.
-        world.spawnParticle(Particle.DUST, here, 1, 0.0, 0.0, 0.0, 0.0, MELEE_TRAIL);
     }
 
     // ----- terminus -----

@@ -279,9 +279,10 @@ class WeaponCompileTest {
         assertFalse(compile("DAMAGE").hasGravity());
         assertTrue(compile("DAMAGE", "GRAVITY").hasGravity(), "GRAVITY turns on the arc");
 
-        assertTrue(compile("DAMAGE").hasVisibleTrail(), "trail on by default");
-        assertFalse(compile("DAMAGE", "INVISIBLE").hasVisibleTrail());
-        assertTrue(compile("DAMAGE", "INVISIBLE", "VISIBLE").hasVisibleTrail(), "later toggle wins");
+        assertEquals(TrailStyle.BRIGHT, compile("DAMAGE").trailStyle(), "bright trail by default");
+        assertEquals(TrailStyle.HIDDEN, compile("DAMAGE", "INVISIBLE").trailStyle());
+        assertEquals(TrailStyle.BRIGHT, compile("DAMAGE", "INVISIBLE", "VISIBLE").trailStyle(),
+                "later toggle wins");
 
         // SPEED:<v> pins absolute speed; DURATION:<s> pins absolute lifetime (s×20 ticks).
         assertEquals(0.8, compile("SPEED:0.8").speed(), 1.0e-9);
@@ -309,7 +310,7 @@ class WeaponCompileTest {
         // The SPLASH_POTION bundle: GRAVITY + VISIBLE + slow SPEED + a long DURATION.
         ProjectileSpec lob = compile("GRAVITY", "VISIBLE", "SPEED:0.8", "DURATION:4");
         assertTrue(lob.hasGravity());
-        assertTrue(lob.hasVisibleTrail());
+        assertEquals(TrailStyle.BRIGHT, lob.trailStyle());
         assertEquals(0.8, lob.speed(), 1.0e-9);
         assertEquals(80, lob.lifetimeTicks());
     }

@@ -2,9 +2,10 @@ package com.xton.fusion.modifier;
 
 /**
  * A single composable weapon property. There are two flavours (see
- * {@link Category}): <b>emitters</b> add a concrete element to the weapon (a
- * PUSH/DAMAGE burst, or — later — a spawned projectile); <b>transforms</b>
- * modify the nearest preceding emitter (scale it, pierce it, extend its life).
+ * {@link Category}): <b>emitters</b> add a concrete element to the weapon (an
+ * entity burst, an environmental sweep, a spawned child projectile, a launched
+ * mob, ...); <b>transforms</b> modify the nearest preceding emitter or the
+ * projectile's flight (scale it, pierce it, extend its life).
  *
  * <p>Implementations act on a {@link WeaponBuilder}, which threads the RPN
  * compile state (current projectile + its payload). They stay free of Bukkit

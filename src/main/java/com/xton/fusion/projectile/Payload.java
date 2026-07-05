@@ -30,9 +30,9 @@ public final class Payload {
     }
 
     /** Deliver every effect at the termination point, in order. */
-    public void detonate(World world, Location where, Player caster, int generation) {
+    public void detonate(World world, Location where, Player caster) {
         for (PayloadEffect effect : effects) {
-            effect.deliver(world, where, caster, generation);
+            effect.deliver(world, where, caster);
         }
     }
 }

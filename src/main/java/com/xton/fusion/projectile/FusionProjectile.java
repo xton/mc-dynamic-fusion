@@ -319,7 +319,7 @@ public final class FusionProjectile extends BukkitRunnable {
             if (!spec.isPierce()) {
                 return true; // stop at the first entity; the terminus acts here
             }
-            payload.detonate(world, here, caster, shot.generation());
+            payload.detonate(world, here, caster);
             applyEnvironmentalEntity(living);
             contactShove(living, travel);
         }
@@ -429,7 +429,7 @@ public final class FusionProjectile extends BukkitRunnable {
     private void terminate(Location where, Vector childHeading) {
         try {
             if (where != null && world != null) {
-                payload.detonate(world, where, caster, shot.generation());
+                payload.detonate(world, where, caster);
                 if (spec.hasEnvironmental()) {
                     applyEnvironmentalBlocks(where);
                     for (Entity entity : world.getNearbyEntities(where,

@@ -9,10 +9,11 @@ import org.bukkit.entity.Player;
  * {@link Payload} is a list of these; delivering an empty list is a no-op (a
  * mining ray, for instance, delivers nothing at its terminus).
  *
- * <p>Today the only effect is {@link BurstEffect}. The seam is deliberate: a
- * future spawn effect would re-launch child projectiles from {@code where}
- * (carrying a decremented {@code generation} so it terminates) — that is how a
- * cluster bomb is built, without any special-casing elsewhere.
+ * <p>Today the only effect is {@link BurstEffect}, which fires an entity burst.
+ * Cluster/spawn behavior is <em>not</em> a payload effect — SPAWN children live
+ * on {@link com.xton.fusion.modifier.ProjectileSpec#spawns()} and are launched
+ * by the projectile at its terminus, with recursion bounded by the cast's
+ * {@link Shot}.
  */
 @FunctionalInterface
 public interface PayloadEffect {
@@ -20,10 +21,9 @@ public interface PayloadEffect {
     /**
      * Deliver this effect.
      *
-     * @param world      the world the projectile ended in
-     * @param where      the termination point
-     * @param caster     the wielder (excluded from self-hits), may be null
-     * @param generation projectile depth, for spawn effects to bound recursion
+     * @param world  the world the projectile ended in
+     * @param where  the termination point
+     * @param caster the wielder (excluded from self-hits), may be null
      */
-    void deliver(World world, Location where, Player caster, int generation);
+    void deliver(World world, Location where, Player caster);
 }

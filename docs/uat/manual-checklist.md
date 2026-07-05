@@ -151,9 +151,11 @@ player; SPAWN clusters are best judged by eye) still want a look:
     the room**, not vanish into it. (Compare: before this, a wall-hit cluster
     wasted its children against the surface.) `... BOUNCE ... SPAWN ...` is a
     grenade that bounces to rest, then scatters.
-23. **Lob a mortar (Gravity).** `DIAMOND_SWORD DAMAGE GRAVITY VISIBLE SPEED:0.8` →
-    a plain sword should now **throw a slow, visible, arcing shot** that drops to
-    the ground — no bow needed. (`SPLASH_POTION` is the ready-made lob bundle.)
+23. **Lob a mortar (Gravity).** `DIAMOND_SWORD DAMAGE GRAVITY VISIBLE SPEED:0.8
+    DURATION:4` → a plain sword should now **throw a slow, visible, arcing shot**
+    that drops to the ground — no bow needed. (Without `DURATION`, melee's
+    default 1-tick life ends the shot before gravity has time to bend it —
+    `SPLASH_POTION` is the ready-made lob bundle and already includes it.)
 24. **Visible / Invisible.** A long-range melee build with `VISIBLE` shows a
     travelling bolt; `INVISIBLE` on a bow hides its trail. Confirm each overrides
     the weapon-type default.

@@ -226,17 +226,21 @@ public final class ProjectileLauncher {
             return aim.clone();
         }
         ThreadLocalRandom rng = ThreadLocalRandom.current();
-        double dyaw = Math.toRadians((rng.nextDouble() * 2 - 1) * spreadDegrees);
-        double dpitch = Math.toRadians((rng.nextDouble() * 2 - 1) * spreadDegrees);
+        double polar = Math.toRadians(rng.nextDouble() * spreadDegrees);
+        double azimuth = rng.nextDouble() * 2 * Math.PI;
 
-        Vector dir = aim.clone();
+        // Any axis perpendicular to the aim will do — the azimuth roll below hides
+        // which one was picked.
         Vector right = aim.clone().crossProduct(new Vector(0, 1, 0));
         if (right.lengthSquared() < 1.0e-6) {
-            right = new Vector(1, 0, 0); // aim was vertical; pick any horizontal axis
+            right = new Vector(1, 0, 0); // aim is vertical; any horizontal axis is perpendicular
         }
         right.normalize();
-        dir.rotateAroundY(dyaw);
-        dir.rotateAroundAxis(right, dpitch);
-        return dir.normalize();
+
+        // Tip the aim by the polar angle, then roll that tilt around the original
+        // aim — a uniform cone whatever direction the shot faces (a world-yaw
+        // rotation, by contrast, degenerates to a no-op on a vertical aim).
+        Vector dir = aim.clone().rotateAroundAxis(right, polar);
+        return dir.rotateAroundAxis(aim, azimuth).normalize();
     }
 }

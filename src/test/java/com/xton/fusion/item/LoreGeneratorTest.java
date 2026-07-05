@@ -38,6 +38,20 @@ class LoreGeneratorTest {
     }
 
     @Test
+    void parameterizedIdsRenderTheirBoundDisplayName() {
+        // A DEPOSIT:DIRT id must resolve through the registry's BASE:PARAM
+        // template and render its material-bound name, not fall through as unknown.
+        ModifierRegistry registry = new ModifierRegistry()
+                .register(new com.xton.fusion.modifier.impl.DepositModifier());
+        LoreGenerator lore = new LoreGenerator(registry);
+
+        List<String> text = lore.generate(List.of("DEPOSIT:DIRT"), "A + B").stream()
+                .map(this::plain).toList();
+
+        assertTrue(text.stream().anyMatch(s -> s.contains("Deposit Dirt")), text.toString());
+    }
+
+    @Test
     void unknownModifierIdsAreSkipped() {
         ModifierRegistry registry = new ModifierRegistry().register(new PushModifier());
         LoreGenerator lore = new LoreGenerator(registry);

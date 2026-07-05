@@ -4,10 +4,11 @@ import com.xton.fusion.modifier.Modifier;
 import com.xton.fusion.modifier.WeaponBuilder;
 
 /**
- * Worn effect (the Jetpack): fused onto a chestplate or elytra, jumping fires an
- * upward thrust so you leap and lift off — pair it with an elytra to jump-start a
- * glide, no firework needed. Acts while worn (see JetpackListener), not on a
- * weapon swing.
+ * Worn effect (the Jetpack): fused onto a chestplate or elytra, holding jump
+ * while airborne ramps a smooth rise, capped at a max climb speed — a hover,
+ * not a one-shot boost. A normal jump from the ground is untouched; releasing
+ * jump lets you fall normally. Great on an elytra to climb before gliding out.
+ * Acts while worn (see JetpackTask), not on a weapon swing.
  */
 public final class LiftModifier implements Modifier {
 
@@ -25,12 +26,12 @@ public final class LiftModifier implements Modifier {
 
     @Override
     public String description() {
-        return "jump to thrust upward";
+        return "hold jump to rise";
     }
 
     @Override
     public String detailedDescription() {
-        return "Worn on a chestplate or elytra, jumping thrusts you upward — a jetpack hop. Great on an elytra to kick off a glide. No effect on a weapon.";
+        return "Worn on a chestplate or elytra: hold jump while airborne to rise smoothly, up to a capped speed — a jetpack hover. A grounded jump is unaffected. No effect on a weapon.";
     }
 
     @Override
@@ -40,6 +41,6 @@ public final class LiftModifier implements Modifier {
 
     @Override
     public void apply(WeaponBuilder builder) {
-        // A worn effect — it acts while equipped (see JetpackListener), not on a swing.
+        // A worn effect — it acts while equipped (see JetpackTask), not on a swing.
     }
 }

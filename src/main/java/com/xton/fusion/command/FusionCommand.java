@@ -161,12 +161,17 @@ public final class FusionCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         List<Showcase.Entry> roster = Showcase.roster();
-        List<ItemStack> items = new ArrayList<>(roster.size());
+        List<ItemStack> items = new ArrayList<>(roster.size() + 1);
         for (Showcase.Entry e : roster) {
             ItemStack item = factory.create(e.base(), e.modifiers(), "showcase");
             item.editMeta(meta -> meta.displayName(Component.text(e.name(), NamedTextColor.AQUA)
                     .decoration(TextDecoration.ITALIC, false)));
             items.add(item);
+        }
+        // The roster includes fused bows, which are useless without ammunition —
+        // one shared stack covers all of them (any arrows in inventory work).
+        if (roster.stream().anyMatch(e -> e.base() == Material.BOW)) {
+            items.add(new ItemStack(Material.ARROW, 64));
         }
 
         // A row of chests two blocks in front, extending to the player's right.
@@ -186,7 +191,7 @@ public final class FusionCommand implements CommandExecutor, TabCompleter {
             }
         }
         player.sendMessage(Component.text("Placed " + chestCount + " showcase chest(s) — "
-                + items.size() + " labelled weapons — in front of you.", NamedTextColor.GREEN));
+                + roster.size() + " labelled weapons — in front of you.", NamedTextColor.GREEN));
         return true;
     }
 

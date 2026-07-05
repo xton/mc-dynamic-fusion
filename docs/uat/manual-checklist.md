@@ -140,7 +140,10 @@ player; SPAWN clusters are best judged by eye) still want a look:
     bolt lands. `... PIERCE LIFETIME TELEPORT` blinks you to the **far end of a
     bored tunnel**. Under `MULTISHOT` you teleport **once** (first bolt to land),
     and you never end up stuck in a wall or a mob (safe offset). Ender Pearl is the
-    ingredient.
+    ingredient. **Velocity check:** jump off a ledge (or teleport yourself high up)
+    and fire a `TELEPORT` shot on the way down — you should land at a dead stop,
+    with **no fall damage** and no residual momentum, not keep falling from where
+    you land.
 21. **Bounce feel.** `DIAMOND_SWORD DAMAGE BOUNCE LIFETIME` → the bolt should
     **ricochet** off floors/walls (a soft *tick* and crit sparks at each bounce),
     losing a little speed each time, and **only go off** when it finally expires
@@ -151,9 +154,11 @@ player; SPAWN clusters are best judged by eye) still want a look:
     the room**, not vanish into it. (Compare: before this, a wall-hit cluster
     wasted its children against the surface.) `... BOUNCE ... SPAWN ...` is a
     grenade that bounces to rest, then scatters.
-23. **Lob a mortar (Gravity).** `DIAMOND_SWORD DAMAGE GRAVITY VISIBLE SPEED:0.8` →
-    a plain sword should now **throw a slow, visible, arcing shot** that drops to
-    the ground — no bow needed. (`SPLASH_POTION` is the ready-made lob bundle.)
+23. **Lob a mortar (Gravity).** `DIAMOND_SWORD DAMAGE GRAVITY VISIBLE SPEED:0.8
+    DURATION:4` → a plain sword should now **throw a slow, visible, arcing shot**
+    that drops to the ground — no bow needed. (Without `DURATION`, melee's
+    default 1-tick life ends the shot before gravity has time to bend it —
+    `SPLASH_POTION` is the ready-made lob bundle and already includes it.)
 24. **Visible / Invisible.** A long-range melee build with `VISIBLE` shows a
     travelling bolt; `INVISIBLE` on a bow hides its trail. Confirm each overrides
     the weapon-type default.
@@ -192,11 +197,16 @@ the bits that need a real player or an eye:
     (no gravity), and a fused **bow left-click is a plain vanilla melee** (fusion
     only fires on the arrow).
 33. **Glowing armor (Glow Helmet).** Wear a `DIAMOND_HELMET GLOW` (or any armor
-    with `GLOW`) → you keep **night vision** in caves/at night, no torch needed.
-    Take it off and it lapses after a few seconds. Lantern is the ingredient.
-34. **Jetpack (Jet Elytra).** Wear an `ELYTRA LIFT` (or a `LIFT` chestplate) and
-    **jump** → you get a strong upward **boost**; on the elytra, jump then glide.
-    Tune `worn.jetpack-thrust` for bigger hops. Breeze Rod is the ingredient.
+    with `GLOW`) → you get a **strong glowing outline** (the vanilla
+    see-through-walls Glowing effect) for as long as it's on. Take it off and it
+    lapses after a few seconds. Lantern is the ingredient.
+34. **Jetpack (Jet Elytra).** Wear an `ELYTRA LIFT` (or a `LIFT` chestplate) →
+    a normal ground jump is unchanged (tap, hop, land — vanilla). Jump, then
+    **hold jump while airborne**: you should rise smoothly and slowly, capped at
+    a max climb speed, for as long as you hold it — release to fall normally.
+    On the elytra, climb a bit then deploy for a running start. Tune
+    `worn.jetpack-thrust-per-tick` / `worn.jetpack-max-velocity`. Breeze Rod is
+    the ingredient.
 
 ---
 

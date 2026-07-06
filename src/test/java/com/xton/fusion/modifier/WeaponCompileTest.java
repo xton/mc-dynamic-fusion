@@ -16,6 +16,7 @@ import com.xton.fusion.modifier.impl.ChainModifier;
 import com.xton.fusion.modifier.impl.DamageModifier;
 import com.xton.fusion.modifier.impl.DelayModifier;
 import com.xton.fusion.modifier.impl.DepositModifier;
+import com.xton.fusion.modifier.impl.DetectModifier;
 import com.xton.fusion.modifier.impl.DurationModifier;
 import com.xton.fusion.modifier.impl.ExpandModifier;
 import com.xton.fusion.modifier.impl.FireModifier;
@@ -75,6 +76,7 @@ class WeaponCompileTest {
                 .register(new DepositModifier())
                 .register(new SpawnModifier())
                 .register(new DelayModifier())
+                .register(new DetectModifier(3.0, 1200))
                 .register(new TrailModifier())
                 .register(new TeleportModifier())
                 .register(new GravityModifier())
@@ -272,6 +274,34 @@ class WeaponCompileTest {
         assertEquals(0.0, child.speed(), 1.0e-9, "detonates in place");
         assertEquals(1, child.lifetimeTicks(), "~zero lifetime");
         assertEquals(AoeKind.DAMAGE, child.topAoe().kind());
+    }
+
+    @Test
+    void detectArmsAChildThatWaitsInsteadOfFiring() {
+        // MINING DETECT DAMAGE — root embeds (MINING), the armed child watches
+        // and blasts (DAMAGE) once triggered; the root never carries the DAMAGE.
+        ProjectileSpec root = compile("MINING", "DETECT", "DAMAGE");
+        assertEquals(1, root.payload().size(), "root keeps only its own MINING");
+        assertEquals(AoeKind.MINING, root.topAoe().kind());
+        assertEquals(1, root.spawns().size());
+
+        ProjectileSpec child = root.spawns().get(0);
+        assertEquals(0.0, child.speed(), 1.0e-9, "arms in place, doesn't fly");
+        assertEquals(1200, child.lifetimeTicks(), "disarms after the configured wait cap");
+        assertTrue(child.isDetect());
+        assertNotNull(child.detectAoe());
+        assertEquals(3.0, child.detectAoe().radius(), 1.0e-9, "base trigger radius");
+        assertEquals(AoeKind.DAMAGE, child.topAoe().kind(), "DAMAGE built the child, not the root");
+
+        // A bare DETECT (nothing after it) still arms a child but with an empty
+        // on-trigger payload besides the sensor itself.
+        ProjectileSpec bare = compile("DETECT").spawns().get(0);
+        assertEquals(1, bare.payload().size(), "just the sensor, no on-trigger burst");
+
+        // EXPAND right after DETECT widens the sensor's own radius, exactly like
+        // it widens a MINING bore.
+        ProjectileSpec expanded = compile("DETECT", "EXPAND").spawns().get(0);
+        assertTrue(expanded.detectAoe().radius() > bare.detectAoe().radius(), "EXPAND widens the trigger radius");
     }
 
     @Test

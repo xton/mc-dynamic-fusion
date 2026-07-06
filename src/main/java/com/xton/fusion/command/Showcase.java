@@ -62,6 +62,11 @@ public final class Showcase {
                 new Entry(Material.DIAMOND_SWORD,
                         List.of("DAMAGE", "GRAVITY", "VISIBLE", "SPEED:0.8", "DURATION:4"), "Mortar Lob"),
                 new Entry(Material.DIAMOND_SWORD, List.of("PIERCE", "LIFETIME", "TELEPORT"), "Blink Lance"),
+                // A bow so it can be planted well downrange before it arms: MINING
+                // digs it into whatever it lands on, DETECT arms a wider (EXPAND)
+                // trigger there, and DAMAGE is the payload once something steps in.
+                new Entry(Material.BOW,
+                        List.of("MINING", "LIFETIME", "DETECT", "EXPAND", "DAMAGE"), "Landmine"),
                 // --- bows ---
                 new Entry(Material.BOW, List.of("DAMAGE", "HOMING", "LIFETIME"), "Homing Bow"),
                 new Entry(Material.BOW, List.of("MOB:COW", "MULTISHOT", "SPREAD"), "Cow Launcher"),

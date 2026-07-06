@@ -217,6 +217,14 @@ the bits that need a real player or an eye:
     loot. The item itself is untouched — bring it back to `world` and
     everything works again. Set `allowed-worlds: []` (the default) to lift the
     restriction entirely.
+36. **Landmine (Detect).** Fire/place a `BOW MINING LIFETIME DETECT EXPAND
+    DAMAGE` (the showcase's Landmine) downrange. It should dig itself into
+    whatever it lands on, then sit there **blinking** (a slow red pulse) —
+    walk away and nothing happens. Walk a mob (or yourself) back within a few
+    blocks and it should **detonate** on the spot. Stack `EXPAND` for a wider
+    trigger radius; tune `detect.range` / `detect.max-wait-ticks` (a mine that
+    never triggers should quietly disarm after `max-wait-ticks`, rather than
+    sitting forever). Tripwire Hook is the ingredient.
 
 ---
 

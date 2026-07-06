@@ -200,6 +200,12 @@ public final class SelfTest {
         boolean heavyMineOk = layHardCorridor(world, bx, by, bz - 36);
         // A bare stone floor with a stop wall: ICE should dress it with snow.
         boolean iceSnowOk = layIceFloor(world, bx, by, bz - 38);
+        // A clear corridor for a DETECT mine: a dummy sits right where a short,
+        // slow bolt will expire and arm — close enough that it's inside the
+        // sensor's default radius the instant it lands.
+        clearRow(world, bx, by, bz - 42, 8);
+        Zombie detectMob = spawnDummy(world, base.clone().add(5, 1, -42), spawned);
+        final double detectMob0 = health(detectMob);
         // A hurt COW floating in open air (passive, so HEAL mends it — hostiles are
         // skipped). Placed up high like the MOB test's cow, which spawns valid there.
         final Cow healCow = spawnCow(world, new Location(world, bx + 2.5, by + 3, bz + 0.5));
@@ -296,6 +302,10 @@ public final class SelfTest {
             if (fireIceSnow) {
                 fireBolt(world, at(world, bx, by, bz - 38), PLUS_X, false, "ICE");
             }
+            // A short, slow bolt that expires (not hits a wall) right next to the
+            // dummy, arming a DETECT DAMAGE mine there.
+            fireBolt(world, at(world, bx, by, bz - 42), PLUS_X, false,
+                    "SPEED:0.5", "DURATION:0.5", "DETECT", "DAMAGE");
             gravityBolt[0] = fireBolt(world,
                     new Location(world, bx + 0.5, gravityLaunchY, bz + 0.5), PLUS_X, true);
         }, SETTLE);
@@ -353,6 +363,7 @@ public final class SelfTest {
             }
             results.add(delayReDetonates(delayMob, delayMob0));
             results.add(homingCurvesIntoTarget(homingMob, homingMob0));
+            results.add(detectTriggersOnNearbyMob(detectMob, detectMob0));
         }, SETTLE + MINING_WAIT);
 
         // --- last: the persist field has finished pulsing and the gravity bolt
@@ -530,6 +541,27 @@ public final class SelfTest {
         r.add(new Result("compile:delay-child", delayOk,
                 "delayTicks=" + (delayed.spawns().isEmpty() ? "-"
                         : delayed.spawns().get(0).spawnDelayTicks())));
+
+        // DETECT is like SPAWN: pushes a child that sits armed (speed 0) instead
+        // of firing at the terminus. It carries its own sensor AoeSpec (so it's
+        // opt-in — no burst on its own), and a following EXPAND widens that
+        // sensor's radius exactly like it widens a MINING bore.
+        ProjectileSpec bareDetect = compile("DETECT");
+        ProjectileSpec detectChild = bareDetect.spawns().isEmpty() ? null : bareDetect.spawns().get(0);
+        double detectRange0 = detectChild == null ? -1 : detectChild.detectAoe().radius();
+        double detectRange1 = compile("DETECT", "EXPAND").spawns().get(0).detectAoe().radius();
+        ProjectileSpec detectDamage = compile("DETECT", "DAMAGE");
+        boolean detectOk = detectChild != null
+                && detectChild.isDetect()
+                && detectChild.speed() < EPS
+                && launcher.buildPayload(bareDetect).isEmpty()
+                && detectRange1 > detectRange0 + EPS
+                && detectDamage.payload().isEmpty() // root gets nothing; the child does
+                && detectDamage.spawns().get(0).payload().size() == 2 // sensor + the DAMAGE it armed
+                && detectDamage.spawns().get(0).topAoe().kind() == AoeKind.DAMAGE;
+        r.add(new Result("compile:detect-arms-a-child", detectOk,
+                String.format("range %.2f -> %.2f (EXPAND), speed=%.2f", detectRange0, detectRange1,
+                        detectChild == null ? -1 : detectChild.speed())));
 
         // HOMING is a stacking flight flag.
         boolean homingOk = compile("DAMAGE", "HOMING").isHoming()
@@ -781,6 +813,16 @@ public final class SelfTest {
         }
         boolean ok = mob.getHealth() < before;
         return new Result("homing-curves-into-target", ok,
+                String.format("health %.1f -> %.1f", before, mob.getHealth()));
+    }
+
+    /** A DETECT mine, once armed near a dummy, notices it and fires its DAMAGE payload. */
+    private Result detectTriggersOnNearbyMob(Zombie mob, double before) {
+        if (mob == null || !mob.isValid()) {
+            return new Result("detect-triggers-on-mob", false, "no mob");
+        }
+        boolean ok = mob.getHealth() < before;
+        return new Result("detect-triggers-on-mob", ok,
                 String.format("health %.1f -> %.1f", before, mob.getHealth()));
     }
 

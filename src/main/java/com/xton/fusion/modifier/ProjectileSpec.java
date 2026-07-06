@@ -135,6 +135,21 @@ public final class ProjectileSpec {
         return miningAoe() != null;
     }
 
+    /** The DETECT sensor in the payload (the armed trigger radius), or null if none. */
+    public AoeSpec detectAoe() {
+        for (AoeSpec aoe : payload) {
+            if (aoe.kind() == AoeKind.DETECT) {
+                return aoe;
+            }
+        }
+        return null;
+    }
+
+    /** True when this spec is an armed DETECT child (derived from the payload). */
+    public boolean isDetect() {
+        return detectAoe() != null;
+    }
+
     /** How the flight wake renders — seeded by weapon type, overridden by VISIBLE/INVISIBLE. */
     public TrailStyle trailStyle() {
         return trailStyle;

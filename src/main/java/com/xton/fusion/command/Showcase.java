@@ -53,23 +53,28 @@ public final class Showcase {
                 // --- structural / kinetic ---
                 new Entry(Material.DIAMOND_SWORD,
                         List.of("DAMAGE", "LIFETIME", "SPAWN", "MULTISHOT", "SPREAD", "FIRE"), "Cluster Firebomb"),
+                // A slow (SPEED:1), long-lived (DURATION:10) single bolt so the
+                // ricochet physics itself stays easy to watch, rather than getting
+                // lost in a cluster of children.
                 new Entry(Material.DIAMOND_SWORD,
-                        List.of("DAMAGE", "GRAVITY", "BOUNCE", "DURATION:5",
-                                "SPAWN", "GRAVITY", "MULTISHOT", "SPREAD", "FIRE"),
+                        List.of("DURATION:10", "DAMAGE", "BOUNCE", "GRAVITY", "SPEED:1"),
                         "Bouncing Grenade"),
                 new Entry(Material.DIAMOND_SWORD,
                         List.of("PULL", "EXPAND", "LIFETIME", "DELAY:2", "DAMAGE", "AMPLIFY"), "Gravity-Well Grenade"),
                 new Entry(Material.DIAMOND_SWORD,
                         List.of("DAMAGE", "GRAVITY", "VISIBLE", "SPEED:0.8", "DURATION:4"), "Mortar Lob"),
                 new Entry(Material.DIAMOND_SWORD, List.of("PIERCE", "LIFETIME", "TELEPORT"), "Blink Lance"),
-                // A bow so it can be planted well downrange before it arms: MINING
-                // digs it into whatever it lands on, DETECT arms a wider (EXPAND)
-                // trigger there, and DAMAGE is the payload once something steps in.
-                new Entry(Material.BOW,
-                        List.of("MINING", "LIFETIME", "DETECT", "EXPAND", "DAMAGE"), "Landmine"),
+                // A visible, lobbed throw (GRAVITY + VISIBLE + LIFETIME) that plants
+                // itself and arms: everything after DETECT builds the mine's
+                // on-trigger payload — a doubly-amplified, widened DAMAGE blast plus
+                // an expanded MINING bore and FIRE burn.
+                new Entry(Material.NETHERITE_SWORD,
+                        List.of("LIFETIME", "GRAVITY", "VISIBLE", "DETECT", "DAMAGE", "AMPLIFY", "AMPLIFY",
+                                "EXPAND", "MINING", "EXPAND", "FIRE", "EXPAND"),
+                        "Landmine"),
                 // --- bows ---
                 new Entry(Material.BOW, List.of("DAMAGE", "HOMING", "LIFETIME"), "Homing Bow"),
-                new Entry(Material.BOW, List.of("MOB:COW", "MULTISHOT", "SPREAD"), "Cow Launcher"),
+                new Entry(Material.DIAMOND_AXE, List.of("MOB:COW", "MULTISHOT", "SPREAD", "LIFETIME"), "Cow Launcher"),
                 // --- tools & worn ---
                 new Entry(Material.BRUSH, List.of("TREASURE", "TREASURE", "TREASURE"), "Golden Brush"),
                 new Entry(Material.DIAMOND_HELMET, List.of("GLOW"), "Glow Helmet"),

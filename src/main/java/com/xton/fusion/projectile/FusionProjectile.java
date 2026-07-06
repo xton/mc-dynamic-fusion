@@ -61,13 +61,16 @@ public final class FusionProjectile extends BukkitRunnable {
     private static final double GRAVITY_PER_TICK = 0.05;
     /** Fixed nudge a piercing shot gives each entity it passes through. */
     private static final double CONTACT_IMPULSE = 0.35;
-    /** Speed retained across a BOUNCE off a block (energy loss, so it settles). */
-    private static final double BOUNCE_RESTITUTION = 0.82;
-    /** Extra horizontal drag on a floor bounce, so a BOUNCE shot rolls to a stop. */
-    private static final double BOUNCE_FLOOR_FRICTION = 0.7;
     /** Below this speed a BOUNCE shot has come to rest — it stops and triggers. */
     private static final double BOUNCE_REST_SPEED = 0.15;
-    /** Blocks of flight before TRAIL starts laying its wake, so it clears the caster. */
+    /**
+     * Blocks of flight before anything visual/environmental kicks in: TRAIL's
+     * environmental wake, and — for every trail style, not just TRAIL — the
+     * cosmetic flight particles themselves, so a shot clears the caster (arm's
+     * reach) before it's seen at all. A melee swing (arm's-length range) rarely
+     * travels this far before hitting its target, so it stays invisible for its
+     * whole flight without needing separate logic.
+     */
     private static final double TRAIL_WARMUP = 2.5;
     /** In-place dust for the flight wake (no gravity — fades where it's drawn). */
     private static final Particle.DustOptions RANGED_TRAIL =
@@ -78,11 +81,8 @@ public final class FusionProjectile extends BukkitRunnable {
     private static final double HOMING_RANGE = 12.0;
     /** Max radians a HOMING shot turns per tick, per HOMING stack. */
     private static final double HOMING_TURN_PER_STACK = 0.13;
-    /** Ticks per on/off half-cycle of an armed DETECT mine's blink. */
-    private static final int DETECT_BLINK_PERIOD_TICKS = 10;
-    /** Warning-light red for the DETECT blink. */
-    private static final Particle.DustOptions DETECT_BLINK =
-            new Particle.DustOptions(org.bukkit.Color.fromRGB(255, 70, 40), 1.2f);
+    /** Duration (ticks) of TELEPORT's dash-zoom to the destination (0.3s @ 20tps). */
+    private static final int TELEPORT_ZOOM_TICKS = 6;
 
     private final Plugin plugin;
     private final Payload payload;
@@ -185,10 +185,10 @@ public final class FusionProjectile extends BukkitRunnable {
         Vector normal = impactNormal(here);
         double dot = velocity.dot(normal);
         velocity.subtract(normal.clone().multiply(2 * dot)); // reflect
-        velocity.multiply(BOUNCE_RESTITUTION);
+        velocity.multiply(shot.bounce().restitution());
         if (normal.getY() > 0.5) { // bounced off a floor: rolling friction
-            velocity.setX(velocity.getX() * BOUNCE_FLOOR_FRICTION);
-            velocity.setZ(velocity.getZ() * BOUNCE_FLOOR_FRICTION);
+            velocity.setX(velocity.getX() * shot.bounce().floorFriction());
+            velocity.setZ(velocity.getZ() * shot.bounce().floorFriction());
         }
         if (spec.trailStyle() != TrailStyle.HIDDEN) {
             world.spawnParticle(Particle.CRIT, position.toLocation(world), 4, 0.1, 0.1, 0.1, 0.05);
@@ -285,10 +285,7 @@ public final class FusionProjectile extends BukkitRunnable {
 
     /** A slow on/off pulse so an armed mine reads as "watching", not just sitting inert. */
     private void blinkDetect(Location here) {
-        if ((age / DETECT_BLINK_PERIOD_TICKS) % 2 == 0) {
-            world.spawnParticle(Particle.DUST, here.clone().add(0, 0.25, 0), 1, 0.05, 0.05, 0.05, 0.0,
-                    DETECT_BLINK);
-        }
+        BlinkEffect.tick(world, here, age);
     }
 
     /** The nearest living creature (not the caster, not a statue) within the sensor's radius. */
@@ -456,6 +453,9 @@ public final class FusionProjectile extends BukkitRunnable {
     }
 
     private void trail(Location here) {
+        if (traveled < TRAIL_WARMUP) {
+            return; // invisible until it clears arm's reach, whatever the trail style
+        }
         // DUST hangs and fades where it's drawn — no gravity, so the wake dissipates
         // in place instead of raining down after the shot passes.
         switch (spec.trailStyle()) {
@@ -528,13 +528,12 @@ public final class FusionProjectile extends BukkitRunnable {
             return; // nowhere safe within reach — better to stay put than suffocate
         }
         safe.setDirection(caster.getLocation().getDirection());
-        caster.teleport(safe);
-        // Land at rest: whatever speed the caster was carrying before (a long
-        // fall, a shove) shouldn't carry over — a blink shouldn't also save a
-        // fall only to have it resume the instant they land.
-        caster.setVelocity(new Vector(0, 0, 0));
         world.spawnParticle(Particle.PORTAL, safe.clone().add(0, 1, 0), 30, 0.3, 0.6, 0.3, 0.1);
         world.playSound(safe, Sound.ENTITY_ENDERMAN_TELEPORT, 0.8f, 1.0f);
+        // A brief dash rather than an instant snap (invulnerable for the
+        // transit, and velocity is zeroed once it lands — a fall shouldn't
+        // resume the instant the blink ends).
+        new TeleportZoomTask(caster, caster.getLocation(), safe, TELEPORT_ZOOM_TICKS).runTaskTimer(plugin, 0L, 1L);
     }
 
     /** Back off along the reverse flight until the caster fits (feet+head clear, no mob). */

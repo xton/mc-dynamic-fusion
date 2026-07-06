@@ -30,7 +30,7 @@ Noita-style. Modifiers come in two kinds:
 | **emit** | **Ice** | Blue Ice, Snowball | freezes water→ice, lava→obsidian, snuffs fire, chills mobs |
 | **emit** | **Deposit:_block_** | Dirt, Sand, Water/Lava Bucket, Cobweb | fills the empty air in a radius with that block (`Deposit:Dirt`, `Deposit:Water`, …) |
 | **emit** | **Spawn** | Firework Rocket, Egg | at the terminus, bursts into a fresh child built from every modifier *after* Spawn |
-| **emit** | **Delay:_n_** | Clock | like Spawn, but the child waits _n_ s then goes off in place (lure-then-blast) |
+| **emit** | **Delay:_n_** | Clock | like Spawn, but the child blinks in place for _n_ s then goes off (lure-then-blast) |
 | **emit** | **Detect** | Tripwire Hook | like Spawn, but the child arms in place (blinking) and goes off the moment a creature steps within range (Expand widens the range) — a trap/mine |
 | **emit** | **Mob:_type_** | Cow Spawn Egg | launches a live creature as the projectile — vanilla physics carry it (the Cow Launcher) |
 | **emit** | **Treasure** | Gold Ingot/Block | on a **Brush**, sweeping any block may cough up loot; more gold → rarer finds |
@@ -46,7 +46,7 @@ Noita-style. Modifiers come in two kinds:
 | *xf (fly)* | **Homing** | Compass | curves to chase the nearest creature mid-flight (stacks sharpen the turn) |
 | *xf (fly)* | **Trail** | Trident, Prismarine Shard | inverse of Pierce — applies environmental effects at every *empty-air* cell it flies through |
 | *xf (fly)* | **Lifetime** | Gunpowder, Redstone | adds a fixed range (same distance fast or slow) |
-| *xf (fly)* | **Teleport** | Ender Pearl, Eye of Ender | warps the caster to where the shot terminates (once per cast, safely offset) |
+| *xf (fly)* | **Teleport** | Ender Pearl, Eye of Ender | dashes the caster to where the shot terminates over a brief ~0.3s zoom (once per cast, safely offset, invulnerable for the transit) |
 | *xf (fly)* | **Gravity** | Heavy Core, Lead | turns on the arc — lob from any weapon, no bow needed |
 | *xf (fly)* | **Visible** / **Invisible** | Glow Ink Sac / Ink Sac | force the flight trail on or off (override the weapon-type default) |
 | *xf (fly)* | **Speed:_n_** | *(parameterized)* | pin the launch speed to an exact value (`Speed:0.6` slow, `Speed:3` fast) |
@@ -67,9 +67,10 @@ matters); a river-layer is `Deposit:Water · Trail`; a cluster firebomb is
 mortar from a plain sword is `Damage · Gravity · Visible · Speed:0.8`; a
 gravity-well grenade is `Pull · Expand · Delay:2 · Damage · Amplify` (gather,
 wait, blast); a heal bomb is `Heal · Expand · Amplify`; a seeking bolt is
-`Damage · Homing · Lifetime`; the Cow Launcher is a bow with `Mob:Cow`; a
-landmine is `Mining · Lifetime · Detect · Expand · Damage` (plant it, it arms
-and blinks, and blasts when something walks up). Many
+`Damage · Homing · Lifetime`; the Cow Launcher is an axe with `Mob:Cow`; a
+landmine is `Lifetime · Gravity · Visible · Detect · Damage · Amplify · Expand
+· Mining · Expand · Fire` — a lobbed throw that plants itself, arms, blinks,
+and blasts (damage, a bore, and fire) when something walks up. Many
 ingredients are **bundles** — a ready-made recipe in one item (TNT =
 `Damage · Expand · Expand`, End Crystal = the works). See
 [`latent_registry.yml`](src/main/resources/latent_registry.yml) for the roster.
@@ -96,6 +97,12 @@ a swing); a bow throws the same weapon downrange in a gravity arc (draw strength
 scales the range). A mining ray clears vegetation and the ground it hides, and
 LIFETIME adds a fixed *distance* so faster weapons don't get longer tunnels. Bounce and a gravity-toggle modifier are
 seamed for later builds (grenades, cluster bombs).
+
+**Every flight trail starts invisible.** Whatever the trail style, the cosmetic
+wake only begins ~2.5 blocks out — a shot clears the caster (arm's reach)
+before it's seen at all, so a fast bow shot doesn't leave a lingering trail
+right in front of you. Melee, which rarely travels that far before hitting its
+target, ends up invisible for its whole flight without needing separate logic.
 
 **Fused bows** become wands: releasing fires the same projectiles downrange,
 their speed scaled by draw force (so a Multishot bow fans a volley). Fusing can

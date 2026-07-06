@@ -1,6 +1,7 @@
 package com.xton.fusion.wearable;
 
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.Input;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
@@ -28,6 +29,15 @@ import com.xton.fusion.util.WorldFilter;
  * {@link Player#getCurrentInput()} — Paper's per-tick snapshot of the client's
  * raw movement/jump input, distinct from the discrete {@code PlayerJumpEvent} a
  * single jump fires.
+ *
+ * <p>Sustained airborne movement with no vanilla-recognized cause (gliding,
+ * creative/spectator, levitation, ...) trips the server's own anti-fly check
+ * and kicks the player — since we deliberately block real gliding (see
+ * {@link JetpackGlideListener}), we have to supply that exemption ourselves:
+ * {@link Player#setAllowFlight} is granted the moment the jetpack engages and
+ * revoked the moment it doesn't, so a survival player is never left with a
+ * standing "you can fly" permission (creative/spectator players, who already
+ * have it legitimately, are left alone either way).
  */
 public final class JetpackTask implements Runnable {
 
@@ -51,9 +61,20 @@ public final class JetpackTask implements Runnable {
     @Override
     public void run() {
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (player.isOnGround() || !WornLift.isWorn(reader, player)
-                    || !worldFilter.isAllowed(player.getWorld())) {
-                continue; // grounded jumps stay vanilla
+            boolean active = !player.isOnGround() && WornLift.isWorn(reader, player)
+                    && worldFilter.isAllowed(player.getWorld());
+            if (!active) {
+                // grounded jumps stay vanilla; revoke the flight exemption we
+                // grant below the moment it's no longer earned (never touch a
+                // creative/spectator player's own legitimate flight).
+                if (player.getAllowFlight() && player.getGameMode() != GameMode.CREATIVE
+                        && player.getGameMode() != GameMode.SPECTATOR) {
+                    player.setAllowFlight(false);
+                }
+                continue;
+            }
+            if (!player.getAllowFlight()) {
+                player.setAllowFlight(true);
             }
             Input input = player.getCurrentInput();
             Vector v = player.getVelocity();

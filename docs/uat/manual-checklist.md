@@ -137,18 +137,26 @@ player; SPAWN clusters are best judged by eye) still want a look:
     the first bolt lands it should **burst into a fanned volley** of fiery
     children. Bump `spawn.max-generation` for more chaos; confirm it can't run away.
 20. **Teleport (player-only).** `DIAMOND_SWORD TELEPORT` → you warp to where the
-    bolt lands. `... PIERCE LIFETIME TELEPORT` blinks you to the **far end of a
-    bored tunnel**. Under `MULTISHOT` you teleport **once** (first bolt to land),
-    and you never end up stuck in a wall or a mob (safe offset). Ender Pearl is the
-    ingredient. **Velocity check:** jump off a ledge (or teleport yourself high up)
-    and fire a `TELEPORT` shot on the way down — you should land at a dead stop,
+    bolt lands — as a brief **~0.3s dash/zoom** to the destination rather than an
+    instant snap, and you should be **invulnerable** for that transit (walk a
+    mob into your path mid-zoom and confirm you take no damage). `... PIERCE
+    LIFETIME TELEPORT` blinks you to the **far end of a bored tunnel**. Under
+    `MULTISHOT` you teleport **once** (first bolt to land), and you never end
+    up stuck in a wall or a mob (safe offset). Ender Pearl is the ingredient.
+    **Velocity check:** jump off a ledge (or teleport yourself high up) and
+    fire a `TELEPORT` shot on the way down — you should land at a dead stop,
     with **no fall damage** and no residual momentum, not keep falling from where
     you land.
-21. **Bounce feel.** `DIAMOND_SWORD DAMAGE BOUNCE LIFETIME` → the bolt should
-    **ricochet** off floors/walls (a soft *tick* and crit sparks at each bounce),
-    losing a little speed each time, and **only go off** when it finally expires
-    or strikes a mob head-on. Fire it into a corner and watch it rattle around.
-    Slime Block is the ingredient.
+21. **Bounce feel.** `DIAMOND_SWORD DAMAGE BOUNCE LIFETIME` (or the showcase's
+    **Bouncing Grenade**, `DURATION:10 DAMAGE BOUNCE GRAVITY SPEED:1` — slow
+    and long-lived so the physics stays easy to watch) → the bolt should
+    **ricochet** off floors/walls (a soft *tick* and crit sparks at each
+    bounce), losing a good chunk of speed each time (a dropped rock, not a
+    superball on hardwood — it should settle in a few bounces, not skate
+    around for ages), and **only go off** when it finally comes to rest,
+    expires, or strikes a mob head-on. Fire it into a corner and watch it
+    rattle around. Tune `bounce.restitution` / `bounce.floor-friction` if it
+    still feels too bouncy or too dead. Slime Block is the ingredient.
 22. **Spawn ricochet.** `DIAMOND_SWORD DAMAGE SPAWN MULTISHOT SPREAD` fired
     **straight at a wall** → the children should spray **back off the wall into
     the room**, not vanish into it. (Compare: before this, a wall-hit cluster
@@ -175,10 +183,12 @@ the bits that need a real player or an eye:
     mends them (and you), with hearts — hostiles are skipped. `Pull` (Fishing Rod)
     vacuums entities *inward* where `Push` shoves out.
 27. **Lure-and-blast (Delay).** `DIAMOND_SWORD PULL DELAY:2 DAMAGE EXPAND` → gathers
-    mobs, waits ~2s (a glowing charge marker sits there), then blasts them. The
+    mobs, waits ~2s — the charge should sit there **blinking** (the same red
+    pulse a DETECT mine shows while armed) — then blasts them. The
     `SCULK_CATALYST` bundle is the ready-made version.
-28. **Cow Launcher (Mob).** A bow with `MOB:COW` **fires a live cow** that arcs,
-    lands, and wanders off. `MULTISHOT` throws a herd. (Bosses are blocked.)
+28. **Cow Launcher (Mob).** An axe with `MOB:COW LIFETIME` **launches a live cow**
+    on a swing that arcs, lands, and wanders off. `MULTISHOT` throws a herd.
+    (Bosses are blocked.)
 29. **Homing.** `BOW DAMAGE HOMING LIFETIME` → the bolt should **curve to chase**
     the nearest creature, not snap onto it. Stack `HOMING` for a tighter turn.
 30. **Break harder blocks (stacked Mining).** `DIAMOND_PICKAXE MINING PIERCE` still
@@ -195,7 +205,11 @@ the bits that need a real player or an eye:
     charge is a **glowing block** that swells to each pulse (no smoky fire).
     Melee fires a **subtle energy ball**; all trails now **hang and fade in place**
     (no gravity), and a fused **bow left-click is a plain vanilla melee** (fusion
-    only fires on the arrow).
+    only fires on the arrow). Every flight trail (any style, not just the melee
+    one) is **invisible for the first ~2.5 blocks** — it clears the caster's
+    face/arm's reach before showing anything, so a fast bow shot doesn't leave a
+    lingering wake right in front of you, and a melee poke (which rarely travels
+    that far before hitting its target) reads as fully invisible.
 33. **Glowing armor (Glow Helmet).** Wear a `DIAMOND_HELMET GLOW` (or any armor
     with `GLOW`) → two things:
     - **For others:** a **strong glowing outline** (the vanilla
@@ -209,9 +223,11 @@ the bits that need a real player or an eye:
       should brighten as you look at it and track where you look (updates
       every tick, but still snaps to the block grid — a client-side light
       only you can see, not a real placed block, and not night vision: your
-      surroundings elsewhere stay dark). Take the armor off and both effects
-      lapse (the outline after a few seconds; the light immediately). Lantern
-      is the ingredient.
+      surroundings elsewhere stay dark). Face a wall up close: the light
+      should **back off toward you and relocate** in front of the wall's face
+      rather than just turning off. Take the armor off and both effects lapse
+      (the outline after a few seconds; the light immediately). Lantern is the
+      ingredient.
 34. **Jetpack (Jet Elytra).** Wear an `ELYTRA LIFT` (or a `LIFT` chestplate) →
     a normal ground jump is unchanged (tap, hop, land — vanilla). This is a
     **thruster, not a glider**: double-tapping jump to deploy the elytra glide
@@ -241,14 +257,15 @@ the bits that need a real player or an eye:
     loot. The item itself is untouched — bring it back to `world` and
     everything works again. Set `allowed-worlds: []` (the default) to lift the
     restriction entirely.
-36. **Landmine (Detect).** Fire/place a `BOW MINING LIFETIME DETECT EXPAND
-    DAMAGE` (the showcase's Landmine) downrange. It should dig itself into
-    whatever it lands on, then sit there **blinking** (a slow red pulse) —
-    walk away and nothing happens. Walk a mob (or yourself) back within a few
-    blocks and it should **detonate** on the spot. Stack `EXPAND` for a wider
-    trigger radius; tune `detect.range` / `detect.max-wait-ticks` (a mine that
-    never triggers should quietly disarm after `max-wait-ticks`, rather than
-    sitting forever). Tripwire Hook is the ingredient.
+36. **Landmine (Detect).** Swing a `NETHERITE_SWORD LIFETIME GRAVITY VISIBLE
+    DETECT DAMAGE AMPLIFY AMPLIFY EXPAND MINING EXPAND FIRE EXPAND` (the
+    showcase's Landmine) — a visible, lobbed throw that lands and arms, sitting
+    there **blinking** (a slow red pulse). Walk away and nothing happens. Walk
+    a mob (or yourself) back within `detect.range` and it should **detonate**:
+    a big amplified DAMAGE blast, a widened MINING bore, and FIRE. Tune
+    `detect.range` / `detect.max-wait-ticks` (a mine that never triggers should
+    quietly disarm after `max-wait-ticks`, rather than sitting forever).
+    Tripwire Hook is the ingredient.
 
 ---
 

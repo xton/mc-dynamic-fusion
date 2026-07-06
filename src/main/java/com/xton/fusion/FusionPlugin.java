@@ -69,6 +69,7 @@ import com.xton.fusion.util.BukkitTaskScheduler;
 import com.xton.fusion.util.CooldownMap;
 import com.xton.fusion.util.Scheduler;
 import com.xton.fusion.util.WorldFilter;
+import com.xton.fusion.wearable.GlowLightTask;
 import com.xton.fusion.wearable.JetpackGlideListener;
 import com.xton.fusion.wearable.JetpackTask;
 import com.xton.fusion.wearable.WornEffectTask;
@@ -78,6 +79,10 @@ import com.xton.fusion.weapon.WeaponEventListener;
 
 /** Entry point — wires up the fusion loop and registered modifiers. */
 public final class FusionPlugin extends JavaPlugin {
+
+    // Tracks GLOW's in-front-of-face light blocks so onDisable can clear them —
+    // otherwise a server stop/reload could leave a stray LIGHT block behind.
+    private GlowLightTask glowLightTask;
 
     @Override
     public void onEnable() {
@@ -216,6 +221,16 @@ public final class FusionPlugin extends JavaPlugin {
         scheduler.runRepeating(new WornEffectTask(reader, worldFilter), 40,
                 getConfig().getLong("worn.effect-period-ticks", 100));
 
+        // GLOW's other half: Minecraft never renders your own body in first
+        // person, so the Glowing effect above is invisible to the wearer
+        // themself — track a real, invisible light just in front of their eyes
+        // so they see something too.
+        glowLightTask = new GlowLightTask(reader, worldFilter,
+                getConfig().getDouble("worn.glow-light-distance", 1.5));
+        getServer().getPluginManager().registerEvents(glowLightTask, this);
+        scheduler.runRepeating(glowLightTask, 20,
+                getConfig().getLong("worn.glow-light-period-ticks", 1));
+
         // Jetpack: a fused LIFT chestplate/elytra is a directional thruster, not
         // an elytra glide — block vanilla gliding outright (its own look-tied
         // auto-forward would fight this) and ramp a controlled rise/lateral
@@ -240,6 +255,15 @@ public final class FusionPlugin extends JavaPlugin {
         }
 
         getLogger().info("DynamicFusion enabled.");
+    }
+
+    @Override
+    public void onDisable() {
+        // Clear any GLOW light blocks still tracked so a stop/reload never
+        // leaves a stray Material.LIGHT behind in the world.
+        if (glowLightTask != null) {
+            glowLightTask.clearAll();
+        }
     }
 
     /**

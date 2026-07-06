@@ -178,6 +178,18 @@ golden-brush:
 worn:
   # How often (ticks) the worn-effect task refreshes (GLOW's glowing outline, etc.).
   effect-period-ticks: 100
+  # GLOW's first-person half: Glowing (above) is invisible to the wearer
+  # themself (Minecraft never renders your own body in first person), so a
+  # client-side-only LIGHT block (packet-based, sent only to the wearer via
+  # Player#sendBlockChange — the real world is never touched) is tracked this
+  # many blocks in front of their eyes. The client's own lighting engine
+  # recomputes real brightness from it, so they actually see better by it —
+  # not night vision.
+  glow-light-distance: 1.5
+  # How often (ticks) that light re-checks/moves to track where they're
+  # looking. It's just a packet send (no real relight cost), so this can run
+  # every tick for the smoothest tracking the block grid allows.
+  glow-light-period-ticks: 1
   # Jetpack (LIFT) — a directional thruster, not an elytra glide: vanilla
   # elytra gliding is blocked outright for a LIFT-fused chestplate/elytra (its
   # own look-tied auto-forward would fight our control scheme), replaced

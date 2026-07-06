@@ -197,13 +197,21 @@ the bits that need a real player or an eye:
     (no gravity), and a fused **bow left-click is a plain vanilla melee** (fusion
     only fires on the arrow).
 33. **Glowing armor (Glow Helmet).** Wear a `DIAMOND_HELMET GLOW` (or any armor
-    with `GLOW`) → you get a **strong glowing outline** (the vanilla
-    see-through-walls Glowing effect) for as long as it's on. Take it off and it
-    lapses after a few seconds. Lantern is the ingredient.
-    **Testing solo:** first-person shows nothing — Minecraft doesn't render
-    your own body model in first person, so there's no outline *to* see. Press
-    **F5** for third person, or have a second player look at you, to confirm
-    it's actually applied.
+    with `GLOW`) → two things:
+    - **For others:** a **strong glowing outline** (the vanilla
+      see-through-walls Glowing effect). Solo in first person you won't see
+      your own outline (Minecraft doesn't render your own body model there) —
+      press **F5** for third person, or have a second player look at you, to
+      confirm it.
+    - **For you:** even solo, in first person, you should notice the area
+      right in front of your face is **lit up** — walk into a dark cave or
+      close your eyes at night and hold GLOW armor up to a dark spot; it
+      should brighten as you look at it and track where you look (updates
+      every tick, but still snaps to the block grid — a client-side light
+      only you can see, not a real placed block, and not night vision: your
+      surroundings elsewhere stay dark). Take the armor off and both effects
+      lapse (the outline after a few seconds; the light immediately). Lantern
+      is the ingredient.
 34. **Jetpack (Jet Elytra).** Wear an `ELYTRA LIFT` (or a `LIFT` chestplate) →
     a normal ground jump is unchanged (tap, hop, land — vanilla). This is a
     **thruster, not a glider**: double-tapping jump to deploy the elytra glide

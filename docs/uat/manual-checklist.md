@@ -153,10 +153,14 @@ player; SPAWN clusters are best judged by eye) still want a look:
     **ricochet** off floors/walls (a soft *tick* and crit sparks at each
     bounce), losing a good chunk of speed each time (a dropped rock, not a
     superball on hardwood — it should settle in a few bounces, not skate
-    around for ages), and **only go off** when it finally comes to rest,
-    expires, or strikes a mob head-on. Fire it into a corner and watch it
-    rattle around. Tune `bounce.restitution` / `bounce.floor-friction` if it
-    still feels too bouncy or too dead. Slime Block is the ingredient.
+    around for ages), and once it settles it should **sit there armed**, not
+    go off immediately — it should only detonate when its `Duration` runs out
+    or a mob bumps it directly. Fire it into a corner and watch it rattle
+    around, then settle and wait out the rest of its `Duration:10` before it
+    finally pops. Tune `bounce.restitution` / `bounce.floor-friction` if it
+    still feels too bouncy or too dead, or `bounce.rest-speed` if it's calling
+    "settled" too early while still visibly skating. Slime Block is the
+    ingredient.
 22. **Spawn ricochet.** `DIAMOND_SWORD DAMAGE SPAWN MULTISHOT SPREAD` fired
     **straight at a wall** → the children should spray **back off the wall into
     the room**, not vanish into it. (Compare: before this, a wall-hit cluster
@@ -172,7 +176,8 @@ player; SPAWN clusters are best judged by eye) still want a look:
     the weapon-type default.
 25. **Absolute Speed / Duration.** `SPEED:3` is a fast bolt, `SPEED:0.4` a crawl;
     `DURATION:5` makes it live ~5s regardless of range. Handy on a `BOUNCE` build
-    to set how long it rattles before it rolls to rest and goes off.
+    to set how long it rattles and, once it settles, how long it sits armed
+    before going off.
 
 ## E. Latest batch — feel & the player-facing bits
 

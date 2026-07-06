@@ -48,8 +48,9 @@ import com.xton.fusion.modifier.TrailStyle;
  *
  * <p><b>BOUNCE</b> changes block handling: instead of terminating on a block, the
  * shot reflects off the surface (losing a little speed, and dragging its glide on
- * a floor bounce) and flies on, only triggering when it rolls to a rest, expires,
- * or hits a mob directly.
+ * a floor bounce) and flies on. Once it rolls to a rest it doesn't go off right
+ * away — it sits armed, only triggering when its lifetime (set with DURATION)
+ * expires or a mob bumps it directly.
  */
 public final class FusionProjectile extends BukkitRunnable {
 
@@ -61,8 +62,6 @@ public final class FusionProjectile extends BukkitRunnable {
     private static final double GRAVITY_PER_TICK = 0.05;
     /** Fixed nudge a piercing shot gives each entity it passes through. */
     private static final double CONTACT_IMPULSE = 0.35;
-    /** Below this speed a BOUNCE shot has come to rest — it stops and triggers. */
-    private static final double BOUNCE_REST_SPEED = 0.15;
     /**
      * Blocks of flight before anything visual/environmental kicks in: TRAIL's
      * environmental wake, and — for every trail style, not just TRAIL — the
@@ -100,6 +99,7 @@ public final class FusionProjectile extends BukkitRunnable {
 
     private int age;
     private double traveled; // cumulative flight distance, for the TRAIL warm-up
+    private boolean resting; // BOUNCE: rolled to a stop, waiting on Duration or a mob bump
 
     public FusionProjectile(Plugin plugin, Payload payload, ProjectileSpec spec,
                             World world, Location origin, Vector velocity, Shot shot) {
@@ -128,6 +128,10 @@ public final class FusionProjectile extends BukkitRunnable {
         }
         if (spec.isDetect()) {
             tickDetect();
+            return;
+        }
+        if (resting) {
+            tickResting();
             return;
         }
         if (spec.hasGravity()) {
@@ -176,9 +180,10 @@ public final class FusionProjectile extends BukkitRunnable {
      * Ricochet off the block at {@code here}: back out of it, reflect the velocity
      * about the surface normal (shedding a little speed), and let the next tick
      * fly on. A floor bounce also drags the horizontal glide, so the shot slows to
-     * a roll and — once it's crawling — comes to rest and triggers there. Expiry
-     * is time-based (the lifetime tick cap), so pair BOUNCE with DURATION to set
-     * how long it rattles around.
+     * a roll and — once it's crawling below the configured rest speed — settles
+     * and goes armed (see {@link #tickResting()}) rather than detonating on the
+     * spot. Pair BOUNCE with DURATION to set how long it rattles before/after
+     * settling; without it the shot relies on the default lifetime cap.
      */
     private void bounceOff(Location here, Vector stepVec) {
         position.subtract(stepVec); // step back to the last open cell
@@ -194,12 +199,33 @@ public final class FusionProjectile extends BukkitRunnable {
             world.spawnParticle(Particle.CRIT, position.toLocation(world), 4, 0.1, 0.1, 0.1, 0.05);
         }
         world.playSound(here, Sound.BLOCK_STONE_HIT, 0.4f, 1.4f);
-        if (velocity.length() < BOUNCE_REST_SPEED) {
-            terminate(position.toLocation(world)); // rolled to a stop — go off here
+        if (velocity.length() < shot.bounce().restSpeed()) {
+            velocity.multiply(0);
+            resting = true; // settled — wait on Duration or a mob bump, don't go off yet
             return;
         }
         if (++age >= Math.max(1, spec.lifetimeTicks())) {
             terminate(position.toLocation(world));
+        }
+    }
+
+    /**
+     * A BOUNCE shot that's rolled to a stop: sits in place rather than detonating
+     * the instant it settles, watching for a mob to bump it and otherwise waiting
+     * out its lifetime cap (set with DURATION) before it goes off where it lies.
+     */
+    private void tickResting() {
+        Location here = position.toLocation(world);
+        if (!inBounds(here)) {
+            cancel(); // chunk unloaded — disarm quietly rather than force-load it
+            return;
+        }
+        if (hitEntityStops(here, new Vector(0, 0, 0))) {
+            terminate(here); // a mob bumped it — go off now
+            return;
+        }
+        if (++age >= Math.max(1, spec.lifetimeTicks())) {
+            terminate(here); // timed out — go off where it settled
         }
     }
 

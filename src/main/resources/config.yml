@@ -103,6 +103,11 @@ bounce:
   # Extra horizontal drag applied on TOP of restitution when the bounce is off
   # a floor specifically, so it rolls to a stop rather than skating sideways.
   floor-friction: 0.5
+  # Blocks/tick below which a bounce is considered settled — it stops rattling
+  # and sits armed (waiting on Duration or a mob bump) instead of detonating
+  # right away. Keep this low: it's meant to catch a near-standstill, not just
+  # "slower" — a high value makes it stop while still visibly moving fast.
+  rest-speed: 0.05
 
 # LIFETIME — adds range so a shot flies farther; stacks per copy. Expressed as a
 # fixed DISTANCE (blocks), converted to ticks against the shot's speed, so it

@@ -32,7 +32,7 @@ public final class Showcase {
                 // on purpose — Nova/Vacuum/Heal Bomb are meant to go off around you)
                 new Entry(Material.DIAMOND_SWORD, List.of("PUSH", "EXPAND", "EXPAND"), "Nova"),
                 new Entry(Material.DIAMOND_SWORD, List.of("PULL", "EXPAND"), "Vacuum"),
-                new Entry(Material.DIAMOND_SWORD, List.of("DAMAGE", "AMPLIFY"), "Fireball"),
+                new Entry(Material.DIAMOND_SWORD, List.of("DAMAGE", "AMPLIFY", "FIRE"), "Fireball"),
                 new Entry(Material.DIAMOND_SWORD,
                         List.of("DAMAGE", "MULTISHOT", "SPREAD", "LIFETIME"), "Shotgun"),
                 new Entry(Material.DIAMOND_SWORD, List.of("DAMAGE", "PIERCE", "LIFETIME"), "Ray Gun"),

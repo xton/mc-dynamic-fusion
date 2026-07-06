@@ -11,6 +11,8 @@ import org.bukkit.World;
 import org.bukkit.block.BlockState;
 import org.bukkit.entity.Player;
 
+import com.xton.fusion.util.WorldFilter;
+
 /**
  * Ambient glow above placed Fusion Machines, so one stands out from a plain
  * enchanting table. Machines are marked only by a block-entity PDC flag (no
@@ -24,9 +26,11 @@ public final class MachineGlowTask implements Runnable {
     private static final int CHUNK_RADIUS = 2;
 
     private final FusionMachineMenu menu;
+    private final WorldFilter worldFilter;
 
-    public MachineGlowTask(FusionMachineMenu menu) {
+    public MachineGlowTask(FusionMachineMenu menu, WorldFilter worldFilter) {
         this.menu = menu;
+        this.worldFilter = worldFilter;
     }
 
     @Override
@@ -34,6 +38,9 @@ public final class MachineGlowTask implements Runnable {
         Set<Long> glowed = new HashSet<>(); // don't double-glow a machine two players both see
         for (Player player : Bukkit.getOnlinePlayers()) {
             World world = player.getWorld();
+            if (!worldFilter.isAllowed(world)) {
+                continue;
+            }
             int pcx = player.getLocation().getBlockX() >> 4;
             int pcz = player.getLocation().getBlockZ() >> 4;
             for (int dx = -CHUNK_RADIUS; dx <= CHUNK_RADIUS; dx++) {

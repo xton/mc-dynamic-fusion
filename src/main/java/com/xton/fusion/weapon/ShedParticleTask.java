@@ -6,6 +6,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
 import com.xton.fusion.item.FusedItemReader;
+import com.xton.fusion.util.WorldFilter;
 
 /**
  * Ambient polish: every tick-period, players holding a fused weapon shed a few
@@ -14,16 +15,18 @@ import com.xton.fusion.item.FusedItemReader;
 public final class ShedParticleTask implements Runnable {
 
     private final FusedItemReader reader;
+    private final WorldFilter worldFilter;
 
-    public ShedParticleTask(FusedItemReader reader) {
+    public ShedParticleTask(FusedItemReader reader, WorldFilter worldFilter) {
         this.reader = reader;
+        this.worldFilter = worldFilter;
     }
 
     @Override
     public void run() {
         for (Player player : Bukkit.getOnlinePlayers()) {
             ItemStack hand = player.getInventory().getItemInMainHand();
-            if (!reader.isFused(hand)) {
+            if (!reader.isFused(hand) || !worldFilter.isAllowed(player.getWorld())) {
                 continue;
             }
             player.getWorld().spawnParticle(Particle.ENCHANT,

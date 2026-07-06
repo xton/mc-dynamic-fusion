@@ -4,6 +4,12 @@
 # console. Useful for diagnosing; set false to quiet it down.
 debug-logging: true
 
+# If non-empty, fusion effects (weapon swings/shots, worn effects, Golden Brush,
+# machine glow) only fire in these worlds — elsewhere a fused item just acts
+# vanilla. A fused item carried into another world (portal, teleport) keeps its
+# modifiers; they simply won't trigger there. Empty (the default) = unrestricted.
+allowed-worlds: []
+
 fusion:
   # Maximum modifiers stored on one item. Technical guard on PDC/loop size,
   # not a balance lever — excess is dropped from the tail.

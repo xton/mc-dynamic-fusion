@@ -12,6 +12,7 @@ import com.xton.fusion.item.FusedItemReader;
 import com.xton.fusion.modifier.ModifierRegistry;
 import com.xton.fusion.modifier.ModifierStack;
 import com.xton.fusion.projectile.ProjectileLauncher;
+import com.xton.fusion.util.WorldFilter;
 
 /**
  * Bow override: a fused bow throws its weapon effect downrange. On release we
@@ -25,18 +26,23 @@ public final class ProjectileListener implements Listener {
     private final FusedItemReader reader;
     private final ModifierRegistry registry;
     private final ProjectileLauncher launcher;
+    private final WorldFilter worldFilter;
 
     public ProjectileListener(FusedItemReader reader, ModifierRegistry registry,
-                              ProjectileLauncher launcher) {
+                              ProjectileLauncher launcher, WorldFilter worldFilter) {
         this.reader = reader;
         this.registry = registry;
         this.launcher = launcher;
+        this.worldFilter = worldFilter;
     }
 
     @EventHandler
     public void onShoot(EntityShootBowEvent event) {
         if (!(event.getEntity() instanceof Player player)) {
             return;
+        }
+        if (!worldFilter.isAllowed(player.getWorld())) {
+            return; // outside the allowed worlds — leave the vanilla arrow uncancelled
         }
         ItemStack bow = event.getBow();
         if (bow == null || !reader.isFused(bow)) {

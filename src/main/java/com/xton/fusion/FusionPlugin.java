@@ -67,6 +67,7 @@ import com.xton.fusion.selftest.SelfTest;
 import com.xton.fusion.util.BukkitTaskScheduler;
 import com.xton.fusion.util.CooldownMap;
 import com.xton.fusion.util.Scheduler;
+import com.xton.fusion.util.WorldFilter;
 import com.xton.fusion.wearable.JetpackTask;
 import com.xton.fusion.wearable.WornEffectTask;
 import com.xton.fusion.weapon.ProjectileListener;
@@ -84,6 +85,7 @@ public final class FusionPlugin extends JavaPlugin {
         int fusionCost = getConfig().getInt("fusion.cost", 0);
         long swingCooldownMs = getConfig().getLong("cooldown.swing-ms", 200);
         boolean debug = getConfig().getBoolean("debug-logging", true);
+        WorldFilter worldFilter = new WorldFilter(getConfig().getStringList("allowed-worlds"));
 
         ModifierRegistry registry = new ModifierRegistry()
                 // Emitters (concrete elements) and their complements.
@@ -175,9 +177,9 @@ public final class FusionPlugin extends JavaPlugin {
 
         CooldownMap cooldown = new CooldownMap(swingCooldownMs);
         getServer().getPluginManager().registerEvents(
-                new WeaponEventListener(reader, registry, launcher, cooldown), this);
+                new WeaponEventListener(reader, registry, launcher, cooldown, worldFilter), this);
         getServer().getPluginManager().registerEvents(
-                new ProjectileListener(reader, registry, launcher), this);
+                new ProjectileListener(reader, registry, launcher, worldFilter), this);
 
         // Golden Brush: brushing a fused BRUSH with TREASURE (gold) rolls a loot table.
         GoldenBrush goldenBrush = new GoldenBrush(new GoldenBrush.Settings(
@@ -186,7 +188,7 @@ public final class FusionPlugin extends JavaPlugin {
                 getConfig().getDouble("golden-brush.proc-chance-cap", 0.75)));
         CooldownMap brushCooldown = new CooldownMap(getConfig().getLong("golden-brush.cooldown-ms", 250));
         getServer().getPluginManager().registerEvents(
-                new GoldenBrushListener(reader, registry, launcher, goldenBrush, brushCooldown), this);
+                new GoldenBrushListener(reader, registry, launcher, goldenBrush, brushCooldown, worldFilter), this);
 
         // Fusion Machine: placeable enchanting table, tagged via block-entity PDC
         // (no side file), opening the anvil-style fusion GUI on right-click.
@@ -195,25 +197,26 @@ public final class FusionPlugin extends JavaPlugin {
 
         // Ambient particle shedding (held fused weapons), toggleable.
         if (getConfig().getBoolean("effect.particle-shedding", true)) {
-            scheduler.runRepeating(new ShedParticleTask(reader), 40,
+            scheduler.runRepeating(new ShedParticleTask(reader, worldFilter), 40,
                     getConfig().getLong("effect.shed-period-ticks", 4));
         }
 
         // Ambient glow above placed Fusion Machines, so they stand out.
         if (getConfig().getBoolean("effect.machine-glow", true)) {
-            scheduler.runRepeating(new MachineGlowTask(menu), 60,
+            scheduler.runRepeating(new MachineGlowTask(menu, worldFilter), 60,
                     getConfig().getLong("effect.machine-glow-period-ticks", 15));
         }
 
         // Worn-armor effects (GLOW makes the wearer glow), refreshed on a repeat.
-        scheduler.runRepeating(new WornEffectTask(reader), 40,
+        scheduler.runRepeating(new WornEffectTask(reader, worldFilter), 40,
                 getConfig().getLong("worn.effect-period-ticks", 100));
 
         // Jetpack: a fused LIFT chestplate/elytra ramps a slow rise while airborne
         // and holding jump. Ticked every tick so the ramp feels smooth.
         scheduler.runRepeating(new JetpackTask(reader,
                 getConfig().getDouble("worn.jetpack-thrust-per-tick", 0.03),
-                getConfig().getDouble("worn.jetpack-max-velocity", 0.5)), 0, 1);
+                getConfig().getDouble("worn.jetpack-max-velocity", 0.5),
+                worldFilter), 0, 1);
 
         // Headless functional self-test (`/fusion test`), driving the real
         // projectile/burst code against a live world — used by the smoke boot.

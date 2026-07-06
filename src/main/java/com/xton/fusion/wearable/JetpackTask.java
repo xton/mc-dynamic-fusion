@@ -1,58 +1,121 @@
 package com.xton.fusion.wearable;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Input;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.Vector;
 
 import com.xton.fusion.item.FusedItemReader;
-import com.xton.fusion.modifier.impl.LiftModifier;
 import com.xton.fusion.util.WorldFilter;
 
 /**
- * The Jetpack: while airborne and holding jump, a player wearing a fused
- * chestplate/elytra with LIFT rises smoothly, ramping their vertical velocity up
- * to a capped maximum for as long as they keep holding it — a hover/ascend, not
- * a single jump-boost. A normal jump from the ground is untouched (this only
- * acts once the player has left the ground); releasing jump lets gravity take
- * back over immediately.
+ * The Jetpack: a player wearing a fused chestplate/elytra with LIFT gets
+ * directional thruster control while airborne, not an elytra glide (vanilla
+ * gliding is blocked outright for a LIFT item — see {@link JetpackGlideListener}
+ * — so its look-tied auto-forward never fights this).
+ *
+ * <p>Holding jump ramps vertical velocity up to a capped maximum — a hover/
+ * ascend, not a single jump-boost; holding crouch overrides that and lets
+ * gravity take back over, so pressing jump again resumes the climb. Forward/
+ * back/strafe-left/right each nudge horizontal velocity in whichever direction
+ * the player is <em>currently</em> facing — world-space momentum, not
+ * look-locked, so turning around doesn't redirect speed already built up; only
+ * fresh thrust does. A normal jump from the ground is untouched (this only acts
+ * once the player has left the ground).
  *
  * <p>Ticked every tick (not on the coarser worn-effect cadence) so the ramp
- * feels smooth and responsive to the held key, via {@link Player#getCurrentInput()}
- * — Paper's per-tick snapshot of the client's raw movement/jump input, distinct
- * from the discrete {@code PlayerJumpEvent} a single jump fires.
+ * feels smooth and responsive to the held keys, via
+ * {@link Player#getCurrentInput()} — Paper's per-tick snapshot of the client's
+ * raw movement/jump input, distinct from the discrete {@code PlayerJumpEvent} a
+ * single jump fires.
  */
 public final class JetpackTask implements Runnable {
 
     private final FusedItemReader reader;
     private final double thrustPerTick;
     private final double maxVelocity;
+    private final double lateralThrustPerTick;
+    private final double lateralMaxVelocity;
     private final WorldFilter worldFilter;
 
-    public JetpackTask(FusedItemReader reader, double thrustPerTick, double maxVelocity, WorldFilter worldFilter) {
+    public JetpackTask(FusedItemReader reader, double thrustPerTick, double maxVelocity,
+                       double lateralThrustPerTick, double lateralMaxVelocity, WorldFilter worldFilter) {
         this.reader = reader;
         this.thrustPerTick = thrustPerTick;
         this.maxVelocity = maxVelocity;
+        this.lateralThrustPerTick = lateralThrustPerTick;
+        this.lateralMaxVelocity = lateralMaxVelocity;
         this.worldFilter = worldFilter;
     }
 
     @Override
     public void run() {
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (player.isOnGround() || !player.getCurrentInput().isJump() || !wearsLift(player)
+            if (player.isOnGround() || !WornLift.isWorn(reader, player)
                     || !worldFilter.isAllowed(player.getWorld())) {
-                continue; // grounded jumps stay vanilla; not holding jump just falls normally
+                continue; // grounded jumps stay vanilla
             }
+            Input input = player.getCurrentInput();
             Vector v = player.getVelocity();
-            if (v.getY() < maxVelocity) {
-                player.setVelocity(v.setY(Math.min(maxVelocity, v.getY() + thrustPerTick)));
+            boolean changed = false;
+
+            if (input.isSneak()) {
+                // crouch brakes the climb and lets gravity take back over; jump resumes it
+            } else if (input.isJump() && v.getY() < maxVelocity) {
+                v.setY(Math.min(maxVelocity, v.getY() + thrustPerTick));
+                changed = true;
+            }
+
+            Vector thrust = lateralThrust(player, input);
+            if (thrust.lengthSquared() > 0) {
+                Vector horizontal = new Vector(v.getX(), 0, v.getZ()).add(thrust);
+                double speed = horizontal.length();
+                if (speed > lateralMaxVelocity) {
+                    horizontal.multiply(lateralMaxVelocity / speed);
+                }
+                v.setX(horizontal.getX());
+                v.setZ(horizontal.getZ());
+                changed = true;
+            }
+
+            if (changed) {
+                player.setVelocity(v);
             }
         }
     }
 
-    /** True if the chestplate slot (a chestplate or elytra) is fused with LIFT. */
-    private boolean wearsLift(Player player) {
-        ItemStack chest = player.getInventory().getChestplate();
-        return chest != null && reader.isFused(chest) && reader.readModifierIds(chest).contains(LiftModifier.ID);
+    /**
+     * Thrust in the player's <em>current</em> facing direction (flattened to the
+     * horizontal plane), combining whichever of forward/back/left/right are held.
+     * Opposing keys (e.g. forward+back) cancel to no thrust.
+     */
+    private Vector lateralThrust(Player player, Input input) {
+        if (!input.isForward() && !input.isBackward() && !input.isLeft() && !input.isRight()) {
+            return new Vector(0, 0, 0);
+        }
+        Vector forward = player.getLocation().getDirection().setY(0);
+        if (forward.lengthSquared() < 1.0e-6) {
+            forward = new Vector(0, 0, 1); // looking straight up/down: pick an arbitrary forward
+        } else {
+            forward.normalize();
+        }
+        Vector right = forward.clone().crossProduct(new Vector(0, 1, 0));
+        Vector dir = new Vector(0, 0, 0);
+        if (input.isForward()) {
+            dir.add(forward);
+        }
+        if (input.isBackward()) {
+            dir.subtract(forward);
+        }
+        if (input.isRight()) {
+            dir.add(right);
+        }
+        if (input.isLeft()) {
+            dir.subtract(right);
+        }
+        if (dir.lengthSquared() < 1.0e-9) {
+            return new Vector(0, 0, 0);
+        }
+        return dir.normalize().multiply(lateralThrustPerTick);
     }
 }

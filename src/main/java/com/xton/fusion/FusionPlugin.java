@@ -69,6 +69,7 @@ import com.xton.fusion.util.BukkitTaskScheduler;
 import com.xton.fusion.util.CooldownMap;
 import com.xton.fusion.util.Scheduler;
 import com.xton.fusion.util.WorldFilter;
+import com.xton.fusion.wearable.JetpackGlideListener;
 import com.xton.fusion.wearable.JetpackTask;
 import com.xton.fusion.wearable.WornEffectTask;
 import com.xton.fusion.weapon.ProjectileListener;
@@ -134,7 +135,7 @@ public final class FusionPlugin extends JavaPlugin {
                 .register(new DelayModifier())
                 .register(new DetectModifier(
                         getConfig().getDouble("detect.range", 3.0),
-                        getConfig().getInt("detect.max-wait-ticks", 1200)))
+                        getConfig().getInt("detect.max-wait-ticks", 12000)))
                 .register(new TrailModifier())
                 .register(new TeleportModifier())
                 // Flight tuning: gravity/lob, trail visibility, absolute speed & lifetime.
@@ -215,11 +216,16 @@ public final class FusionPlugin extends JavaPlugin {
         scheduler.runRepeating(new WornEffectTask(reader, worldFilter), 40,
                 getConfig().getLong("worn.effect-period-ticks", 100));
 
-        // Jetpack: a fused LIFT chestplate/elytra ramps a slow rise while airborne
-        // and holding jump. Ticked every tick so the ramp feels smooth.
+        // Jetpack: a fused LIFT chestplate/elytra is a directional thruster, not
+        // an elytra glide — block vanilla gliding outright (its own look-tied
+        // auto-forward would fight this) and ramp a controlled rise/lateral
+        // drift instead. Ticked every tick so it feels smooth.
+        getServer().getPluginManager().registerEvents(new JetpackGlideListener(reader, worldFilter), this);
         scheduler.runRepeating(new JetpackTask(reader,
-                getConfig().getDouble("worn.jetpack-thrust-per-tick", 0.03),
-                getConfig().getDouble("worn.jetpack-max-velocity", 0.5),
+                getConfig().getDouble("worn.jetpack-thrust-per-tick", 0.1),
+                getConfig().getDouble("worn.jetpack-max-velocity", 0.7),
+                getConfig().getDouble("worn.jetpack-lateral-thrust-per-tick", 0.05),
+                getConfig().getDouble("worn.jetpack-lateral-max-velocity", 0.6),
                 worldFilter), 0, 1);
 
         // Headless functional self-test (`/fusion test`), driving the real

@@ -42,7 +42,7 @@ Noita-style. Modifiers come in two kinds:
 | *xf (fly)* | **Multishot** | Rabbit's Foot, Slime Ball | launches extra projectiles |
 | *xf (fly)* | **Spread** | Feather, Sugar | scatters the aim |
 | *xf (fly)* | **Pierce** | Arrow, Quartz | punches through soft blocks & applies its effects at every occupied cell/entity in its path |
-| *xf (fly)* | **Bounce** | Slime Block, Rabbit Hide | ricochets off blocks, rolling to a rest before it goes off (or on a direct mob hit) |
+| *xf (fly)* | **Bounce** | Slime Block, Rabbit Hide | ricochets off blocks, then rolls to a rest and sits armed until it expires or a mob hits it directly |
 | *xf (fly)* | **Homing** | Compass | curves to chase the nearest creature mid-flight (stacks sharpen the turn) |
 | *xf (fly)* | **Trail** | Trident, Prismarine Shard | inverse of Pierce — applies environmental effects at every *empty-air* cell it flies through |
 | *xf (fly)* | **Lifetime** | Gunpowder, Redstone | adds a fixed range (same distance fast or slow) |
@@ -84,7 +84,9 @@ is the explicit way.)
 `Spawn` children launch along the *reflected* heading (off the impact normal) and
 just clear the face — so a cluster bomb that hits a wall scatters back into the
 open instead of wasting its children against the same block. `Bounce` uses the
-same reflection to keep a shot alive, ricocheting until it expires or hits a mob.
+same reflection to keep a shot alive, ricocheting until it rolls to a rest —
+at which point it sits armed rather than detonating, only going off when it
+expires or a mob hits it directly.
 
 **Environmental effects apply in stack order.** The block-affecting emitters
 (Mining/Fire/Ice/Deposit) run left-to-right at each application point, so

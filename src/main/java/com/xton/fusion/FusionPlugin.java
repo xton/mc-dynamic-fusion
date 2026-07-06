@@ -171,7 +171,8 @@ public final class FusionPlugin extends JavaPlugin {
                 getConfig().getDouble("environmental.max-hardness", 100.0));
         BounceSettings bounceSettings = new BounceSettings(
                 getConfig().getDouble("bounce.restitution", 0.55),
-                getConfig().getDouble("bounce.floor-friction", 0.5));
+                getConfig().getDouble("bounce.floor-friction", 0.5),
+                getConfig().getDouble("bounce.rest-speed", 0.05));
         ProjectileLauncher launcher = new ProjectileLauncher(this, burst,
                 new WeaponBuilder.Defaults(
                         getConfig().getDouble("projectile.base-speed", 1.6),

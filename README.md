@@ -51,11 +51,11 @@ Noita-style. Modifiers come in two kinds:
 | *xf (fly)* | **Visible** / **Invisible** | Glow Ink Sac / Ink Sac | force the flight trail on or off (override the weapon-type default) |
 | *xf (fly)* | **Speed:_n_** | *(parameterized)* | pin the launch speed to an exact value (`Speed:0.6` slow, `Speed:3` fast) |
 | *xf (fly)* | **Duration:_n_** | *(parameterized)* | pin the lifetime to _n_ seconds (`Duration:4`) — absolute, unlike Lifetime's added range |
-| **worn** | **Glow** | Lantern, Glow Berries | fused onto **armor**, gives you a powerful glowing outline for as long as it's worn |
-| **worn** | **Lift** | Breeze Rod | fused onto a **chestplate/elytra**, hold jump while airborne to rise smoothly (capped) — a jetpack hover |
+| **worn** | **Glow** | Lantern, Glow Berries | fused onto **armor**, gives you a powerful glowing outline for others to see, plus a client-side light tracked in front of your face so you can actually see by it too (not night vision) |
+| **worn** | **Lift** | Breeze Rod | fused onto a **chestplate/elytra**, a directional jetpack: hold jump to rise (capped), crouch to brake and fall, forward/back/strafe to drift — blocks vanilla elytra gliding so its look-tied auto-forward can't fight it |
 
 Because these are small primitives, weapons **compose**: a nova is
-`Push · Expand · Expand`; a fireball is `Damage · Amplify`; a shotgun is
+`Push · Expand · Expand`; a fireball is `Damage · Amplify · Fire`; a shotgun is
 `Damage · Multishot · Spread`; a ray gun is `Pierce · Lifetime`; a mining laser
 is a pickaxe with `Mining · Pierce · Lifetime`. The new emitters compose the
 same way: a flamethrower is `Fire · Pierce · Lifetime`; a **block-replacement

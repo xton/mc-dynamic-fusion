@@ -160,8 +160,8 @@ detect:
   # Base trigger radius; EXPAND (placed right after DETECT) widens it.
   range: 3.0
   # How long (ticks) an armed mine waits before quietly disarming if nothing
-  # ever triggers it. 1200 = 60s.
-  max-wait-ticks: 1200
+  # ever triggers it. 12000 = 10min.
+  max-wait-ticks: 12000
 
 # GOLDEN BRUSH — a fused BRUSH with TREASURE (from gold). Brushing any block has
 # a chance to cough up loot; more gold (TREASURE level) procs more often and
@@ -178,13 +178,39 @@ golden-brush:
 worn:
   # How often (ticks) the worn-effect task refreshes (GLOW's glowing outline, etc.).
   effect-period-ticks: 100
-  # Jetpack (LIFT): while airborne and holding jump, vertical velocity ramps up
-  # by this much each tick (a smooth rise, not a snap to full speed)...
-  jetpack-thrust-per-tick: 0.03
-  # ...capped at this vertical velocity (~0.42 is a normal jump's; 0.5 is a slow,
-  # gentle hover-climb). A tap-jump from the ground is untouched either way —
-  # this only kicks in once the wearer has left the ground.
-  jetpack-max-velocity: 0.5
+  # GLOW's first-person half: Glowing (above) is invisible to the wearer
+  # themself (Minecraft never renders your own body in first person), so a
+  # client-side-only LIGHT block (packet-based, sent only to the wearer via
+  # Player#sendBlockChange — the real world is never touched) is tracked this
+  # many blocks in front of their eyes. The client's own lighting engine
+  # recomputes real brightness from it, so they actually see better by it —
+  # not night vision.
+  glow-light-distance: 1.5
+  # How often (ticks) that light re-checks/moves to track where they're
+  # looking. It's just a packet send (no real relight cost), so this can run
+  # every tick for the smoothest tracking the block grid allows.
+  glow-light-period-ticks: 1
+  # Jetpack (LIFT) — a directional thruster, not an elytra glide: vanilla
+  # elytra gliding is blocked outright for a LIFT-fused chestplate/elytra (its
+  # own look-tied auto-forward would fight our control scheme), replaced
+  # entirely by the tunables below.
+  #
+  # While airborne and holding jump, vertical velocity ramps up by this much
+  # each tick (a smooth rise, not a snap to full speed)...
+  jetpack-thrust-per-tick: 0.1
+  # ...capped at this vertical velocity (~0.42 is a normal jump's; a gentle
+  # hover-climb is slow). A tap-jump from the ground is untouched either way —
+  # this only kicks in once the wearer has left the ground. Holding crouch
+  # overrides the rise and lets gravity take back over; press jump again to
+  # resume climbing.
+  jetpack-max-velocity: 0.7
+  # Lateral thrust: forward/back/strafe-left/strafe-right (whichever way you're
+  # currently facing) nudge your horizontal velocity each tick you hold them —
+  # world-space momentum, not look-locked, so turning around doesn't redirect
+  # speed you've already built up.
+  jetpack-lateral-thrust-per-tick: 0.05
+  # Cap on horizontal jetpack speed (blocks/tick).
+  jetpack-lateral-max-velocity: 0.6
 
 cooldown:
   # Swing cooldown in milliseconds (per player).

@@ -69,6 +69,8 @@ import com.xton.fusion.util.BukkitTaskScheduler;
 import com.xton.fusion.util.CooldownMap;
 import com.xton.fusion.util.Scheduler;
 import com.xton.fusion.util.WorldFilter;
+import com.xton.fusion.wearable.GlowLightTask;
+import com.xton.fusion.wearable.JetpackGlideListener;
 import com.xton.fusion.wearable.JetpackTask;
 import com.xton.fusion.wearable.WornEffectTask;
 import com.xton.fusion.weapon.ProjectileListener;
@@ -77,6 +79,10 @@ import com.xton.fusion.weapon.WeaponEventListener;
 
 /** Entry point — wires up the fusion loop and registered modifiers. */
 public final class FusionPlugin extends JavaPlugin {
+
+    // Tracks GLOW's in-front-of-face light blocks so onDisable can clear them —
+    // otherwise a server stop/reload could leave a stray LIGHT block behind.
+    private GlowLightTask glowLightTask;
 
     @Override
     public void onEnable() {
@@ -134,7 +140,7 @@ public final class FusionPlugin extends JavaPlugin {
                 .register(new DelayModifier())
                 .register(new DetectModifier(
                         getConfig().getDouble("detect.range", 3.0),
-                        getConfig().getInt("detect.max-wait-ticks", 1200)))
+                        getConfig().getInt("detect.max-wait-ticks", 12000)))
                 .register(new TrailModifier())
                 .register(new TeleportModifier())
                 // Flight tuning: gravity/lob, trail visibility, absolute speed & lifetime.
@@ -215,11 +221,26 @@ public final class FusionPlugin extends JavaPlugin {
         scheduler.runRepeating(new WornEffectTask(reader, worldFilter), 40,
                 getConfig().getLong("worn.effect-period-ticks", 100));
 
-        // Jetpack: a fused LIFT chestplate/elytra ramps a slow rise while airborne
-        // and holding jump. Ticked every tick so the ramp feels smooth.
+        // GLOW's other half: Minecraft never renders your own body in first
+        // person, so the Glowing effect above is invisible to the wearer
+        // themself — track a real, invisible light just in front of their eyes
+        // so they see something too.
+        glowLightTask = new GlowLightTask(reader, worldFilter,
+                getConfig().getDouble("worn.glow-light-distance", 1.5));
+        getServer().getPluginManager().registerEvents(glowLightTask, this);
+        scheduler.runRepeating(glowLightTask, 20,
+                getConfig().getLong("worn.glow-light-period-ticks", 1));
+
+        // Jetpack: a fused LIFT chestplate/elytra is a directional thruster, not
+        // an elytra glide — block vanilla gliding outright (its own look-tied
+        // auto-forward would fight this) and ramp a controlled rise/lateral
+        // drift instead. Ticked every tick so it feels smooth.
+        getServer().getPluginManager().registerEvents(new JetpackGlideListener(reader, worldFilter), this);
         scheduler.runRepeating(new JetpackTask(reader,
-                getConfig().getDouble("worn.jetpack-thrust-per-tick", 0.03),
-                getConfig().getDouble("worn.jetpack-max-velocity", 0.5),
+                getConfig().getDouble("worn.jetpack-thrust-per-tick", 0.1),
+                getConfig().getDouble("worn.jetpack-max-velocity", 0.7),
+                getConfig().getDouble("worn.jetpack-lateral-thrust-per-tick", 0.05),
+                getConfig().getDouble("worn.jetpack-lateral-max-velocity", 0.6),
                 worldFilter), 0, 1);
 
         // Headless functional self-test (`/fusion test`), driving the real
@@ -234,6 +255,15 @@ public final class FusionPlugin extends JavaPlugin {
         }
 
         getLogger().info("DynamicFusion enabled.");
+    }
+
+    @Override
+    public void onDisable() {
+        // Clear any GLOW light blocks still tracked so a stop/reload never
+        // leaves a stray Material.LIGHT behind in the world.
+        if (glowLightTask != null) {
+            glowLightTask.clearAll();
+        }
     }
 
     /**

@@ -145,6 +145,26 @@ public final class WeaponBuilder {
         stack.push(child);
     }
 
+    /**
+     * Emitter: like {@link #emitSpawn} but the child doesn't fire at the terminus
+     * — it arms there instead (speed 0, like a DELAY child, so it sits in place),
+     * blinking while it watches for a nearby creature within {@code baseRange}
+     * (a DETECT sensor element, so a following EXPAND widens it exactly like it
+     * widens a MINING bore) and detonating the moment one enters. Later
+     * modifiers still build the child's on-trigger payload (so
+     * {@code DETECT EXPAND DAMAGE} arms a wider trap that then blasts).
+     * {@code maxWaitTicks} bounds how long an un-triggered mine stays armed
+     * before it quietly disarms.
+     */
+    public void emitDetect(double baseRange, int maxWaitTicks) {
+        ProjectileSpec child = newProjectile();
+        child.addAoe(new AoeSpec(AoeKind.DETECT, baseRange, 0));
+        child.setSpeed(0);                     // arms in place, doesn't fly
+        child.setLifetimeTicks(maxWaitTicks);  // safety cap: disarms if never triggered
+        stack.peek().addSpawn(child);
+        stack.push(child);
+    }
+
     /** Walk the modifiers in order, letting each act, and return the root. */
     public ProjectileSpec compile(ModifierStack modifiers) {
         for (Modifier modifier : modifiers.modifiers()) {

@@ -153,6 +153,16 @@ spawn:
   # its children 1, and so on; past this a SPAWN simply doesn't fire.
   max-generation: 2
 
+# DETECT — like SPAWN, but the child arms in place (blinking) instead of firing
+# immediately, and detonates the moment a creature steps within its radius (a
+# trap/mine). Shares SPAWN's max-generation nesting cap.
+detect:
+  # Base trigger radius; EXPAND (placed right after DETECT) widens it.
+  range: 3.0
+  # How long (ticks) an armed mine waits before quietly disarming if nothing
+  # ever triggers it. 1200 = 60s.
+  max-wait-ticks: 1200
+
 # GOLDEN BRUSH — a fused BRUSH with TREASURE (from gold). Brushing any block has
 # a chance to cough up loot; more gold (TREASURE level) procs more often and
 # unlocks rarer finds.

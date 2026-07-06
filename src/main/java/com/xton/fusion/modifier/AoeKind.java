@@ -27,7 +27,9 @@ public enum AoeKind {
     /** Freezes in radius: water→ice, lava→obsidian, puts out fire, chills mobs. */
     ICE,
     /** Fills the empty cells in radius with a block ({@code material}). */
-    DEPOSIT;
+    DEPOSIT,
+    /** A sensor, not a burst: marks a DETECT child's trigger radius (widened by EXPAND). */
+    DETECT;
 
     /** True for the block/environment-affecting kinds applied along the flight. */
     public boolean isEnvironmental() {

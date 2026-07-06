@@ -111,6 +111,8 @@ latent_modifiers:
   # ---- Structural (reagents) ----
   CLOCK:                  # DELAY:2 — a 2-second timed charge (parameterized)
     - DELAY:2
+  TRIPWIRE_HOOK:          # DETECT — arms in place, triggers on a nearby creature
+    - DETECT
   COW_SPAWN_EGG:          # MOB:COW — the Cow Launcher (parameterized MOB:<type>)
     - MOB:COW
   LANTERN:                # GLOW — worn armor keeps a light on you

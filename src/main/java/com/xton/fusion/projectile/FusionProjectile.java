@@ -78,6 +78,11 @@ public final class FusionProjectile extends BukkitRunnable {
     private static final double HOMING_RANGE = 12.0;
     /** Max radians a HOMING shot turns per tick, per HOMING stack. */
     private static final double HOMING_TURN_PER_STACK = 0.13;
+    /** Ticks per on/off half-cycle of an armed DETECT mine's blink. */
+    private static final int DETECT_BLINK_PERIOD_TICKS = 10;
+    /** Warning-light red for the DETECT blink. */
+    private static final Particle.DustOptions DETECT_BLINK =
+            new Particle.DustOptions(org.bukkit.Color.fromRGB(255, 70, 40), 1.2f);
 
     private final Plugin plugin;
     private final Payload payload;
@@ -119,6 +124,10 @@ public final class FusionProjectile extends BukkitRunnable {
     public void run() {
         if (world == null) {
             terminate(null);
+            return;
+        }
+        if (spec.isDetect()) {
+            tickDetect();
             return;
         }
         if (spec.hasGravity()) {
@@ -246,6 +255,51 @@ public final class FusionProjectile extends BukkitRunnable {
             }
         }
         return best;
+    }
+
+    // ----- DETECT: armed in place, watching for a creature to trigger it -----
+
+    /**
+     * An armed DETECT child doesn't fly (its speed is pinned to 0) — it sits at
+     * its spawn point, blinking, and scans for a living creature within its
+     * sensor radius each tick. The moment one enters, it detonates in place
+     * (the normal terminus pipeline: burst, environmental sweep, its own SPAWN/
+     * DETECT children, TELEPORT); if nothing ever does within its lifetime cap,
+     * it quietly disarms instead — no burst.
+     */
+    private void tickDetect() {
+        Location here = position.toLocation(world);
+        if (!inBounds(here)) {
+            cancel(); // chunk unloaded — disarm quietly rather than force-load it
+            return;
+        }
+        blinkDetect(here);
+        if (nearestDetectTarget(here) != null) {
+            terminate(here);
+            return;
+        }
+        if (++age >= Math.max(1, spec.lifetimeTicks())) {
+            cancel(); // timed out un-triggered
+        }
+    }
+
+    /** A slow on/off pulse so an armed mine reads as "watching", not just sitting inert. */
+    private void blinkDetect(Location here) {
+        if ((age / DETECT_BLINK_PERIOD_TICKS) % 2 == 0) {
+            world.spawnParticle(Particle.DUST, here.clone().add(0, 0.25, 0), 1, 0.05, 0.05, 0.05, 0.0,
+                    DETECT_BLINK);
+        }
+    }
+
+    /** The nearest living creature (not the caster, not a statue) within the sensor's radius. */
+    private LivingEntity nearestDetectTarget(Location here) {
+        double range = spec.detectAoe().radius();
+        for (Entity entity : world.getNearbyEntities(here, range, range, range)) {
+            if (entity instanceof LivingEntity living && !living.equals(caster) && !(living instanceof ArmorStand)) {
+                return living;
+            }
+        }
+        return null;
     }
 
     private boolean inBounds(Location loc) {

@@ -12,6 +12,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.util.Vector;
 
+import com.xton.fusion.modifier.AoeKind;
 import com.xton.fusion.modifier.AoeSpec;
 import com.xton.fusion.modifier.ModifierStack;
 import com.xton.fusion.modifier.ProjectileSpec;
@@ -72,8 +73,8 @@ public final class ProjectileLauncher {
     public Payload buildPayload(ProjectileSpec spec) {
         List<PayloadEffect> effects = new ArrayList<>();
         for (AoeSpec aoe : spec.payload()) {
-            if (aoe.kind().isEnvironmental()) {
-                continue; // applied along the flight, not delivered as a terminus burst
+            if (aoe.kind().isEnvironmental() || aoe.kind() == AoeKind.DETECT) {
+                continue; // environmental: applied along the flight; DETECT: a sensor, not a burst
             }
             effects.add(new BurstEffect(burst, aoe));
         }

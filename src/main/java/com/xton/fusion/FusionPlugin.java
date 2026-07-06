@@ -60,6 +60,7 @@ import com.xton.fusion.modifier.impl.TrailModifier;
 import com.xton.fusion.modifier.impl.TreasureModifier;
 import com.xton.fusion.modifier.impl.VisibleModifier;
 import com.xton.fusion.projectile.AoeBurst;
+import com.xton.fusion.projectile.BounceSettings;
 import com.xton.fusion.projectile.EnvironmentalAoe;
 import com.xton.fusion.projectile.ProjectileLauncher;
 import com.xton.fusion.weapon.GoldenBrush;
@@ -139,7 +140,7 @@ public final class FusionPlugin extends JavaPlugin {
                 .register(new SpawnModifier())
                 .register(new DelayModifier())
                 .register(new DetectModifier(
-                        getConfig().getDouble("detect.range", 3.0),
+                        getConfig().getDouble("detect.range", 1.5),
                         getConfig().getInt("detect.max-wait-ticks", 12000)))
                 .register(new TrailModifier())
                 .register(new TeleportModifier())
@@ -168,6 +169,9 @@ public final class FusionPlugin extends JavaPlugin {
                 getConfig().getInt("ice.freeze-ticks", 140),
                 getConfig().getDouble("environmental.max-radius", 8.0),
                 getConfig().getDouble("environmental.max-hardness", 100.0));
+        BounceSettings bounceSettings = new BounceSettings(
+                getConfig().getDouble("bounce.restitution", 0.55),
+                getConfig().getDouble("bounce.floor-friction", 0.5));
         ProjectileLauncher launcher = new ProjectileLauncher(this, burst,
                 new WeaponBuilder.Defaults(
                         getConfig().getDouble("projectile.base-speed", 1.6),
@@ -180,7 +184,7 @@ public final class FusionPlugin extends JavaPlugin {
                         getConfig().getDouble("fire.base-radius", 1.5),
                         getConfig().getDouble("ice.base-radius", 1.5),
                         getConfig().getDouble("deposit.base-radius", 1.5)),
-                envSettings,
+                envSettings, bounceSettings,
                 getConfig().getInt("spawn.max-generation", 2),
                 getConfig().getInt("projectile.melee-lifetime-ticks", 1),
                 getConfig().getDouble("projectile.melee-speed", 4.0));

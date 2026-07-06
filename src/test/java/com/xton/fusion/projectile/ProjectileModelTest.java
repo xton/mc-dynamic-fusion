@@ -32,7 +32,8 @@ class ProjectileModelTest {
     private ProjectileLauncher launcher() {
         return new ProjectileLauncher(null, null, new WeaponBuilder.Defaults(
                 1.6, 30, 3.0, 2.0, 1.0, 2.5, 4.0, 1.5, 1.5, 1.5),
-                new EnvironmentalAoe.Settings(100, 140, 8.0, 3.0), 2, 1, 4.0);
+                new EnvironmentalAoe.Settings(100, 140, 8.0, 3.0),
+                new BounceSettings(0.55, 0.5), 2, 1, 4.0);
     }
 
     private ModifierRegistry registry() {

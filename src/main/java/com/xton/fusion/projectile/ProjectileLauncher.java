@@ -37,17 +37,19 @@ public final class ProjectileLauncher {
     private final AoeBurst burst;
     private final WeaponBuilder.Defaults defaults;
     private final EnvironmentalAoe.Settings envSettings;
+    private final BounceSettings bounceSettings;
     private final int maxSpawnGeneration;
     private final int meleeLifetimeTicks;
     private final double meleeSpeed;
 
     public ProjectileLauncher(Plugin plugin, AoeBurst burst, WeaponBuilder.Defaults defaults,
-                              EnvironmentalAoe.Settings envSettings, int maxSpawnGeneration,
-                              int meleeLifetimeTicks, double meleeSpeed) {
+                              EnvironmentalAoe.Settings envSettings, BounceSettings bounceSettings,
+                              int maxSpawnGeneration, int meleeLifetimeTicks, double meleeSpeed) {
         this.plugin = plugin;
         this.burst = burst;
         this.defaults = defaults;
         this.envSettings = envSettings;
+        this.bounceSettings = bounceSettings;
         this.maxSpawnGeneration = maxSpawnGeneration;
         this.meleeSpeed = meleeSpeed;
         this.meleeLifetimeTicks = meleeLifetimeTicks;
@@ -133,7 +135,7 @@ public final class ProjectileLauncher {
 
         // One Shot per cast: caster, generation 0, and a single shared TELEPORT
         // latch so the whole volley (and any SPAWN children) teleports at most once.
-        Shot shot = new Shot(caster, 0, maxSpawnGeneration, envSettings, this, new AtomicBoolean(false));
+        Shot shot = new Shot(caster, 0, maxSpawnGeneration, envSettings, bounceSettings, this, new AtomicBoolean(false));
         for (int i = 0; i < count; i++) {
             Vector dir = scatter(aim, spec.spreadDegrees());
             Vector velocity = dir.multiply(speed);
@@ -181,6 +183,7 @@ public final class ProjectileLauncher {
             boolean inPlace = child.spawnDelayTicks() > 0 || child.speed() < 0.1;
             Location origin = inPlace ? at.clone() : at.clone().add(aim.clone().multiply(SPAWN_OFFSET));
             if (child.spawnDelayTicks() > 0) {
+                new DelayBlinkTask(world, origin, child.spawnDelayTicks()).runTaskTimer(plugin, 0L, 1L);
                 plugin.getServer().getScheduler().runTaskLater(plugin,
                         () -> launchChildVolley(child, world, origin, aim, childShot),
                         child.spawnDelayTicks());
@@ -213,7 +216,7 @@ public final class ProjectileLauncher {
      */
     public FusionProjectile fireDirect(World world, Location origin, Vector velocity, ProjectileSpec spec) {
         Payload payload = buildPayload(spec);
-        Shot shot = new Shot(null, 0, maxSpawnGeneration, envSettings, this, new AtomicBoolean(false));
+        Shot shot = new Shot(null, 0, maxSpawnGeneration, envSettings, bounceSettings, this, new AtomicBoolean(false));
         FusionProjectile bolt = new FusionProjectile(plugin, payload, spec, world, origin, velocity, shot);
         bolt.start();
         return bolt;

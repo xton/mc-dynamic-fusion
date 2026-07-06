@@ -2,6 +2,8 @@ package com.xton.fusion.wearable;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 
@@ -46,6 +48,7 @@ class GlowLightTaskTest {
         reader = new FusedItemReader(keys);
         factory = new FusedItemFactory(keys, new LoreGenerator(registry));
         world = server.addSimpleWorld("world");
+        world.loadChunk(0, 0);
     }
 
     @AfterEach
@@ -67,6 +70,26 @@ class GlowLightTaskTest {
 
         assertEquals(Material.AIR, front.getBlock().getType(),
                 "the real world must never see the LIGHT block — it's client-side only");
+    }
+
+    @Test
+    void relocatesTowardThePlayerWhenFacingAWallUpClose() {
+        PlayerMock player = server.addPlayer();
+        player.setLocation(new Location(world, 0.5, 100, 0.5, 0f, 0f)); // yaw 0 = looking +Z
+        player.getInventory().setHelmet(factory.create(Material.DIAMOND_HELMET, List.of(GlowModifier.ID), "test"));
+
+        // A wall spanning a generous Y range at z=2, well past the default 1.5-block
+        // distance whatever the exact eye-height offset — everything closer (z<=1)
+        // stays air.
+        for (int y = 97; y <= 104; y++) {
+            new Location(world, 0, y, 2).getBlock().setType(Material.STONE);
+        }
+
+        Location found = new GlowLightTask(reader, new WorldFilter(List.of()), 1.5).findLightCell(player);
+
+        assertNotNull(found, "should back off toward the player and find open air instead of giving up");
+        assertEquals(Material.AIR, found.getBlock().getType());
+        assertTrue(found.getZ() < 2, "relocated cell should be nearer than the blocked wall");
     }
 
     @Test

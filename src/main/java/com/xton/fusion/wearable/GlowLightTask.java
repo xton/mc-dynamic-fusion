@@ -36,6 +36,11 @@ import com.xton.fusion.util.WorldFilter;
  */
 public final class GlowLightTask implements Runnable, Listener {
 
+    /** Step size (blocks) when backing the light off toward the player to dodge a wall. */
+    private static final double STEP = 0.25;
+    /** Closest to the player's eyes the light will ever sit — stays "in front of", not inside, the face. */
+    private static final double MIN_DISTANCE = 0.3;
+
     private final FusedItemReader reader;
     private final WorldFilter worldFilter;
     private final double distance;
@@ -65,27 +70,38 @@ public final class GlowLightTask implements Runnable, Listener {
             return;
         }
 
-        Location target = frontOfFace(player);
+        Location target = findLightCell(player);
         if (previous != null && previous.equals(target)) {
             return; // already lighting the right cell for this player
         }
         if (previous != null) {
             revert(player, previous);
         }
-        if (canLight(target)) {
+        if (target != null) {
             player.sendBlockChange(target, Material.LIGHT.createBlockData());
             lit.put(id, target);
         } else {
-            lit.remove(id); // facing a solid block up close — skip rather than fake through it
+            lit.remove(id); // fully enclosed (eyes inside a block) — nowhere nearby to place it
         }
     }
 
-    /** The block-aligned cell {@code distance} blocks in front of the player's eyes. */
-    private Location frontOfFace(Player player) {
+    /**
+     * The block-aligned cell up to {@code distance} blocks in front of the
+     * player's eyes — or, facing a wall closer than that, the nearest open
+     * cell backing off toward them along the same line of sight, so the light
+     * relocates in front of the wall's face instead of just going dark.
+     */
+    Location findLightCell(Player player) {
         Location eye = player.getEyeLocation();
-        Vector aim = eye.getDirection().normalize().multiply(distance);
-        Location at = eye.clone().add(aim);
-        return new Location(at.getWorld(), at.getBlockX(), at.getBlockY(), at.getBlockZ());
+        Vector dir = eye.getDirection().normalize();
+        for (double d = distance; d >= MIN_DISTANCE; d -= STEP) {
+            Location at = eye.clone().add(dir.clone().multiply(d));
+            Location cell = new Location(at.getWorld(), at.getBlockX(), at.getBlockY(), at.getBlockZ());
+            if (canLight(cell)) {
+                return cell;
+            }
+        }
+        return null;
     }
 
     /** Only fake the light over real air, so it never looks like it's shining through a solid wall. */

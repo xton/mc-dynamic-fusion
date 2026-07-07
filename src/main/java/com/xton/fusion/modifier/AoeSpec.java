@@ -1,6 +1,7 @@
 package com.xton.fusion.modifier;
 
 import org.bukkit.Material;
+import org.bukkit.potion.PotionEffectType;
 
 /**
  * One area-of-effect element in a projectile's payload — a concrete emitter that
@@ -20,9 +21,10 @@ public final class AoeSpec {
     private boolean inverted;    // PUSH only: pull inward instead of out
     private int persistTicks;    // re-pulse the burst for this long
     private final Material material; // DEPOSIT: the block to place; null otherwise
+    private final PotionEffectType potionEffectType; // POTION: the effect it casts; null otherwise
 
     public AoeSpec(AoeKind kind, double radius, double power) {
-        this(kind, radius, power, null);
+        this(kind, radius, power, (Material) null);
     }
 
     public AoeSpec(AoeKind kind, double radius, double power, Material material) {
@@ -30,6 +32,15 @@ public final class AoeSpec {
         this.radius = radius;
         this.power = power;
         this.material = material;
+        this.potionEffectType = null;
+    }
+
+    public AoeSpec(AoeKind kind, double radius, double power, PotionEffectType potionEffectType) {
+        this.kind = kind;
+        this.radius = radius;
+        this.power = power;
+        this.material = null;
+        this.potionEffectType = potionEffectType;
     }
 
     public AoeKind kind() {
@@ -39,6 +50,11 @@ public final class AoeSpec {
     /** DEPOSIT: the block to place in the radius; null for other kinds. */
     public Material material() {
         return material;
+    }
+
+    /** POTION: the effect this Wand casts in the radius; null for other kinds. */
+    public PotionEffectType potionEffectType() {
+        return potionEffectType;
     }
 
     public double radius() {

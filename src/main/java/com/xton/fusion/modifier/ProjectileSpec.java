@@ -34,7 +34,6 @@ public final class ProjectileSpec {
     private boolean teleport;          // TELEPORT: move the caster to the terminus
     private int homing;                // HOMING: steer toward a nearby target (stacks = sharper turn)
     private int treasure;              // TREASURE (Golden Brush): loot level — more gold = more/rarer drops
-    private PotionEffectType potionType; // POTION:<type> (Wand): the effect it casts on a block
 
     private int spawnDelayTicks;       // DELAY: ticks to wait before launching this child
     private EntityType mobType;        // MOB:<type>: launch this living entity as the projectile
@@ -199,13 +198,26 @@ public final class ProjectileSpec {
         this.treasure += count;
     }
 
-    /** POTION:&lt;type&gt; (Wand): the effect this fused item casts, or null if it isn't a Wand. */
-    public PotionEffectType potionType() {
-        return potionType;
+    /** The POTION emitter in the payload (the Wand's cast area), or null if none. */
+    public AoeSpec potionAoe() {
+        for (AoeSpec aoe : payload) {
+            if (aoe.kind() == AoeKind.POTION) {
+                return aoe;
+            }
+        }
+        return null;
     }
 
-    public void setPotionType(PotionEffectType potionType) {
-        this.potionType = potionType;
+    /** POTION:&lt;type&gt; (Wand): the effect this fused item casts, or null if it isn't a Wand. */
+    public PotionEffectType potionType() {
+        AoeSpec aoe = potionAoe();
+        return aoe == null ? null : aoe.potionEffectType();
+    }
+
+    /** POTION (Wand): the cast radius (widened by EXPAND like any other burst), or 0 if it isn't a Wand. */
+    public double potionRadius() {
+        AoeSpec aoe = potionAoe();
+        return aoe == null ? 0 : aoe.radius();
     }
 
     // ----- payload accessors -----

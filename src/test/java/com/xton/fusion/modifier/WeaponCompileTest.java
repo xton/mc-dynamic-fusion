@@ -51,7 +51,7 @@ import com.xton.fusion.modifier.impl.VisibleModifier;
 class WeaponCompileTest {
 
     private static final WeaponBuilder.Defaults DEFAULTS = new WeaponBuilder.Defaults(
-            1.6, 30, 3.0, 2.0, 1.0, 2.5, 4.0, 1.5, 1.5, 1.5);
+            1.6, 30, 3.0, 2.0, 1.0, 2.5, 4.0, 1.5, 1.5, 1.5, 1.5);
 
     private ModifierRegistry registry() {
         return new ModifierRegistry()

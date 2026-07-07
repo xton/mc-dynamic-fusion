@@ -88,20 +88,36 @@ public final class GlowLightTask implements Runnable, Listener {
     /**
      * The block-aligned cell up to {@code distance} blocks in front of the
      * player's eyes — or, facing a wall closer than that, the nearest open
-     * cell backing off toward them along the same line of sight, so the light
-     * relocates in front of the wall's face instead of just going dark.
+     * cell backing off toward them along the <em>same line of sight</em>, so
+     * the light relocates in front of the wall's face instead of just going
+     * dark.
+     *
+     * <p>Nose flush against a wall, even the closest forward point ({@link
+     * #MIN_DISTANCE}) is already past its surface, so the forward search alone
+     * finds nothing. Rather than hop off that line (which would place the
+     * light somewhere arbitrary — beside or above the head, not "ahead of" or
+     * "behind" it), keep walking the <em>same</em> vector past the eyes and
+     * out the back of the head, as far behind as {@code distance} is in
+     * front — still always somewhere along where the player is actually
+     * looking, just possibly now behind them instead of ahead.
      */
     Location findLightCell(Player player) {
         Location eye = player.getEyeLocation();
         Vector dir = eye.getDirection().normalize();
-        for (double d = distance; d >= MIN_DISTANCE; d -= STEP) {
-            Location at = eye.clone().add(dir.clone().multiply(d));
-            Location cell = new Location(at.getWorld(), at.getBlockX(), at.getBlockY(), at.getBlockZ());
+        for (double d = distance; d >= -distance; d -= STEP) {
+            if (d > 0 && d < MIN_DISTANCE) {
+                continue; // the sliver just in front of the face reads as "inside it", not "ahead"
+            }
+            Location cell = blockCell(eye.clone().add(dir.clone().multiply(d)));
             if (canLight(cell)) {
                 return cell;
             }
         }
         return null;
+    }
+
+    private static Location blockCell(Location at) {
+        return new Location(at.getWorld(), at.getBlockX(), at.getBlockY(), at.getBlockZ());
     }
 
     /** Only fake the light over real air, so it never looks like it's shining through a solid wall. */

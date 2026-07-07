@@ -33,8 +33,8 @@ Noita-style. Modifiers come in two kinds:
 | **emit** | **Delay:_n_** | Clock | like Spawn, but the child blinks in place for _n_ s then goes off (lure-then-blast) |
 | **emit** | **Detect** | Tripwire Hook | like Spawn, but the child arms in place (blinking) and goes off the moment a creature steps within range (Expand widens the range) — a trap/mine |
 | **emit** | **Mob:_type_** | Cow Spawn Egg | launches a live creature as the projectile — vanilla physics carry it (the Cow Launcher) |
-| **emit** | **Treasure** | Gold Ingot/Block | on a **Brush**, sweeping any block may cough up loot; more gold → rarer finds |
-| **emit** | **Potion:_effect_** | Lingering Potion | on a **Stick** (a Wand), right-clicking a block leaves a small lingering cloud of that effect there, particles/color matching the potion |
+| **emit** | **Treasure** | Gold Ingot/Block | on a **Brush**, sweeping any block may cough up loot (more gold → rarer finds) and scours it to Coarse Dirt, win or not — Coarse Dirt itself doesn't brush |
+| **emit** | **Potion:_effect_** | Lingering Potion | on a **Stick** (a Wand), swinging it at a block leaves a small lingering cloud of that effect there (widened by Expand), particles/color matching the potion |
 | *xf (aoe)* | **Expand** | Heart of the Sea, Magma Cream | ×radius of the previous burst |
 | *xf (aoe)* | **Amplify** | Glowstone Dust, Blaze Powder | ×force/damage of the previous burst |
 | *xf (aoe)* | **Chain** | String, Echo Shard | previous burst hops to more entities |
@@ -114,8 +114,9 @@ Every other ingredient's magic comes from a static Material→modifier table
 Regeneration, ... are all the same material, so fusing one onto a Stick reads
 its actual potion data at fuse time and bakes in a `Potion:<effect>` matching
 that specific potion. The Wand then casts it with a vanilla `AreaEffectCloud`
-(the same entity a thrown lingering potion leaves behind) right-clicked onto a
-block — free particle/color theming, no bespoke art needed.
+(the same entity a thrown lingering potion leaves behind) swung onto a block —
+free particle/color theming, no bespoke art needed, and Expand widens it like
+any other burst.
 
 **Fused bows** become wands: releasing fires the same projectiles downrange,
 their speed scaled by draw force (so a Multishot bow fans a volley). Fusing can
@@ -178,7 +179,7 @@ make smoke
 It then runs an **in-process functional self-test** — `/fusion test`
 (console/op only) drives the *real* modifier compiler, projectile, and burst
 code against the live world and asserts the mechanics MockBukkit can't reach. It
-has two kinds of check (50 in total):
+has two kinds of check (52 in total):
 
 - **compile checks** pin the emitter/transform RPN semantics on the compiled
   spec — EXPAND/AMPLIFY scaling, MULTISHOT/SPREAD/LIFETIME stacking, INVERT
@@ -187,9 +188,10 @@ has two kinds of check (50 in total):
   HEAL/PULL complements, MINING hardness stacking, the FIRE/ICE/DEPOSIT emitters
   and TRAIL/TELEPORT/SPAWN/DELAY/DETECT/MOB/POTION wiring (`Deposit:Dirt` /
   `Mob:Cow` / `Potion:Poison` parameter parsing, Spawn/Delay/Detect pushing a
-  fresh child, a following EXPAND widening DETECT's own trigger radius), and
-  the *nearest-previous binding* (a transform touches only the last emitter)
-  that's nearly impossible to eyeball in-world;
+  fresh child, a following EXPAND widening DETECT's own trigger radius or the
+  Wand's cast radius, and that POTION never leaks into the terminus payload),
+  and the *nearest-previous binding* (a transform touches only the last
+  emitter) that's nearly impossible to eyeball in-world;
 - **runtime checks** fire real bursts/projectiles at dummies and blocks: PUSH
   knockback, DAMAGE health loss, an inverted PUSH pulling inward, a CHAIN hop, a
   MINING ray carving and *stopping at obsidian* (and a deep MINING stack *boring
@@ -198,7 +200,9 @@ has two kinds of check (50 in total):
   air, a DEPOSIT · Trail wake (its warm-up sparing the caster), a BOUNCE rebound,
   a SPAWN child ricocheting off a wall, a HEAL mending a hurt cow, a DELAY charge
   re-detonating, a HOMING bolt curving into an off-axis mob, a DETECT mine arming
-  and triggering on a nearby dummy, and a MOB:Cow launch spawning a live cow.
+  and triggering on a nearby dummy, a MOB:Cow launch spawning a live cow (both as
+  the top-level shot and as a SPAWN child — a cluster-cow-bomb build used to
+  silently fly its child as an empty bolt instead).
 
 Results are logged as `[fusion-selftest] RESULT: PASS|FAIL`; the smoke script
 fails the build unless it sees PASS. You can run it by hand on any server too

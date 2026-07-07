@@ -93,6 +93,55 @@ class GlowLightTaskTest {
     }
 
     @Test
+    void continuesPastTheEyesAlongTheSameLineWhenNoseAgainstAWall() {
+        PlayerMock player = server.addPlayer();
+        // Eyes almost touching the wall (z=1) — even the closest forward sample
+        // (MIN_DISTANCE past the eyes) already lands inside it, so the
+        // straight-ahead search fails at every forward distance. The fallback
+        // must stay on the *same* gaze line rather than hopping sideways —
+        // here that lands it right back at the eyes' own cell (z<1).
+        player.setLocation(new Location(world, 0.5, 100, 0.75, 0f, 0f)); // yaw 0 = looking +Z
+        player.getInventory().setHelmet(factory.create(Material.DIAMOND_HELMET, List.of(GlowModifier.ID), "test"));
+
+        for (int y = 97; y <= 104; y++) {
+            new Location(world, 0, y, 1).getBlock().setType(Material.STONE);
+            new Location(world, 0, y, 2).getBlock().setType(Material.STONE);
+        }
+
+        Location found = new GlowLightTask(reader, new WorldFilter(List.of()), 1.5).findLightCell(player);
+
+        assertNotNull(found, "should keep searching along the gaze line instead of giving up");
+        assertEquals(Material.AIR, found.getBlock().getType());
+        assertTrue(found.getZ() < 1, "fallback cell should be at/behind the eyes, not inside the wall");
+        assertEquals(0.0, found.getX(), 1.0e-9, "must stay on the gaze axis, not hop sideways");
+    }
+
+    @Test
+    void extendsBehindTheHeadWhenEvenTheEyesOwnCellIsBlocked() {
+        PlayerMock player = server.addPlayer();
+        // A wall thick enough to cover the eyes' own cell too (z=0,1,2) — the
+        // straight-ahead search and the eyes' own cell both fail, so the only
+        // way to find air at all is to keep walking the same vector out the
+        // back of the player's head into the room behind them (z<0).
+        player.setLocation(new Location(world, 0.5, 100, 0.75, 0f, 0f)); // yaw 0 = looking +Z
+        player.getInventory().setHelmet(factory.create(Material.DIAMOND_HELMET, List.of(GlowModifier.ID), "test"));
+        world.loadChunk(0, -1); // the fallback now reaches z<0, one chunk over from setUp's (0,0)
+
+        for (int y = 97; y <= 104; y++) {
+            new Location(world, 0, y, 0).getBlock().setType(Material.STONE);
+            new Location(world, 0, y, 1).getBlock().setType(Material.STONE);
+            new Location(world, 0, y, 2).getBlock().setType(Material.STONE);
+        }
+
+        Location found = new GlowLightTask(reader, new WorldFilter(List.of()), 1.5).findLightCell(player);
+
+        assertNotNull(found, "should keep searching behind the head rather than giving up");
+        assertEquals(Material.AIR, found.getBlock().getType());
+        assertTrue(found.getZ() < 0, "should have extended past the back of the head into open air");
+        assertEquals(0.0, found.getX(), 1.0e-9, "must stay on the gaze axis, not hop sideways");
+    }
+
+    @Test
     void nonGlowWearerIsIgnoredWithoutError() {
         PlayerMock player = server.addPlayer();
         player.setLocation(new Location(world, 0.5, 4, 0.5, 0f, 0f));

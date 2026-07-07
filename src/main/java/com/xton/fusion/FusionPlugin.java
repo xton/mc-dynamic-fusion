@@ -188,7 +188,8 @@ public final class FusionPlugin extends JavaPlugin {
                         getConfig().getDouble("damage.power", 4.0),
                         getConfig().getDouble("fire.base-radius", 1.5),
                         getConfig().getDouble("ice.base-radius", 1.5),
-                        getConfig().getDouble("deposit.base-radius", 1.5)),
+                        getConfig().getDouble("deposit.base-radius", 1.5),
+                        getConfig().getDouble("wand.radius", 1.5)),
                 envSettings, bounceSettings,
                 getConfig().getInt("spawn.max-generation", 2),
                 getConfig().getInt("projectile.melee-lifetime-ticks", 1),
@@ -200,6 +201,11 @@ public final class FusionPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(
                 new ProjectileListener(reader, registry, launcher, worldFilter), this);
 
+        // Fusion Machine: placeable enchanting table, tagged via block-entity PDC
+        // (no side file), opening the anvil-style fusion GUI on right-click.
+        FusionMachineMenu menu = new FusionMachineMenu(engine, keys, fusionCost, getLogger(), debug);
+        getServer().getPluginManager().registerEvents(new MachineListener(menu), this);
+
         // Golden Brush: brushing a fused BRUSH with TREASURE (gold) rolls a loot table.
         GoldenBrush goldenBrush = new GoldenBrush(new GoldenBrush.Settings(
                 getConfig().getDouble("golden-brush.proc-chance-base", 0.15),
@@ -207,23 +213,21 @@ public final class FusionPlugin extends JavaPlugin {
                 getConfig().getDouble("golden-brush.proc-chance-cap", 0.75)));
         CooldownMap brushCooldown = new CooldownMap(getConfig().getLong("golden-brush.cooldown-ms", 250));
         getServer().getPluginManager().registerEvents(
-                new GoldenBrushListener(reader, registry, launcher, goldenBrush, brushCooldown, worldFilter), this);
+                new GoldenBrushListener(reader, registry, launcher, goldenBrush, brushCooldown, worldFilter, menu),
+                this);
 
-        // Wand: a fused STICK with POTION (from a Lingering Potion) plants a
-        // small lingering cloud of that effect where you right-click.
+        // Wand: swinging a fused STICK with POTION (from a Lingering Potion)
+        // plants a small lingering cloud of that effect at the block you're
+        // looking at. Radius lives on the compiled spec (wand.radius default,
+        // widened by EXPAND); duration defaults to wand.cloud-duration-ticks
+        // but an explicit DURATION on the stack overrides it.
         WandListener.Settings wandSettings = new WandListener.Settings(
-                getConfig().getDouble("wand.radius", 2.5),
-                getConfig().getInt("wand.cloud-duration-ticks", 100),
+                getConfig().getInt("wand.cloud-duration-ticks", 6000),
                 getConfig().getInt("wand.effect-duration-ticks", 60),
                 getConfig().getInt("wand.amplifier", 0));
         CooldownMap wandCooldown = new CooldownMap(getConfig().getLong("wand.cooldown-ms", 500));
         getServer().getPluginManager().registerEvents(
                 new WandListener(reader, registry, launcher, wandSettings, wandCooldown, worldFilter), this);
-
-        // Fusion Machine: placeable enchanting table, tagged via block-entity PDC
-        // (no side file), opening the anvil-style fusion GUI on right-click.
-        FusionMachineMenu menu = new FusionMachineMenu(engine, keys, fusionCost, getLogger(), debug);
-        getServer().getPluginManager().registerEvents(new MachineListener(menu), this);
 
         // Ambient particle shedding (held fused weapons), toggleable.
         if (getConfig().getBoolean("effect.particle-shedding", true)) {

@@ -62,7 +62,19 @@ public final class ProjectileLauncher {
 
     /** Compile the stack into a projectile spec (flight + payload). Pure. */
     public ProjectileSpec compile(ModifierStack stack) {
-        return new WeaponBuilder(defaults).compile(stack);
+        return compile(stack, defaults.baseLifetimeTicks());
+    }
+
+    /**
+     * Compile the stack, seeding lifetimeTicks with {@code defaultLifetimeTicks}
+     * instead of the usual projectile default — for casts with their own notion
+     * of "how long" (the Wand) where an explicit DURATION on the stack should
+     * still override it (DURATION sets lifetimeTicks outright). Pure.
+     */
+    public ProjectileSpec compile(ModifierStack stack, int defaultLifetimeTicks) {
+        WeaponBuilder builder = new WeaponBuilder(defaults);
+        builder.projectile().setLifetimeTicks(defaultLifetimeTicks);
+        return builder.compile(stack);
     }
 
     /**
@@ -75,8 +87,8 @@ public final class ProjectileLauncher {
     public Payload buildPayload(ProjectileSpec spec) {
         List<PayloadEffect> effects = new ArrayList<>();
         for (AoeSpec aoe : spec.payload()) {
-            if (aoe.kind().isEnvironmental() || aoe.kind() == AoeKind.DETECT) {
-                continue; // environmental: applied along the flight; DETECT: a sensor, not a burst
+            if (aoe.kind().isEnvironmental() || aoe.kind() == AoeKind.DETECT || aoe.kind() == AoeKind.POTION) {
+                continue; // environmental: applied along the flight; DETECT: a sensor; POTION: the Wand's own cast, not a burst
             }
             effects.add(new BurstEffect(burst, aoe));
         }
@@ -198,9 +210,20 @@ public final class ProjectileLauncher {
         if (!world.isChunkLoaded(origin.getBlockX() >> 4, origin.getBlockZ() >> 4)) {
             return; // the area unloaded during a DELAY — drop the charge rather than force-load
         }
-        Payload payload = buildPayload(child);
         double speed = Math.max(0.05, child.speed());
         int count = Math.max(1, child.count());
+
+        // A MOB:<type> child hurls a live entity instead of a custom bolt — the
+        // mob is the payload, same as the top-level launch() path.
+        if (child.mobType() != null) {
+            for (int i = 0; i < count; i++) {
+                Vector dir = scatter(aim, child.spreadDegrees());
+                spawnMobShot(world, origin.clone(), dir.multiply(speed), child);
+            }
+            return;
+        }
+
+        Payload payload = buildPayload(child);
         for (int i = 0; i < count; i++) {
             Vector dir = scatter(aim, child.spreadDegrees());
             Vector velocity = dir.multiply(speed);

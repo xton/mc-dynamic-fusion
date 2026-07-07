@@ -1,5 +1,7 @@
 package com.xton.fusion.modifier.impl;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 import org.bukkit.Material;
@@ -50,6 +52,18 @@ public final class DepositModifier implements ParameterizedModifier {
         }
         Material m = Material.matchMaterial(param.toUpperCase(Locale.ROOT));
         return m != null && m.isBlock() ? m : null;
+    }
+
+    @Override
+    public List<String> parameterCompletions(String prefix) {
+        String p = prefix.toUpperCase(Locale.ROOT);
+        List<String> out = new ArrayList<>();
+        for (Material m : Material.values()) {
+            if (m.isBlock() && m.name().startsWith(p)) {
+                out.add(m.name());
+            }
+        }
+        return out;
     }
 
     @Override

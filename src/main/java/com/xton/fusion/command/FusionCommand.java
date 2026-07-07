@@ -28,6 +28,7 @@ import com.xton.fusion.item.FusedItemFactory;
 import com.xton.fusion.item.LatentRegistry;
 import com.xton.fusion.machine.FusionMachineMenu;
 import com.xton.fusion.modifier.ModifierRegistry;
+import com.xton.fusion.modifier.ParameterizedModifier;
 import com.xton.fusion.selftest.SelfTest;
 
 import net.kyori.adventure.text.Component;
@@ -301,10 +302,56 @@ public final class FusionCommand implements CommandExecutor, TabCompleter {
                 return filter(BASE_HINTS, args[2]);
             }
             if (args.length >= 4) {
-                return filter(new ArrayList<>(registry.ids()), args[args.length - 1]);
+                return completeModifierArg(args[args.length - 1]);
             }
         }
         return List.of();
+    }
+
+    /**
+     * Complete a modifier-slot argument. Once it contains a colon (e.g.
+     * {@code "MOB:CO"}), suggest completions for the parameter instead of the
+     * base ID list — {@code from:} pulls from the latent registry's known
+     * materials, every other parameterized modifier supplies its own
+     * candidates (see {@link com.xton.fusion.modifier.ParameterizedModifier#parameterCompletions}).
+     */
+    private List<String> completeModifierArg(String current) {
+        int colon = current.indexOf(':');
+        if (colon < 0) {
+            List<String> bases = new ArrayList<>(registry.ids());
+            bases.add("FROM");
+            return filter(bases, current);
+        }
+        String base = current.substring(0, colon);
+        String param = current.substring(colon + 1);
+        List<String> candidates = base.equalsIgnoreCase("from") ? fromCompletions(param) : parameterCompletions(base, param);
+        List<String> out = new ArrayList<>();
+        for (String candidate : candidates) {
+            out.add(base + ":" + candidate);
+        }
+        return out;
+    }
+
+    /** Material names the latent registry actually has an entry for, matching {@code prefix}. */
+    private List<String> fromCompletions(String prefix) {
+        String p = prefix.toUpperCase(Locale.ROOT);
+        List<String> out = new ArrayList<>();
+        if (latent != null) {
+            for (Material m : latent.entries().keySet()) {
+                if (m.name().startsWith(p)) {
+                    out.add(m.name());
+                }
+            }
+        }
+        return out;
+    }
+
+    /** The named modifier's own parameter completions, or empty if it isn't parameterized. */
+    private List<String> parameterCompletions(String base, String param) {
+        return registry.get(base.toUpperCase(Locale.ROOT))
+                .filter(ParameterizedModifier.class::isInstance)
+                .map(m -> ((ParameterizedModifier) m).parameterCompletions(param))
+                .orElse(List.of());
     }
 
     private static List<String> filter(List<String> options, String prefix) {

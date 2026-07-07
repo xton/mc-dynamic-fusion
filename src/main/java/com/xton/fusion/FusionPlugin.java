@@ -14,6 +14,9 @@ import org.bukkit.GameMode;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import com.xton.fusion.command.FusionCommand;
@@ -83,7 +86,7 @@ import com.xton.fusion.weapon.ShedParticleTask;
 import com.xton.fusion.weapon.WeaponEventListener;
 
 /** Entry point — wires up the fusion loop and registered modifiers. */
-public final class FusionPlugin extends JavaPlugin {
+public final class FusionPlugin extends JavaPlugin implements Listener {
 
     // Tracks GLOW's in-front-of-face light blocks so onDisable can clear them —
     // otherwise a server stop/reload could leave a stray LIGHT block behind.
@@ -92,6 +95,7 @@ public final class FusionPlugin extends JavaPlugin {
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        getServer().getPluginManager().registerEvents(this, this);
 
         int maxModifiers = getConfig().getInt("fusion.max-modifiers", 24);
         int fusionCost = getConfig().getInt("fusion.cost", 0);
@@ -290,18 +294,31 @@ public final class FusionPlugin extends JavaPlugin {
      * survival/adventure player permanently marked invulnerable, with no
      * vanilla way to clear it (it isn't reset by death or relogin). Nothing
      * else in vanilla sets that flag for a non-creative/spectator player, so
-     * on every (re)start, sweep it off anyone still carrying it — a stale
-     * artifact of the bug, never a legitimate state to preserve.
+     * clear it off anyone still carrying it — a stale artifact of the bug,
+     * never a legitimate state to preserve. Run at enable (covers a hot
+     * reload with players already online) and again on join (covers the far
+     * more common case: the plugin restarts while everyone's offline, so the
+     * enable-time sweep sees no one — the affected player only shows up once
+     * they log back in).
      */
     private void clearStuckInvulnerability() {
         for (Player player : getServer().getOnlinePlayers()) {
-            if (player.isInvulnerable() && player.getGameMode() != GameMode.CREATIVE
-                    && player.getGameMode() != GameMode.SPECTATOR) {
-                player.setInvulnerable(false);
-                getLogger().warning("Cleared a stuck invulnerable flag on " + player.getName()
-                        + " (leftover from a since-fixed TELEPORT bug).");
-            }
+            clearStuckInvulnerability(player);
         }
+    }
+
+    private void clearStuckInvulnerability(Player player) {
+        if (player.isInvulnerable() && player.getGameMode() != GameMode.CREATIVE
+                && player.getGameMode() != GameMode.SPECTATOR) {
+            player.setInvulnerable(false);
+            getLogger().warning("Cleared a stuck invulnerable flag on " + player.getName()
+                    + " (leftover from a since-fixed TELEPORT bug).");
+        }
+    }
+
+    @EventHandler
+    public void onJoin(PlayerJoinEvent event) {
+        clearStuckInvulnerability(event.getPlayer());
     }
 
     @Override

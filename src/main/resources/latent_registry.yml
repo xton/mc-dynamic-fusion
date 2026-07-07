@@ -129,6 +129,11 @@ latent_modifiers:
     - TREASURE
   GOLD_NUGGET:
     - TREASURE
+  # LINGERING_POTION is deliberately absent here: POTION:<effect> isn't a
+  # static per-material mapping like the rest of this file — it's read off
+  # each ingredient's own potion data at fuse time (see PotionLatent), since
+  # one material covers many different effects (Poison, Harming, ...). Fusing
+  # a Lingering Potion onto a STICK makes a Wand.
   ENDER_PEARL:            # TELEPORT — warp to where the shot lands
     - TELEPORT
   ENDER_EYE:

@@ -189,6 +189,20 @@ golden-brush:
   # Per-player cooldown between brush strokes (ms), so it isn't a firehose.
   cooldown-ms: 250
 
+# WAND — a fused STICK with POTION (from a Lingering Potion). Right-clicking a
+# block plants a small lingering cloud there, loaded with that effect.
+wand:
+  # How far (blocks) the cloud's effect reaches.
+  radius: 2.5
+  # How long (ticks) the cloud itself lingers before it dissipates.
+  cloud-duration-ticks: 100
+  # How long (ticks) each dose the cloud applies lasts on the target.
+  effect-duration-ticks: 60
+  # Amplifier of the applied effect (0 = level I).
+  amplifier: 0
+  # Per-player cooldown between casts (ms).
+  cooldown-ms: 500
+
 # WORN EFFECTS — fused onto armor and applied while equipped.
 worn:
   # How often (ticks) the worn-effect task refreshes (GLOW's glowing outline, etc.).

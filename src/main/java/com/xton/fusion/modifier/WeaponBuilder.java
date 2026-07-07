@@ -5,6 +5,7 @@ import java.util.Deque;
 
 import org.bukkit.Material;
 import org.bukkit.entity.EntityType;
+import org.bukkit.potion.PotionEffectType;
 
 /**
  * Compiles a modifier stack into a {@link ProjectileSpec}, RPN-style: the stack
@@ -116,6 +117,11 @@ public final class WeaponBuilder {
     /** Emitter: launch a live {@code type} entity as the projectile (the Cow Launcher). */
     public void emitMob(EntityType type) {
         stack.peek().setMobType(type);
+    }
+
+    /** Emitter: makes this a Wand casting {@code type} — see {@link ProjectileSpec#potionType()}. */
+    public void emitPotion(PotionEffectType type) {
+        stack.peek().setPotionType(type);
     }
 
     /**

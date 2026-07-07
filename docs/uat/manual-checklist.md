@@ -203,7 +203,10 @@ the bits that need a real player or an eye:
     TREASURE` (or `from:gold_block`). Right-click/brush **any** block → a chance to
     drop loot with a sparkle. More gold = procs more often *and* rarer finds
     (diamonds, enchanted apples at the top). Watch the cooldown so it's not a
-    firehose.
+    firehose. Every stroke — loot or not — should also leave the block **scoured
+    to Coarse Dirt**; brush that same spot again and it should do nothing (no
+    sound, no roll, no re-transform) since there's nothing left to find. A
+    placed Fusion Machine should never turn to dirt even if you brush it.
 32. **VFX pass (by eye).** A base `DAMAGE` hit is a small **red spark** (not an
     explosion) — `EXPAND` it a few times to grow a real blast; `PUSH` keeps the
     explosive shove. `FIRE`/`ICE` now show a flame/frost **poof**. The `PERSIST`
@@ -230,7 +233,10 @@ the bits that need a real player or an eye:
       only you can see, not a real placed block, and not night vision: your
       surroundings elsewhere stay dark). Face a wall up close: the light
       should **back off toward you and relocate** in front of the wall's face
-      rather than just turning off. Take the armor off and both effects lapse
+      rather than just turning off. Walk right up nose-to-the-wall (as close as
+      collision lets you get): it should still light up — right around your
+      own head — rather than going dark, since even the closest point in front
+      of you is now inside the wall. Take the armor off and both effects lapse
       (the outline after a few seconds; the light immediately). Lantern is the
       ingredient.
 34. **Jetpack (Jet Elytra).** Wear an `ELYTRA LIFT` (or a `LIFT` chestplate) →
@@ -273,16 +279,23 @@ the bits that need a real player or an eye:
     Tripwire Hook is the ingredient.
 37. **Wand (Potion).** Grab the showcase's **Wand** (a Stick pre-loaded with
     Poison), or build one yourself: `/fusion give <you> STICK POTION:POISON`.
-    Right-click a block → a small cloud should appear there, particles/color
-    matching the potion (green swirl for Poison), and anything standing in it
-    should periodically take the effect. The cloud fades on its own after
-    `wand.cloud-duration-ticks`. Then check the **real** path this exists for:
-    get a Lingering Potion of a *different* effect (e.g. Regeneration — craft
-    one or grab it from creative), fuse it onto a plain Stick at the Fusion
-    Machine, and confirm the resulting Wand casts *that* effect/color — the
-    potion's actual data is read at fuse time, not just its material. Tune
-    `wand.radius` / `wand.cloud-duration-ticks` / `wand.effect-duration-ticks`
-    / `wand.amplifier` / `wand.cooldown-ms` to taste.
+    **Swing it** (left-click, like any other weapon) at a block → a small
+    cloud should appear there, particles/color matching the potion (green
+    swirl for Poison), holding a **steady** size/density for its whole life
+    (no shrinking-then-vanishing), and anything standing in it should
+    periodically take the effect. It should **not break the block** you swing
+    at. Left as-is it should sit there for a long while (`wand.cloud-duration-
+    ticks`, ~5 min by default) — fuse `DURATION:<n>` onto the Wand (e.g.
+    `STICK POTION:POISON DURATION:20`) and confirm the cloud instead lasts
+    about that many seconds. Fuse `EXPAND` onto it and confirm the cloud comes
+    out bigger (`wand.radius` is a real burst radius, same as Push/Damage).
+    Then check the **real** path this exists for: get a Lingering Potion of a
+    *different* effect (e.g. Regeneration — craft one or grab it from
+    creative), fuse it onto a plain Stick at the Fusion Machine, and confirm
+    the resulting Wand casts *that* effect/color — the potion's actual data is
+    read at fuse time, not just its material. Tune `wand.radius` /
+    `wand.cloud-duration-ticks` / `wand.effect-duration-ticks` /
+    `wand.amplifier` / `wand.cooldown-ms` to taste.
 
 ---
 

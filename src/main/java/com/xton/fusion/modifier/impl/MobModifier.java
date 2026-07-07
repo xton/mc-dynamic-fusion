@@ -1,6 +1,8 @@
 package com.xton.fusion.modifier.impl;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
@@ -61,6 +63,18 @@ public final class MobModifier implements ParameterizedModifier {
             return null;
         }
         return t;
+    }
+
+    @Override
+    public List<String> parameterCompletions(String prefix) {
+        String p = prefix.toUpperCase(Locale.ROOT);
+        List<String> out = new ArrayList<>();
+        for (EntityType t : EntityType.values()) {
+            if (t.isSpawnable() && t.isAlive() && !BLOCKED.contains(t) && t.name().startsWith(p)) {
+                out.add(t.name());
+            }
+        }
+        return out;
     }
 
     @Override

@@ -232,6 +232,8 @@ public final class SelfTest {
         final boolean fireSpawnRefl = spawnReflOk;
         final boolean fireTrailWarmup = trailWarmupOk;
         final boolean fireHeavyMine = heavyMineOk;
+        // Up in open air, clear of every other lane, for a SPAWN + MOB:COW cluster child.
+        final Location clusterCowOrigin = new Location(world, bx + 0.5, by + 3, bz + 5);
         final boolean fireIceSnow = iceSnowOk;
         scheduler.runLater(() -> {
             results.add(pushKnockback(world, pushMob));
@@ -255,6 +257,11 @@ public final class SelfTest {
             if (cowShot != null) {
                 cowShot.remove();
             }
+            // SPAWN + MOB:COW: a cluster-cow-bomb child must launch as a live cow
+            // too, not just the top-level shot (regression check: launchChildVolley
+            // used to ignore a child's mobType and fly it as an empty bolt instead).
+            launcher.fireDirect(world, clusterCowOrigin, PLUS_X.clone().multiply(0.2),
+                    compile("DURATION:0.1", "SPAWN", "MOB:COW"));
             if (homingMob != null && homingMob.isValid()) {
                 // Fire +X from 2 blocks to the mob's side; only homing can curve into it.
                 fireBolt(world, at(world, bx, by, bz - 34), PLUS_X, false, "DAMAGE", "HOMING", "HOMING");
@@ -315,6 +322,13 @@ public final class SelfTest {
         scheduler.runLater(() -> {
             results.add(pierceDamagesBoth(pierceA, pierceB, pierceA0, pierceB0));
             results.add(healRestoresHealth(healCow, healCow0));
+            // The cluster-cow parent's 2-tick lifetime has long since expired —
+            // its SPAWN child should have launched a live cow near the terminus.
+            List<Entity> clusterCows = world.getNearbyEntities(clusterCowOrigin, 3, 3, 3).stream()
+                    .filter(e -> e instanceof Cow).toList();
+            results.add(new Result("spawn-child-launches-mob", !clusterCows.isEmpty(),
+                    "cowsNearby=" + clusterCows.size()));
+            clusterCows.forEach(Entity::remove);
         }, SETTLE + 8);
 
         // --- after the bolts have flown: assert blocks ---
@@ -599,6 +613,16 @@ public final class SelfTest {
         r.add(new Result("compile:potion-parameterized", potionOk,
                 "poison=" + compile("POTION:POISON").potionType()
                         + " badParam=" + compile("POTION:NOT_A_REAL_EFFECT").potionType()));
+
+        // POTION's cast radius is a real AoeSpec, so EXPAND widens it like any
+        // other burst, but it never leaks into the terminus payload (it's the
+        // Wand's own cast, not something a swing/shot should deliver as a burst).
+        double potionR0 = compile("POTION:POISON").potionRadius();
+        double potionR1 = compile("POTION:POISON", "EXPAND").potionRadius();
+        boolean potionNoBurst = launcher.buildPayload(compile("POTION:POISON")).isEmpty();
+        boolean potionExpandOk = potionR1 > potionR0 + EPS && potionNoBurst;
+        r.add(new Result("compile:potion-expand-and-payload", potionExpandOk,
+                "r0=" + potionR0 + " r1(expand)=" + potionR1 + " noBurst=" + potionNoBurst));
 
         // Flight tuning: GRAVITY arcs, VISIBLE/INVISIBLE toggle the trail, and the
         // parameterized SPEED:<v>/DURATION:<s> pin absolute values.

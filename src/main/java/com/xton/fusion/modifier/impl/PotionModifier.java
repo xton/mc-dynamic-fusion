@@ -1,5 +1,7 @@
 package com.xton.fusion.modifier.impl;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 import org.bukkit.NamespacedKey;
@@ -15,9 +17,9 @@ import com.xton.fusion.util.Format;
  * Emitter: the Wand's magic. The effect is carried in the ID after a colon
  * ({@code POTION:POISON}, {@code POTION:REGENERATION}, ...) — fusing a
  * {@code LINGERING_POTION} onto a base contributes its own effect
- * automatically (see {@link com.xton.fusion.item.PotionLatent}). Right-clicking
- * a block with a fused wand casts a small lingering cloud of that effect there
- * (see {@code WandListener}); it does nothing on any other trigger path.
+ * automatically (see {@link com.xton.fusion.item.PotionLatent}). Swinging a
+ * fused wand casts a small lingering cloud of that effect at the block you're
+ * looking at (see {@code WandListener}); it does nothing on any other trigger path.
  */
 public final class PotionModifier implements ParameterizedModifier {
 
@@ -50,6 +52,19 @@ public final class PotionModifier implements ParameterizedModifier {
     }
 
     @Override
+    public List<String> parameterCompletions(String prefix) {
+        String p = prefix.toUpperCase(Locale.ROOT);
+        List<String> out = new ArrayList<>();
+        for (PotionEffectType t : Registry.EFFECT) {
+            String name = t.getKey().getKey().toUpperCase(Locale.ROOT);
+            if (name.startsWith(p)) {
+                out.add(name);
+            }
+        }
+        return out;
+    }
+
+    @Override
     public String id() {
         return type == null ? ID : ID + ":" + type.getKey().getKey().toUpperCase(Locale.ROOT);
     }
@@ -67,7 +82,7 @@ public final class PotionModifier implements ParameterizedModifier {
 
     @Override
     public String detailedDescription() {
-        return "Makes this a Wand: right-click a block to leave a small lingering cloud of the fused potion's effect there, particles tinted to match. Fuse a Lingering Potion to load it.";
+        return "Makes this a Wand: swing it at a block to leave a small lingering cloud of the fused potion's effect there, particles tinted to match. Fuse a Lingering Potion to load it.";
     }
 
     @Override

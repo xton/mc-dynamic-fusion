@@ -29,7 +29,9 @@ public enum AoeKind {
     /** Fills the empty cells in radius with a block ({@code material}). */
     DEPOSIT,
     /** A sensor, not a burst: marks a DETECT child's trigger radius (widened by EXPAND). */
-    DETECT;
+    DETECT,
+    /** The Wand's cast radius, carrying which effect ({@code potionEffectType}) it lingers. */
+    POTION;
 
     /** True for the block/environment-affecting kinds applied along the flight. */
     public boolean isEnvironmental() {

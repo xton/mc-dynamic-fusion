@@ -6,6 +6,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -15,6 +16,7 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
 import com.xton.fusion.item.FusedItemReader;
+import com.xton.fusion.machine.FusionMachineMenu;
 import com.xton.fusion.modifier.ModifierRegistry;
 import com.xton.fusion.modifier.ModifierStack;
 import com.xton.fusion.projectile.ProjectileLauncher;
@@ -25,8 +27,11 @@ import com.xton.fusion.util.WorldFilter;
  * The Golden Brush: right-clicking (brushing) with a fused {@code BRUSH} that
  * carries TREASURE rolls the loot table. The loot <em>level</em> is the brush's
  * TREASURE count (how much gold was fused): it raises the proc chance and unlocks
- * rarer finds. A per-player cooldown keeps it from firehosing. Non-brush fused
- * weapons are ignored here (they swing/shoot as normal).
+ * rarer finds. Every successful stroke scours the block down to
+ * {@link Material#COARSE_DIRT} — win or not — so a spot can't be farmed forever;
+ * coarse dirt itself doesn't brush (nothing left to find). A per-player cooldown
+ * keeps it from firehosing. Non-brush fused weapons are ignored here (they
+ * swing/shoot as normal), and a placed Fusion Machine is never touched.
  */
 public final class GoldenBrushListener implements Listener {
 
@@ -36,17 +41,19 @@ public final class GoldenBrushListener implements Listener {
     private final GoldenBrush brush;
     private final CooldownMap cooldown;
     private final WorldFilter worldFilter;
+    private final FusionMachineMenu menu;
     private final Random rng = new Random();
 
     public GoldenBrushListener(FusedItemReader reader, ModifierRegistry registry,
                                ProjectileLauncher launcher, GoldenBrush brush, CooldownMap cooldown,
-                               WorldFilter worldFilter) {
+                               WorldFilter worldFilter, FusionMachineMenu menu) {
         this.reader = reader;
         this.registry = registry;
         this.launcher = launcher;
         this.brush = brush;
         this.cooldown = cooldown;
         this.worldFilter = worldFilter;
+        this.menu = menu;
     }
 
     @EventHandler
@@ -65,6 +72,10 @@ public final class GoldenBrushListener implements Listener {
         if (hand.getType() != Material.BRUSH || !reader.isFused(hand)) {
             return;
         }
+        Block clicked = event.getClickedBlock();
+        if (clicked != null && (clicked.getType() == Material.COARSE_DIRT || menu.isMachineBlock(clicked))) {
+            return; // already scoured (or a placed Fusion Machine) — nothing left to brush
+        }
         ModifierStack stack = registry.resolve(reader.readModifierIds(hand));
         int level = launcher.compile(stack).treasure();
         if (level <= 0) {
@@ -74,10 +85,16 @@ public final class GoldenBrushListener implements Listener {
             return;
         }
 
-        Location where = event.getClickedBlock() != null
-                ? event.getClickedBlock().getLocation().add(0.5, 1.0, 0.5)
+        Location where = clicked != null
+                ? clicked.getLocation().add(0.5, 1.0, 0.5)
                 : player.getEyeLocation().add(player.getEyeLocation().getDirection());
         where.getWorld().playSound(where, Sound.ITEM_BRUSH_BRUSHING_GENERIC, 0.7f, 1.0f);
+
+        // Every stroke scours the block down to coarse dirt, win or not — so a
+        // spot can't be brushed forever.
+        if (clicked != null) {
+            clicked.setType(Material.COARSE_DIRT);
+        }
 
         if (rng.nextDouble() >= brush.procChance(level)) {
             return; // no find this stroke

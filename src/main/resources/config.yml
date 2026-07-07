@@ -189,13 +189,17 @@ golden-brush:
   # Per-player cooldown between brush strokes (ms), so it isn't a firehose.
   cooldown-ms: 250
 
-# WAND — a fused STICK with POTION (from a Lingering Potion). Right-clicking a
-# block plants a small lingering cloud there, loaded with that effect.
+# WAND — swinging a fused STICK with POTION (from a Lingering Potion) plants a
+# small lingering cloud at the block you're looking at, loaded with that effect.
 wand:
-  # How far (blocks) the cloud's effect reaches.
-  radius: 2.5
-  # How long (ticks) the cloud itself lingers before it dissipates.
-  cloud-duration-ticks: 100
+  # How far (blocks) the cloud's effect reaches — this is a real burst radius,
+  # so EXPAND widens it (fuse a Wand with EXPAND for a bigger cloud).
+  radius: 1.5
+  # How long (ticks) the cloud itself lingers before it dissipates — long by
+  # default (~5 min) since it's meant to sit and be used repeatedly, not a
+  # one-shot burst. An explicit DURATION on the stack overrides this outright
+  # (e.g. `STICK POTION:POISON DURATION:30` lingers only 30s).
+  cloud-duration-ticks: 6000
   # How long (ticks) each dose the cloud applies lasts on the target.
   effect-duration-ticks: 60
   # Amplifier of the applied effect (0 = level I).

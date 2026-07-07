@@ -26,7 +26,8 @@ public final class WeaponBuilder {
     public record Defaults(double baseSpeed, int baseLifetimeTicks, double pierceMaxHardness,
                            double pushRadius, double pushPower,
                            double damageRadius, double damagePower,
-                           double fireRadius, double iceRadius, double depositRadius) {
+                           double fireRadius, double iceRadius, double depositRadius,
+                           double potionRadius) {
     }
 
     private final Defaults defaults;
@@ -119,9 +120,12 @@ public final class WeaponBuilder {
         stack.peek().setMobType(type);
     }
 
-    /** Emitter: makes this a Wand casting {@code type} — see {@link ProjectileSpec#potionType()}. */
-    public void emitPotion(PotionEffectType type) {
-        stack.peek().setPotionType(type);
+    /**
+     * Emitter: makes this a Wand casting {@code type} in a radius (widened by
+     * EXPAND like any other burst) — see {@link ProjectileSpec#potionType()}.
+     */
+    public AoeSpec emitPotion(PotionEffectType type) {
+        return stack.peek().addAoe(new AoeSpec(AoeKind.POTION, defaults.potionRadius(), 0, type));
     }
 
     /**

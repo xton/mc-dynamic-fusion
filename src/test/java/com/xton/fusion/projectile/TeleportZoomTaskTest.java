@@ -69,4 +69,30 @@ class TeleportZoomTaskTest {
 
         assertTrue(player.isInvulnerable(), "must not turn off an invulnerability we didn't grant");
     }
+
+    @Test
+    void survivesOverlappingZoomsWithoutGettingStuckInvulnerable() {
+        // Regression: two separate casts (not the same Shot, so the per-Shot
+        // teleport latch doesn't guard against this) land close enough
+        // together that their zooms overlap. The second task used to capture
+        // "invulnerable" (the first task's own grant) as if it were the real
+        // original, then restore *that* when it finished last — leaving the
+        // player stuck invulnerable forever with nothing left to undo it.
+        PlayerMock player = server.addPlayer();
+        player.setInvulnerable(false);
+        Location from = new Location(world, 0.5, 100, 0.5);
+        Location toA = new Location(world, 0.5, 100, 6.5);
+        Location toB = new Location(world, 0.5, 100, 12.5);
+        player.teleport(from);
+
+        new TeleportZoomTask(player, from, toA, 6).runTaskTimer(plugin, 0L, 1L);
+        server.getScheduler().performTicks(2);
+        new TeleportZoomTask(player, from, toB, 6).runTaskTimer(plugin, 0L, 1L); // starts mid-flight of the first
+
+        server.getScheduler().performTicks(4); // task A's timer (6 ticks) has now elapsed; B still has 2 to go
+        assertTrue(player.isInvulnerable(), "still invulnerable — a second zoom is still in flight");
+
+        server.getScheduler().performTicks(4); // task B's timer has now elapsed too
+        assertFalse(player.isInvulnerable(), "must not be stuck invulnerable once every zoom has landed");
+    }
 }

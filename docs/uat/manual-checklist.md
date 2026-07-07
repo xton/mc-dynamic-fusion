@@ -143,6 +143,12 @@ player; SPAWN clusters are best judged by eye) still want a look:
     LIFETIME TELEPORT` blinks you to the **far end of a bored tunnel**. Under
     `MULTISHOT` you teleport **once** (first bolt to land), and you never end
     up stuck in a wall or a mob (safe offset). Ender Pearl is the ingredient.
+    **Rapid-fire check:** swing a TELEPORT weapon twice in quick succession
+    (faster than the ~0.3s zoom) — invulnerability should still turn off once
+    both dashes land, not get stuck on permanently (regression: overlapping
+    zooms used to leave the caster invulnerable forever, with no vanilla way
+    to clear it — confirm with `/kill` or a big fall afterward that you can
+    still take damage).
     **Velocity check:** jump off a ledge (or teleport yourself high up) and
     fire a `TELEPORT` shot on the way down — you should land at a dead stop,
     with **no fall damage** and no residual momentum, not keep falling from where

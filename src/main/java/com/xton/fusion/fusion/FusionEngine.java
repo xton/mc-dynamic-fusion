@@ -10,6 +10,7 @@ import com.xton.fusion.item.FusedItemFactory;
 import com.xton.fusion.item.FusedItemReader;
 import com.xton.fusion.item.LatentRegistry;
 import com.xton.fusion.item.Lineage;
+import com.xton.fusion.item.PotionLatent;
 import com.xton.fusion.util.Format;
 
 /**
@@ -45,9 +46,12 @@ public final class FusionEngine {
             return FusionResult.fail("No ingredient to fuse.");
         }
 
-        // The ingredient contributes its base-material latent modifiers AND, if
-        // it is itself a fused item, its whole fused stack.
+        // The ingredient contributes its base-material latent modifiers, its
+        // own potion effect if it's a lingering potion (read off its item meta,
+        // not the static registry — see PotionLatent), AND, if it is itself a
+        // fused item, its whole fused stack.
         List<String> contributed = new ArrayList<>(latent.get(ingredient.getType()));
+        contributed.addAll(PotionLatent.extra(ingredient));
         if (reader.isFused(ingredient)) {
             contributed.addAll(reader.readModifierIds(ingredient));
         }

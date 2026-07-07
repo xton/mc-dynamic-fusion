@@ -271,6 +271,18 @@ the bits that need a real player or an eye:
     `detect.range` / `detect.max-wait-ticks` (a mine that never triggers should
     quietly disarm after `max-wait-ticks`, rather than sitting forever).
     Tripwire Hook is the ingredient.
+37. **Wand (Potion).** Grab the showcase's **Wand** (a Stick pre-loaded with
+    Poison), or build one yourself: `/fusion give <you> STICK POTION:POISON`.
+    Right-click a block → a small cloud should appear there, particles/color
+    matching the potion (green swirl for Poison), and anything standing in it
+    should periodically take the effect. The cloud fades on its own after
+    `wand.cloud-duration-ticks`. Then check the **real** path this exists for:
+    get a Lingering Potion of a *different* effect (e.g. Regeneration — craft
+    one or grab it from creative), fuse it onto a plain Stick at the Fusion
+    Machine, and confirm the resulting Wand casts *that* effect/color — the
+    potion's actual data is read at fuse time, not just its material. Tune
+    `wand.radius` / `wand.cloud-duration-ticks` / `wand.effect-duration-ticks`
+    / `wand.amplifier` / `wand.cooldown-ms` to taste.
 
 ---
 

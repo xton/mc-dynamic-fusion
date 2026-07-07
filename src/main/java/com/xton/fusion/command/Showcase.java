@@ -77,6 +77,7 @@ public final class Showcase {
                 new Entry(Material.DIAMOND_AXE, List.of("MOB:COW", "MULTISHOT", "SPREAD", "LIFETIME"), "Cow Launcher"),
                 // --- tools & worn ---
                 new Entry(Material.BRUSH, List.of("TREASURE", "TREASURE", "TREASURE"), "Golden Brush"),
+                new Entry(Material.STICK, List.of("POTION:POISON"), "Wand"),
                 new Entry(Material.DIAMOND_HELMET, List.of("GLOW"), "Glow Helmet"),
                 new Entry(Material.ELYTRA, List.of("LIFT"), "Jet Elytra"));
 }

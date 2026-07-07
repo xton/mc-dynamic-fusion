@@ -34,6 +34,7 @@ Noita-style. Modifiers come in two kinds:
 | **emit** | **Detect** | Tripwire Hook | like Spawn, but the child arms in place (blinking) and goes off the moment a creature steps within range (Expand widens the range) — a trap/mine |
 | **emit** | **Mob:_type_** | Cow Spawn Egg | launches a live creature as the projectile — vanilla physics carry it (the Cow Launcher) |
 | **emit** | **Treasure** | Gold Ingot/Block | on a **Brush**, sweeping any block may cough up loot; more gold → rarer finds |
+| **emit** | **Potion:_effect_** | Lingering Potion | on a **Stick** (a Wand), right-clicking a block leaves a small lingering cloud of that effect there, particles/color matching the potion |
 | *xf (aoe)* | **Expand** | Heart of the Sea, Magma Cream | ×radius of the previous burst |
 | *xf (aoe)* | **Amplify** | Glowstone Dust, Blaze Powder | ×force/damage of the previous burst |
 | *xf (aoe)* | **Chain** | String, Echo Shard | previous burst hops to more entities |
@@ -70,8 +71,9 @@ wait, blast); a heal bomb is `Heal · Expand · Amplify`; a seeking bolt is
 `Damage · Homing · Lifetime`; the Cow Launcher is an axe with `Mob:Cow`; a
 landmine is `Lifetime · Gravity · Visible · Detect · Damage · Amplify · Expand
 · Mining · Expand · Fire` — a lobbed throw that plants itself, arms, blinks,
-and blasts (damage, a bore, and fire) when something walks up. Many
-ingredients are **bundles** — a ready-made recipe in one item (TNT =
+and blasts (damage, a bore, and fire) when something walks up; a Wand is a
+Stick with `Potion:Poison` (or whatever a fused Lingering Potion carried in).
+Many ingredients are **bundles** — a ready-made recipe in one item (TNT =
 `Damage · Expand · Expand`, End Crystal = the works). See
 [`latent_registry.yml`](src/main/resources/latent_registry.yml) for the roster.
 
@@ -105,6 +107,15 @@ wake only begins ~2.5 blocks out — a shot clears the caster (arm's reach)
 before it's seen at all, so a fast bow shot doesn't leave a lingering trail
 right in front of you. Melee, which rarely travels that far before hitting its
 target, ends up invisible for its whole flight without needing separate logic.
+
+**The Wand is the one latent read off the item itself, not the material.**
+Every other ingredient's magic comes from a static Material→modifier table
+(`latent_registry.yml`); a Lingering Potion is the exception — Poison, Harming,
+Regeneration, ... are all the same material, so fusing one onto a Stick reads
+its actual potion data at fuse time and bakes in a `Potion:<effect>` matching
+that specific potion. The Wand then casts it with a vanilla `AreaEffectCloud`
+(the same entity a thrown lingering potion leaves behind) right-clicked onto a
+block — free particle/color theming, no bespoke art needed.
 
 **Fused bows** become wands: releasing fires the same projectiles downrange,
 their speed scaled by draw force (so a Multishot bow fans a volley). Fusing can
@@ -167,18 +178,18 @@ make smoke
 It then runs an **in-process functional self-test** — `/fusion test`
 (console/op only) drives the *real* modifier compiler, projectile, and burst
 code against the live world and asserts the mechanics MockBukkit can't reach. It
-has two kinds of check (49 in total):
+has two kinds of check (50 in total):
 
 - **compile checks** pin the emitter/transform RPN semantics on the compiled
   spec — EXPAND/AMPLIFY scaling, MULTISHOT/SPREAD/LIFETIME stacking, INVERT
   toggling, CHAIN/PERSIST accumulation, the flight flags (incl. BOUNCE, HOMING,
   GRAVITY, VISIBLE/INVISIBLE and the parameterized SPEED:n/DURATION:n), the
   HEAL/PULL complements, MINING hardness stacking, the FIRE/ICE/DEPOSIT emitters
-  and TRAIL/TELEPORT/SPAWN/DELAY/DETECT/MOB wiring (`Deposit:Dirt` / `Mob:Cow`
-  parameter parsing, Spawn/Delay/Detect pushing a fresh child, a following EXPAND
-  widening DETECT's own trigger radius), and the *nearest-previous binding* (a
-  transform touches only the last emitter) that's nearly impossible to eyeball
-  in-world;
+  and TRAIL/TELEPORT/SPAWN/DELAY/DETECT/MOB/POTION wiring (`Deposit:Dirt` /
+  `Mob:Cow` / `Potion:Poison` parameter parsing, Spawn/Delay/Detect pushing a
+  fresh child, a following EXPAND widening DETECT's own trigger radius), and
+  the *nearest-previous binding* (a transform touches only the last emitter)
+  that's nearly impossible to eyeball in-world;
 - **runtime checks** fire real bursts/projectiles at dummies and blocks: PUSH
   knockback, DAMAGE health loss, an inverted PUSH pulling inward, a CHAIN hop, a
   MINING ray carving and *stopping at obsidian* (and a deep MINING stack *boring

@@ -17,6 +17,7 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Zombie;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
 
 import com.xton.fusion.command.Showcase;
@@ -590,6 +591,14 @@ public final class SelfTest {
         boolean mobOk = cowShot.mobType() == EntityType.COW && compile("MOB:ENDER_DRAGON").mobType() == null;
         r.add(new Result("compile:mob-parameterized", mobOk,
                 "cow=" + cowShot.mobType() + " dragonBlocked=" + (compile("MOB:ENDER_DRAGON").mobType() == null)));
+
+        // POTION:<effect> (the Wand) parses a registered potion effect by key;
+        // an unknown name leaves it inert.
+        boolean potionOk = compile("POTION:POISON").potionType() == PotionEffectType.POISON
+                && compile("POTION:NOT_A_REAL_EFFECT").potionType() == null;
+        r.add(new Result("compile:potion-parameterized", potionOk,
+                "poison=" + compile("POTION:POISON").potionType()
+                        + " badParam=" + compile("POTION:NOT_A_REAL_EFFECT").potionType()));
 
         // Flight tuning: GRAVITY arcs, VISIBLE/INVISIBLE toggle the trail, and the
         // parameterized SPEED:<v>/DURATION:<s> pin absolute values.

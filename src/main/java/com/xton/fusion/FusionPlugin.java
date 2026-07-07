@@ -50,6 +50,7 @@ import com.xton.fusion.modifier.impl.MobModifier;
 import com.xton.fusion.modifier.impl.MultishotModifier;
 import com.xton.fusion.modifier.impl.PersistModifier;
 import com.xton.fusion.modifier.impl.PierceModifier;
+import com.xton.fusion.modifier.impl.PotionModifier;
 import com.xton.fusion.modifier.impl.PullModifier;
 import com.xton.fusion.modifier.impl.PushModifier;
 import com.xton.fusion.modifier.impl.SpawnModifier;
@@ -65,6 +66,7 @@ import com.xton.fusion.projectile.EnvironmentalAoe;
 import com.xton.fusion.projectile.ProjectileLauncher;
 import com.xton.fusion.weapon.GoldenBrush;
 import com.xton.fusion.weapon.GoldenBrushListener;
+import com.xton.fusion.weapon.WandListener;
 import com.xton.fusion.selftest.SelfTest;
 import com.xton.fusion.util.BukkitTaskScheduler;
 import com.xton.fusion.util.CooldownMap;
@@ -129,6 +131,8 @@ public final class FusionPlugin extends JavaPlugin {
                 .register(new MobModifier())
                 // Golden Brush: gold-scaled loot on brushing.
                 .register(new TreasureModifier())
+                // Wand: casts a lingering effect (from a fused Lingering Potion).
+                .register(new PotionModifier())
                 // Worn effects (fused onto armor).
                 .register(new GlowModifier())
                 .register(new LiftModifier())
@@ -204,6 +208,17 @@ public final class FusionPlugin extends JavaPlugin {
         CooldownMap brushCooldown = new CooldownMap(getConfig().getLong("golden-brush.cooldown-ms", 250));
         getServer().getPluginManager().registerEvents(
                 new GoldenBrushListener(reader, registry, launcher, goldenBrush, brushCooldown, worldFilter), this);
+
+        // Wand: a fused STICK with POTION (from a Lingering Potion) plants a
+        // small lingering cloud of that effect where you right-click.
+        WandListener.Settings wandSettings = new WandListener.Settings(
+                getConfig().getDouble("wand.radius", 2.5),
+                getConfig().getInt("wand.cloud-duration-ticks", 100),
+                getConfig().getInt("wand.effect-duration-ticks", 60),
+                getConfig().getInt("wand.amplifier", 0));
+        CooldownMap wandCooldown = new CooldownMap(getConfig().getLong("wand.cooldown-ms", 500));
+        getServer().getPluginManager().registerEvents(
+                new WandListener(reader, registry, launcher, wandSettings, wandCooldown, worldFilter), this);
 
         // Fusion Machine: placeable enchanting table, tagged via block-entity PDC
         // (no side file), opening the anvil-style fusion GUI on right-click.

@@ -10,8 +10,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
+import org.bukkit.GameMode;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import com.xton.fusion.command.FusionCommand;
@@ -278,7 +280,28 @@ public final class FusionPlugin extends JavaPlugin {
             getCommand("fusion").setTabCompleter(fusionCmd);
         }
 
+        clearStuckInvulnerability();
+
         getLogger().info("DynamicFusion enabled.");
+    }
+
+    /**
+     * A now-fixed bug in TELEPORT's zoom (overlapping casts) could leave a
+     * survival/adventure player permanently marked invulnerable, with no
+     * vanilla way to clear it (it isn't reset by death or relogin). Nothing
+     * else in vanilla sets that flag for a non-creative/spectator player, so
+     * on every (re)start, sweep it off anyone still carrying it — a stale
+     * artifact of the bug, never a legitimate state to preserve.
+     */
+    private void clearStuckInvulnerability() {
+        for (Player player : getServer().getOnlinePlayers()) {
+            if (player.isInvulnerable() && player.getGameMode() != GameMode.CREATIVE
+                    && player.getGameMode() != GameMode.SPECTATOR) {
+                player.setInvulnerable(false);
+                getLogger().warning("Cleared a stuck invulnerable flag on " + player.getName()
+                        + " (leftover from a since-fixed TELEPORT bug).");
+            }
+        }
     }
 
     @Override

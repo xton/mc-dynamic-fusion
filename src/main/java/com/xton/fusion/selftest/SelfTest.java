@@ -176,6 +176,10 @@ public final class SelfTest {
         // air pocket ending in a wall to backfill (DEPOSIT), and a clear corridor
         // to fill along its wake (DEPOSIT + TRAIL). A mob on the FIRE line to ignite.
         final int envCol = 3;
+        // TRAIL's own check point has to clear TRAIL_WARMUP (4.5 blocks) downrange,
+        // unlike the other environmental checks above which apply at the terminus
+        // regardless of warm-up.
+        final int trailCol = 6;
         boolean fireOk = laySnow(world, bx, by, bz - 14, envCol);
         Zombie fireMob = spawnDummy(world, base.clone().add(5, 1, -14), spawned);
         boolean iceOk = layWater(world, bx, by, bz - 16, envCol);
@@ -359,7 +363,7 @@ public final class SelfTest {
                 results.add(depositFillsAir(world, bx, by, bz - 18, 4));
             }
             if (trailEnv) {
-                results.add(trailFillsPath(world, bx, by, bz - 20, envCol));
+                results.add(trailFillsPath(world, bx, by, bz - 20, trailCol));
             }
             if (fireBounce) {
                 results.add(damagedOnRebound("bounce-reflects-off-wall", bounceMob, bounceMob0));
@@ -615,14 +619,15 @@ public final class SelfTest {
                         + " badParam=" + compile("POTION:NOT_A_REAL_EFFECT").potionType()));
 
         // POTION's cast radius is a real AoeSpec, so EXPAND widens it like any
-        // other burst, but it never leaks into the terminus payload (it's the
-        // Wand's own cast, not something a swing/shot should deliver as a burst).
+        // other burst, and — like any other emitter — it delivers at the
+        // terminus: any weapon carrying POTION casts a cloud where its shot
+        // lands, not just the Wand's own point-and-cast.
         double potionR0 = compile("POTION:POISON").potionRadius();
         double potionR1 = compile("POTION:POISON", "EXPAND").potionRadius();
-        boolean potionNoBurst = launcher.buildPayload(compile("POTION:POISON")).isEmpty();
-        boolean potionExpandOk = potionR1 > potionR0 + EPS && potionNoBurst;
+        boolean potionDelivers = !launcher.buildPayload(compile("POTION:POISON")).isEmpty();
+        boolean potionExpandOk = potionR1 > potionR0 + EPS && potionDelivers;
         r.add(new Result("compile:potion-expand-and-payload", potionExpandOk,
-                "r0=" + potionR0 + " r1(expand)=" + potionR1 + " noBurst=" + potionNoBurst));
+                "r0=" + potionR0 + " r1(expand)=" + potionR1 + " delivers=" + potionDelivers));
 
         // Flight tuning: GRAVITY arcs, VISIBLE/INVISIBLE toggle the trail, and the
         // parameterized SPEED:<v>/DURATION:<s> pin absolute values.

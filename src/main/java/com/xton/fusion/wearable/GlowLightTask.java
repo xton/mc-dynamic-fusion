@@ -36,10 +36,14 @@ import com.xton.fusion.util.WorldFilter;
  */
 public final class GlowLightTask implements Runnable, Listener {
 
-    /** Step size (blocks) when backing the light off toward the player to dodge a wall. */
-    private static final double STEP = 0.25;
     /** Closest to the player's eyes the light will ever sit — stays "in front of", not inside, the face. */
     private static final double MIN_DISTANCE = 0.3;
+    /**
+     * Score discount (blocks) the previously-lit cell gets over an equally-good
+     * alternative, so a fraction-of-a-degree wobble in look direction doesn't
+     * flip the light between two near-tied cells every tick.
+     */
+    private static final double STABILITY_BONUS = 0.4;
 
     private final FusedItemReader reader;
     private final WorldFilter worldFilter;
@@ -86,41 +90,39 @@ public final class GlowLightTask implements Runnable, Listener {
     }
 
     /**
-     * The block-aligned cell up to {@code distance} blocks in front of the
-     * player's eyes — or, facing a wall closer than that, the nearest open
-     * cell backing off toward them along the <em>same line of sight</em>, so
-     * the light relocates in front of the wall's face instead of just going
-     * dark.
-     *
-     * <p>Nose flush against a wall, even the closest forward point ({@link
-     * #MIN_DISTANCE}) is already past its surface, so the forward search alone
-     * finds nothing. Rather than hop off that line (which would place the
-     * light somewhere arbitrary — beside or above the head, not "ahead of" or
-     * "behind" it), keep walking the <em>same</em> vector past the eyes and
-     * out the back of the head, as far behind as {@code distance} is in
-     * front — still always somewhere along where the player is actually
-     * looking, just possibly now behind them instead of ahead.
+     * The cell to light: among every open cell within {@code distance} of the
+     * player's eyes, whichever is nearest the ideal point straight ahead at
+     * that distance (see {@link LightPlacement} for the geometry). An
+     * unobstructed view picks directly ahead, same as before; a blocked one
+     * backs off to the nearest open cell in <em>any</em> direction, not just
+     * forward/back along the line of sight — which is what lets it find
+     * somewhere to sit in a corner or under an overhang, where that single
+     * line (and its reverse, back through the head) is walled off both ways
+     * but open air still exists just to the side. Null only when every cell in
+     * range is solid — genuinely embedded, nowhere nearby to put it.
      */
     Location findLightCell(Player player) {
         Location eye = player.getEyeLocation();
         Vector dir = eye.getDirection().normalize();
-        for (double d = distance; d >= -distance; d -= STEP) {
-            if (d > 0 && d < MIN_DISTANCE) {
-                continue; // the sliver just in front of the face reads as "inside it", not "ahead"
-            }
-            Location cell = blockCell(eye.clone().add(dir.clone().multiply(d)));
-            if (canLight(cell)) {
-                return cell;
-            }
-        }
-        return null;
+        Location previousLoc = lit.get(player.getUniqueId());
+        LightPlacement.Cell previous = previousLoc == null ? null
+                : new LightPlacement.Cell(previousLoc.getBlockX(), previousLoc.getBlockY(), previousLoc.getBlockZ());
+
+        LightPlacement.Cell chosen = LightPlacement.choose(
+                eye.getX(), eye.getY(), eye.getZ(),
+                dir.getX(), dir.getY(), dir.getZ(),
+                distance, MIN_DISTANCE, previous, STABILITY_BONUS,
+                cell -> canLight(new Location(eye.getWorld(), cell.x(), cell.y(), cell.z())));
+
+        return chosen == null ? null : new Location(eye.getWorld(), chosen.x(), chosen.y(), chosen.z());
     }
 
-    private static Location blockCell(Location at) {
-        return new Location(at.getWorld(), at.getBlockX(), at.getBlockY(), at.getBlockZ());
-    }
-
-    /** Only fake the light over real air, so it never looks like it's shining through a solid wall. */
+    /**
+     * Fake the light anywhere non-solid — not just true air. A cobweb, tall
+     * grass, a torch, still isn't a wall the light would look like it's shining
+     * through, and a structure thick with cobwebs (a mineshaft, say) would
+     * otherwise starve the search of anywhere at all to put it.
+     */
     private boolean canLight(Location loc) {
         World world = loc.getWorld();
         if (world == null || !world.isChunkLoaded(loc.getBlockX() >> 4, loc.getBlockZ() >> 4)) {
@@ -129,7 +131,7 @@ public final class GlowLightTask implements Runnable, Listener {
         if (loc.getBlockY() < world.getMinHeight() || loc.getBlockY() >= world.getMaxHeight()) {
             return false;
         }
-        return loc.getBlock().getType() == Material.AIR;
+        return !loc.getBlock().getType().isSolid();
     }
 
     /** Show this player what's really there — purely client-side, so this is the entire "cleanup". */

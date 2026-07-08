@@ -27,11 +27,13 @@ import com.xton.fusion.util.WorldFilter;
  * The Golden Brush: right-clicking (brushing) with a fused {@code BRUSH} that
  * carries TREASURE rolls the loot table. The loot <em>level</em> is the brush's
  * TREASURE count (how much gold was fused): it raises the proc chance and unlocks
- * rarer finds. Every successful stroke scours the block down to
- * {@link Material#COARSE_DIRT} — win or not — so a spot can't be farmed forever;
- * coarse dirt itself doesn't brush (nothing left to find). A per-player cooldown
- * keeps it from firehosing. Non-brush fused weapons are ignored here (they
- * swing/shoot as normal), and a placed Fusion Machine is never touched.
+ * rarer finds. Every successful stroke scours the block — win or not — so a spot
+ * can't be farmed forever: solid ground scours down to {@link Material#COARSE_DIRT}
+ * (which itself doesn't brush — nothing left to find), while a non-solid plant or
+ * decoration (grass, ferns, flowers, ...) just breaks instead, since it was never
+ * "ground" to begin with. A per-player cooldown keeps it from firehosing.
+ * Non-brush fused weapons are ignored here (they swing/shoot as normal), and a
+ * placed Fusion Machine is never touched.
  */
 public final class GoldenBrushListener implements Listener {
 
@@ -90,10 +92,16 @@ public final class GoldenBrushListener implements Listener {
                 : player.getEyeLocation().add(player.getEyeLocation().getDirection());
         where.getWorld().playSound(where, Sound.ITEM_BRUSH_BRUSHING_GENERIC, 0.7f, 1.0f);
 
-        // Every stroke scours the block down to coarse dirt, win or not — so a
-        // spot can't be brushed forever.
+        // Every stroke scours the block, win or not — so a spot can't be
+        // brushed forever. Solid ground scours down to coarse dirt; a
+        // non-solid plant/decoration (grass, ferns, flowers, ...) isn't
+        // "ground" to scour — it just breaks, like a quick brush would.
         if (clicked != null) {
-            clicked.setType(Material.COARSE_DIRT);
+            if (clicked.getType().isSolid()) {
+                clicked.setType(Material.COARSE_DIRT);
+            } else {
+                clicked.breakNaturally();
+            }
         }
 
         if (rng.nextDouble() >= brush.procChance(level)) {

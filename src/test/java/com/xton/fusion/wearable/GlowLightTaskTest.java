@@ -3,6 +3,7 @@ package com.xton.fusion.wearable;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -30,7 +31,11 @@ import com.xton.fusion.util.WorldFilter;
 /**
  * GLOW's in-front-of-face light must be client-side only — the real world is
  * never allowed to change, since sendBlockChange was chosen specifically so
- * nothing needs reverting on disconnect/crash/shutdown.
+ * nothing needs reverting on disconnect/crash/shutdown. The actual placement
+ * geometry (sphere search, corner/overhang handling, determinism) lives in
+ * {@link LightPlacement} and is exhaustively covered by
+ * {@code LightPlacementTest} instead — this file only checks that
+ * {@link GlowLightTask} wires it up correctly against a real (mock) world.
  */
 class GlowLightTaskTest {
 
@@ -56,12 +61,17 @@ class GlowLightTaskTest {
         MockBukkit.unmock();
     }
 
+    private PlayerMock glowWearer(Location at) {
+        PlayerMock player = server.addPlayer();
+        player.setLocation(at);
+        player.getInventory().setHelmet(factory.create(Material.DIAMOND_HELMET, List.of(GlowModifier.ID), "test"));
+        return player;
+    }
+
     @Test
     void neverWritesToTheRealWorld() {
-        PlayerMock player = server.addPlayer();
         // Well above the simple world's generated ground, so the cell ahead is air.
-        player.setLocation(new Location(world, 0.5, 100, 0.5, 0f, 0f)); // yaw 0 = looking +Z
-        player.getInventory().setHelmet(factory.create(Material.DIAMOND_HELMET, List.of(GlowModifier.ID), "test"));
+        glowWearer(new Location(world, 0.5, 100, 0.5, 0f, 0f)); // yaw 0 = looking +Z
 
         Location front = new Location(world, 0, 100, 2, 0f, 0f); // roughly "in front" along +Z
         assertEquals(Material.AIR, front.getBlock().getType(), "sanity: starts as air");
@@ -73,72 +83,75 @@ class GlowLightTaskTest {
     }
 
     @Test
-    void relocatesTowardThePlayerWhenFacingAWallUpClose() {
-        PlayerMock player = server.addPlayer();
-        player.setLocation(new Location(world, 0.5, 100, 0.5, 0f, 0f)); // yaw 0 = looking +Z
-        player.getInventory().setHelmet(factory.create(Material.DIAMOND_HELMET, List.of(GlowModifier.ID), "test"));
-
-        // A wall spanning a generous Y range at z=2, well past the default 1.5-block
-        // distance whatever the exact eye-height offset — everything closer (z<=1)
-        // stays air.
-        for (int y = 97; y <= 104; y++) {
-            new Location(world, 0, y, 2).getBlock().setType(Material.STONE);
-        }
+    void picksStraightAheadWhenClear() {
+        PlayerMock player = glowWearer(new Location(world, 0.5, 100, 0.5, 0f, 0f)); // yaw 0 = looking +Z
 
         Location found = new GlowLightTask(reader, new WorldFilter(List.of()), 1.5).findLightCell(player);
 
-        assertNotNull(found, "should back off toward the player and find open air instead of giving up");
+        assertNotNull(found);
         assertEquals(Material.AIR, found.getBlock().getType());
-        assertTrue(found.getZ() < 2, "relocated cell should be nearer than the blocked wall");
+        assertEquals(0, found.getBlockX());
+        assertTrue(found.getBlockZ() > 0, "should sit out ahead of the player, not at/behind their feet");
     }
 
     @Test
-    void continuesPastTheEyesAlongTheSameLineWhenNoseAgainstAWall() {
-        PlayerMock player = server.addPlayer();
-        // Eyes almost touching the wall (z=1) — even the closest forward sample
-        // (MIN_DISTANCE past the eyes) already lands inside it, so the
-        // straight-ahead search fails at every forward distance. The fallback
-        // must stay on the *same* gaze line rather than hopping sideways —
-        // here that lands it right back at the eyes' own cell (z<1).
-        player.setLocation(new Location(world, 0.5, 100, 0.75, 0f, 0f)); // yaw 0 = looking +Z
-        player.getInventory().setHelmet(factory.create(Material.DIAMOND_HELMET, List.of(GlowModifier.ID), "test"));
-
-        for (int y = 97; y <= 104; y++) {
-            new Location(world, 0, y, 1).getBlock().setType(Material.STONE);
-            new Location(world, 0, y, 2).getBlock().setType(Material.STONE);
+    void findsAnOpeningInACornerEvenThoughStraightAheadAndItsReverseAreBothBlocked() {
+        // The bug this rewrite fixes: standing in a corner/under an overhang,
+        // where the single forward/back line through the eyes is walled off
+        // *both* ways, but open air still exists just to the side. A pure 1D
+        // ray search (the old algorithm) can never find that; the sphere search
+        // must.
+        PlayerMock player = glowWearer(new Location(world, 0.5, 100, 0.5, 0f, 0f)); // yaw 0 = looking +Z
+        for (int y = 99; y <= 102; y++) {
+            new Location(world, 0, y, -1).getBlock().setType(Material.STONE); // behind
+            new Location(world, 0, y, 0).getBlock().setType(Material.STONE); // the eyes' own cell
+            new Location(world, 0, y, 1).getBlock().setType(Material.STONE); // dead ahead
+            // A gap immediately to the side (a generous Y range, so it's in
+            // reach whatever the exact eye-height offset) is the only way out.
+            new Location(world, 1, y, 0).getBlock().setType(Material.AIR);
         }
 
         Location found = new GlowLightTask(reader, new WorldFilter(List.of()), 1.5).findLightCell(player);
 
-        assertNotNull(found, "should keep searching along the gaze line instead of giving up");
+        assertNotNull(found, "should find the side opening instead of going dark in the corner");
         assertEquals(Material.AIR, found.getBlock().getType());
-        assertTrue(found.getZ() < 1, "fallback cell should be at/behind the eyes, not inside the wall");
-        assertEquals(0.0, found.getX(), 1.0e-9, "must stay on the gaze axis, not hop sideways");
     }
 
     @Test
-    void extendsBehindTheHeadWhenEvenTheEyesOwnCellIsBlocked() {
-        PlayerMock player = server.addPlayer();
-        // A wall thick enough to cover the eyes' own cell too (z=0,1,2) — the
-        // straight-ahead search and the eyes' own cell both fail, so the only
-        // way to find air at all is to keep walking the same vector out the
-        // back of the player's head into the room behind them (z<0).
-        player.setLocation(new Location(world, 0.5, 100, 0.75, 0f, 0f)); // yaw 0 = looking +Z
-        player.getInventory().setHelmet(factory.create(Material.DIAMOND_HELMET, List.of(GlowModifier.ID), "test"));
-        world.loadChunk(0, -1); // the fallback now reaches z<0, one chunk over from setUp's (0,0)
-
-        for (int y = 97; y <= 104; y++) {
-            new Location(world, 0, y, 0).getBlock().setType(Material.STONE);
-            new Location(world, 0, y, 1).getBlock().setType(Material.STONE);
+    void cobwebsDontBlockPlacement() {
+        // A structure thick with cobwebs (a mineshaft, say) shouldn't starve the
+        // search — a cobweb isn't a wall the light would look like it's shining
+        // through. Wall off the straight-ahead cell itself with stone so the
+        // cobweb, one cell nearer, is the best reachable spot rather than an
+        // incidental also-open cell farther out along the same line.
+        PlayerMock player = glowWearer(new Location(world, 0.5, 100, 0.5, 0f, 0f)); // yaw 0 = looking +Z
+        // A generous Y range on the wall, whatever the exact eye-height offset.
+        for (int y = 99; y <= 104; y++) {
             new Location(world, 0, y, 2).getBlock().setType(Material.STONE);
+            new Location(world, 0, y, 1).getBlock().setType(Material.COBWEB);
         }
 
         Location found = new GlowLightTask(reader, new WorldFilter(List.of()), 1.5).findLightCell(player);
 
-        assertNotNull(found, "should keep searching behind the head rather than giving up");
-        assertEquals(Material.AIR, found.getBlock().getType());
-        assertTrue(found.getZ() < 0, "should have extended past the back of the head into open air");
-        assertEquals(0.0, found.getX(), 1.0e-9, "must stay on the gaze axis, not hop sideways");
+        assertNotNull(found);
+        assertEquals(Material.COBWEB, found.getBlock().getType(), "a cobweb cell is a perfectly good place to light");
+    }
+
+    @Test
+    void fullyEmbeddedFindsNothing() {
+        PlayerMock player = glowWearer(new Location(world, 0.5, 100, 0.5, 0f, 0f));
+        // dy covers well past the eye-height offset in either direction, whatever it is.
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dy = -4; dy <= 4; dy++) {
+                for (int dz = -2; dz <= 2; dz++) {
+                    new Location(world, dx, 100 + dy, dz).getBlock().setType(Material.STONE);
+                }
+            }
+        }
+
+        Location found = new GlowLightTask(reader, new WorldFilter(List.of()), 1.5).findLightCell(player);
+
+        assertNull(found, "genuinely embedded — nothing nearby to light");
     }
 
     @Test

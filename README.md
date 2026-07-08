@@ -26,15 +26,15 @@ Noita-style. Modifiers come in two kinds:
 | **emit** | **Damage** | Fire Charge, Flint | a damaging burst where it lands |
 | **emit** | **Heal** | Golden Apple | mends friendly entities & the caster; skips hostiles (Damage's complement) |
 | **emit** | **Mining** | Amethyst Shard | carves a tunnel along the flight (Expand widens it); **stack Mining to break harder blocks** — add Pierce to bore through |
-| **emit** | **Fire** | Flint and Steel, Magma Block | spreads fire, melts snow/ice, ignites mobs in a radius (a touch wider than Mining) |
-| **emit** | **Ice** | Blue Ice, Snowball | freezes water→ice, lava→obsidian, snuffs fire, chills mobs |
+| **emit** | **Fire** | Flint and Steel, Magma Block | spreads fire, melts snow/ice, ignites mobs in a radius (a touch wider than Mining); fused onto **armor** instead, it's a worn aura — periodically ignites the ground/creatures around the wearer, who's immune to it |
+| **emit** | **Ice** | Blue Ice, Snowball | freezes water→ice, lava→obsidian, snuffs fire, chills mobs; fused onto **armor**, the same aura treatment — freezes a radius around the wearer, no self-immunity needed since it never creates a real hazard |
 | **emit** | **Deposit:_block_** | Dirt, Sand, Water/Lava Bucket, Cobweb | fills the empty air in a radius with that block (`Deposit:Dirt`, `Deposit:Water`, …) |
 | **emit** | **Spawn** | Firework Rocket, Egg | at the terminus, bursts into a fresh child built from every modifier *after* Spawn |
 | **emit** | **Delay:_n_** | Clock | like Spawn, but the child blinks in place for _n_ s then goes off (lure-then-blast) |
 | **emit** | **Detect** | Tripwire Hook | like Spawn, but the child arms in place (blinking) and goes off the moment a creature steps within range (Expand widens the range) — a trap/mine |
 | **emit** | **Mob:_type_** | Cow Spawn Egg | launches a live creature as the projectile — vanilla physics carry it (the Cow Launcher) |
 | **emit** | **Treasure** | Gold Ingot/Block | on a **Brush**, sweeping any block may cough up loot (more gold → rarer finds) and scours it to Coarse Dirt, win or not — Coarse Dirt itself doesn't brush |
-| **emit** | **Potion:_effect_** | Lingering Potion | on a **Stick** (a Wand), swinging it at a block leaves a small lingering cloud of that effect there (widened by Expand), particles/color matching the potion |
+| **emit** | **Potion:_effect_** | Lingering Potion | casts a small lingering cloud of that effect (widened by Expand, particles/color matching the potion) wherever the weapon delivers it — a **Stick** (the Wand) casts it instantly at the crosshair on a swing; any other weapon casts it at its own shot's terminus |
 | *xf (aoe)* | **Expand** | Heart of the Sea, Magma Cream | ×radius of the previous burst |
 | *xf (aoe)* | **Amplify** | Glowstone Dust, Blaze Powder | ×force/damage of the previous burst |
 | *xf (aoe)* | **Chain** | String, Echo Shard | previous burst hops to more entities |
@@ -43,7 +43,7 @@ Noita-style. Modifiers come in two kinds:
 | *xf (fly)* | **Multishot** | Rabbit's Foot, Slime Ball | launches extra projectiles |
 | *xf (fly)* | **Spread** | Feather, Sugar | scatters the aim |
 | *xf (fly)* | **Pierce** | Arrow, Quartz | punches through soft blocks & applies its effects at every occupied cell/entity in its path |
-| *xf (fly)* | **Bounce** | Slime Block, Rabbit Hide | ricochets off blocks, then rolls to a rest and sits armed until it expires or a mob hits it directly |
+| *xf (fly)* | **Bounce** | Slime Block, Rabbit Hide | ricochets off blocks, rolls out its remaining speed once the hop is gone, then sits armed (with a visible sprite) until it expires or a mob hits it directly |
 | *xf (fly)* | **Homing** | Compass | curves to chase the nearest creature mid-flight (stacks sharpen the turn) |
 | *xf (fly)* | **Trail** | Trident, Prismarine Shard | inverse of Pierce — applies environmental effects at every *empty-air* cell it flies through |
 | *xf (fly)* | **Lifetime** | Gunpowder, Redstone | adds a fixed range (same distance fast or slow) |
@@ -189,7 +189,8 @@ has two kinds of check (52 in total):
   and TRAIL/TELEPORT/SPAWN/DELAY/DETECT/MOB/POTION wiring (`Deposit:Dirt` /
   `Mob:Cow` / `Potion:Poison` parameter parsing, Spawn/Delay/Detect pushing a
   fresh child, a following EXPAND widening DETECT's own trigger radius or the
-  Wand's cast radius, and that POTION never leaks into the terminus payload),
+  Wand's cast radius, and that POTION delivers a real cloud at any weapon's
+  own terminus, not just the Wand's point-and-cast),
   and the *nearest-previous binding* (a transform touches only the last
   emitter) that's nearly impossible to eyeball in-world;
 - **runtime checks** fire real bursts/projectiles at dummies and blocks: PUSH

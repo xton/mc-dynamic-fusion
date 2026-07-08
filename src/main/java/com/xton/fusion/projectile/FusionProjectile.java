@@ -15,12 +15,16 @@ import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.BlockDisplay;
+import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.util.Transformation;
 import org.bukkit.util.Vector;
+import org.joml.Vector3f;
 
 import com.xton.fusion.modifier.AoeKind;
 import com.xton.fusion.modifier.AoeSpec;
@@ -48,9 +52,12 @@ import com.xton.fusion.modifier.TrailStyle;
  *
  * <p><b>BOUNCE</b> changes block handling: instead of terminating on a block, the
  * shot reflects off the surface (losing a little speed, and dragging its glide on
- * a floor bounce) and flies on. Once it rolls to a rest it doesn't go off right
- * away — it sits armed, only triggering when its lifetime (set with DURATION)
- * expires or a mob bumps it directly.
+ * a floor bounce) and flies on. Once a floor bounce has essentially no hop left,
+ * it stops bouncing and slides out its remaining horizontal speed instead of
+ * stopping dead ({@link #tickRolling()}); once that speed bleeds off too, it
+ * settles and goes armed — a visible marker sprite in place the whole time it's
+ * rolling/armed, so it never just vanishes — only triggering when its lifetime
+ * (set with DURATION) expires or a mob bumps it directly.
  */
 public final class FusionProjectile extends BukkitRunnable {
 
@@ -69,8 +76,14 @@ public final class FusionProjectile extends BukkitRunnable {
      * reach) before it's seen at all. A melee swing (arm's-length range) rarely
      * travels this far before hitting its target, so it stays invisible for its
      * whole flight without needing separate logic.
+     *
+     * <p>Wide enough that a TRAIL:DEPOSIT:LAVA/WATER's first source block lands
+     * clear of the caster even accounting for how far vanilla fluid spreads from
+     * where it's dropped — the litmus test being that a lava trail never ignites
+     * whoever fired it. (See {@link EnvironmentalAoe} for the other half of that
+     * fix: deposited fluid also self-reverts, so it can't creep back over time.)
      */
-    private static final double TRAIL_WARMUP = 2.5;
+    private static final double TRAIL_WARMUP = 4.5;
     /** In-place dust for the flight wake (no gravity — fades where it's drawn). */
     private static final Particle.DustOptions RANGED_TRAIL =
             new Particle.DustOptions(org.bukkit.Color.fromRGB(120, 220, 255), 1.0f);
@@ -82,6 +95,11 @@ public final class FusionProjectile extends BukkitRunnable {
     private static final double HOMING_TURN_PER_STACK = 0.13;
     /** Duration (ticks) of TELEPORT's dash-zoom to the destination (0.3s @ 20tps). */
     private static final int TELEPORT_ZOOM_TICKS = 6;
+    /** Below this much post-bounce vertical speed, a floor bounce reads as "no more hop". */
+    private static final double ROLL_VERTICAL_THRESHOLD = 0.08;
+    /** The primed-and-armed sprite for a settled/rolling BOUNCE shot (cosmetic block model only). */
+    private static final Material REST_MARKER_BLOCK = Material.TNT;
+    private static final float REST_MARKER_SCALE = 0.4f;
 
     private final Plugin plugin;
     private final Payload payload;
@@ -100,6 +118,8 @@ public final class FusionProjectile extends BukkitRunnable {
     private int age;
     private double traveled; // cumulative flight distance, for the TRAIL warm-up
     private boolean resting; // BOUNCE: rolled to a stop, waiting on Duration or a mob bump
+    private boolean rolling; // BOUNCE: hop's gone, sliding out remaining horizontal speed before resting
+    private BlockDisplay restMarker; // BOUNCE: the visible "primed" sprite while rolling/resting
 
     public FusionProjectile(Plugin plugin, Payload payload, ProjectileSpec spec,
                             World world, Location origin, Vector velocity, Shot shot) {
@@ -109,7 +129,7 @@ public final class FusionProjectile extends BukkitRunnable {
         this.world = world;
         this.shot = shot;
         this.caster = shot.caster();
-        this.env = new EnvironmentalAoe(world, caster, shot.env());
+        this.env = new EnvironmentalAoe(plugin, world, caster, shot.env());
         this.position = origin.toVector();
         this.velocity = velocity.clone();
         this.envEntityRadius = maxEnvironmentalRadius();
@@ -132,6 +152,10 @@ public final class FusionProjectile extends BukkitRunnable {
         }
         if (resting) {
             tickResting();
+            return;
+        }
+        if (rolling) {
+            tickRolling();
             return;
         }
         if (spec.hasGravity()) {
@@ -179,11 +203,13 @@ public final class FusionProjectile extends BukkitRunnable {
     /**
      * Ricochet off the block at {@code here}: back out of it, reflect the velocity
      * about the surface normal (shedding a little speed), and let the next tick
-     * fly on. A floor bounce also drags the horizontal glide, so the shot slows to
-     * a roll and — once it's crawling below the configured rest speed — settles
-     * and goes armed (see {@link #tickResting()}) rather than detonating on the
-     * spot. Pair BOUNCE with DURATION to set how long it rattles before/after
-     * settling; without it the shot relies on the default lifetime cap.
+     * fly on. A floor bounce also drags the horizontal glide; once a floor bounce
+     * has essentially no hop left in it, it stops bouncing and either rolls out
+     * its remaining horizontal speed (see {@link #tickRolling()}) or, if it's
+     * already crawling below the configured rest speed, settles immediately and
+     * goes armed (see {@link #tickResting()}) rather than detonating on the spot.
+     * Pair BOUNCE with DURATION to set how long it rattles before/after settling;
+     * without it the shot relies on the default lifetime cap.
      */
     private void bounceOff(Location here, Vector stepVec) {
         position.subtract(stepVec); // step back to the last open cell
@@ -191,7 +217,8 @@ public final class FusionProjectile extends BukkitRunnable {
         double dot = velocity.dot(normal);
         velocity.subtract(normal.clone().multiply(2 * dot)); // reflect
         velocity.multiply(shot.bounce().restitution());
-        if (normal.getY() > 0.5) { // bounced off a floor: rolling friction
+        boolean floorBounce = normal.getY() > 0.5;
+        if (floorBounce) { // bounced off a floor: rolling friction
             velocity.setX(velocity.getX() * shot.bounce().floorFriction());
             velocity.setZ(velocity.getZ() * shot.bounce().floorFriction());
         }
@@ -199,14 +226,73 @@ public final class FusionProjectile extends BukkitRunnable {
             world.spawnParticle(Particle.CRIT, position.toLocation(world), 4, 0.1, 0.1, 0.1, 0.05);
         }
         world.playSound(here, Sound.BLOCK_STONE_HIT, 0.4f, 1.4f);
+
+        if (floorBounce && Math.abs(velocity.getY()) < ROLL_VERTICAL_THRESHOLD) {
+            if (horizontalSpeed() < shot.bounce().restSpeed()) {
+                settle();
+            } else {
+                velocity.setY(0);
+                rolling = true; // hop's gone — slide out the rest instead of bouncing again
+                spawnRestMarker();
+            }
+            return;
+        }
         if (velocity.length() < shot.bounce().restSpeed()) {
-            velocity.multiply(0);
-            resting = true; // settled — wait on Duration or a mob bump, don't go off yet
+            settle();
             return;
         }
         if (++age >= Math.max(1, spec.lifetimeTicks())) {
             terminate(position.toLocation(world));
         }
+    }
+
+    private void settle() {
+        velocity.multiply(0);
+        resting = true; // settled — wait on Duration or a mob bump, don't go off yet
+        spawnRestMarker();
+    }
+
+    private double horizontalSpeed() {
+        return Math.hypot(velocity.getX(), velocity.getZ());
+    }
+
+    /**
+     * A BOUNCE shot whose hop is gone but that still has horizontal speed left:
+     * slides along the floor, bleeding that speed off with the same floor
+     * friction a bounce would, until it's slow enough to fully settle (see
+     * {@link #settle()}). Rolling off an edge hands back to the normal flight
+     * loop instead — gravity resumes so it drops (and can bounce again) rather
+     * than rolling through open air.
+     */
+    private void tickRolling() {
+        Location here = position.toLocation(world);
+        if (!inBounds(here)) {
+            cancel(); // chunk unloaded — disarm quietly rather than force-load it
+            removeRestMarker();
+            return;
+        }
+        if (hitEntityStops(here, velocity)) {
+            terminate(here); // a mob bumped it — go off now
+            return;
+        }
+        if (!isGrounded(here)) {
+            rolling = false; // rolled off the edge — let gravity take back over
+            removeRestMarker();
+            return;
+        }
+        velocity.setX(velocity.getX() * shot.bounce().floorFriction());
+        velocity.setZ(velocity.getZ() * shot.bounce().floorFriction());
+        position.add(velocity);
+        traveled += velocity.length();
+        trail(position.toLocation(world));
+        moveRestMarker();
+        if (horizontalSpeed() < shot.bounce().restSpeed()) {
+            settle();
+        }
+    }
+
+    private boolean isGrounded(Location loc) {
+        return loc.clone().subtract(0, 0.15, 0).getBlock().getType().isSolid();
     }
 
     /**
@@ -218,6 +304,7 @@ public final class FusionProjectile extends BukkitRunnable {
         Location here = position.toLocation(world);
         if (!inBounds(here)) {
             cancel(); // chunk unloaded — disarm quietly rather than force-load it
+            removeRestMarker();
             return;
         }
         if (hitEntityStops(here, new Vector(0, 0, 0))) {
@@ -227,6 +314,51 @@ public final class FusionProjectile extends BukkitRunnable {
         if (++age >= Math.max(1, spec.lifetimeTicks())) {
             terminate(here); // timed out — go off where it settled
         }
+    }
+
+    /**
+     * The armed sprite a settled/rolling BOUNCE shot shows in place of the
+     * particle shed alone — otherwise the gap between "it stopped bouncing" and
+     * "it went off" reads as the shot simply vanishing. A cosmetic block model
+     * only (no real TNT entity/fuse/explosion attached).
+     */
+    private void spawnRestMarker() {
+        if (world == null || restMarker != null) {
+            return;
+        }
+        try {
+            restMarker = world.spawn(position.toLocation(world), BlockDisplay.class, d -> {
+                d.setBlock(REST_MARKER_BLOCK.createBlockData());
+                d.setBrightness(new Display.Brightness(15, 15));
+                d.setGlowing(true);
+            });
+            scaleRestMarker(REST_MARKER_SCALE);
+        } catch (Exception e) {
+            restMarker = null; // display entities unavailable — the particle shed alone still reads
+        }
+    }
+
+    private void moveRestMarker() {
+        if (restMarker != null && restMarker.isValid()) {
+            restMarker.teleport(position.toLocation(world));
+        }
+    }
+
+    private void scaleRestMarker(float s) {
+        if (restMarker == null || !restMarker.isValid()) {
+            return;
+        }
+        Transformation t = restMarker.getTransformation();
+        restMarker.setTransformation(new Transformation(
+                new Vector3f(-s / 2f, 0f, -s / 2f), t.getLeftRotation(),
+                new Vector3f(s, s, s), t.getRightRotation()));
+    }
+
+    private void removeRestMarker() {
+        if (restMarker != null && restMarker.isValid()) {
+            restMarker.remove();
+        }
+        restMarker = null;
     }
 
     /**
@@ -513,6 +645,7 @@ public final class FusionProjectile extends BukkitRunnable {
     }
 
     private void terminate(Location where, Vector childHeading) {
+        removeRestMarker();
         try {
             if (where != null && world != null) {
                 payload.detonate(world, where, caster);

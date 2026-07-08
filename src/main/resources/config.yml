@@ -151,6 +151,12 @@ ice:
 # radius with a block. The block is named in the modifier ID (DEPOSIT:DIRT).
 deposit:
   base-radius: 1.5
+  # LAVA/WATER are placed as real, flowing source blocks — vanilla fluid physics
+  # spreads them well past where they were dropped, including back the way the
+  # caster came. So each one is self-cleaning: it reverts to air this many ticks
+  # after being placed (100 = 5s), which starves any flow it kicked off too.
+  # Non-fluid materials (DIRT, SAND, ...) don't flow, so they're left permanent.
+  fluid-revert-ticks: 100
 
 # Shared safety caps for every environmental emitter (FIRE/ICE/MINING/DEPOSIT),
 # so EXPAND stacks can't grief the whole world in one shot.
@@ -211,6 +217,11 @@ wand:
 worn:
   # How often (ticks) the worn-effect task refreshes (GLOW's glowing outline, etc.).
   effect-period-ticks: 100
+  # How often (ticks) worn FIRE/ICE armor auras sweep the blocks/creatures
+  # around the wearer. Real block/entity work (unlike the plain potion-effect
+  # refresh above), so this runs less often than every tick but still often
+  # enough to read as a living aura, not a pulse.
+  aura-period-ticks: 20
   # GLOW's first-person half: Glowing (above) is invisible to the wearer
   # themself (Minecraft never renders your own body in first person), so a
   # client-side-only LIGHT block (packet-based, sent only to the wearer via

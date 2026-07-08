@@ -38,18 +38,21 @@ public final class ProjectileLauncher {
     private final WeaponBuilder.Defaults defaults;
     private final EnvironmentalAoe.Settings envSettings;
     private final BounceSettings bounceSettings;
+    private final PotionCloud.Settings potionSettings;
     private final int maxSpawnGeneration;
     private final int meleeLifetimeTicks;
     private final double meleeSpeed;
 
     public ProjectileLauncher(Plugin plugin, AoeBurst burst, WeaponBuilder.Defaults defaults,
                               EnvironmentalAoe.Settings envSettings, BounceSettings bounceSettings,
+                              PotionCloud.Settings potionSettings,
                               int maxSpawnGeneration, int meleeLifetimeTicks, double meleeSpeed) {
         this.plugin = plugin;
         this.burst = burst;
         this.defaults = defaults;
         this.envSettings = envSettings;
         this.bounceSettings = bounceSettings;
+        this.potionSettings = potionSettings;
         this.maxSpawnGeneration = maxSpawnGeneration;
         this.meleeSpeed = meleeSpeed;
         this.meleeLifetimeTicks = meleeLifetimeTicks;
@@ -79,16 +82,23 @@ public final class ProjectileLauncher {
 
     /**
      * Build the payload for a compiled spec: one {@link BurstEffect} per
-     * <em>entity-burst</em> AOE emitter (PUSH/DAMAGE). The environmental kinds
-     * (MINING/FIRE/ICE/DEPOSIT) are applied by the projectile along its flight, so
-     * they're skipped here. Empty when the stack had no entity bursts — so a
-     * mining ray or a fire trail delivers no terminus burst. Pure.
+     * <em>entity-burst</em> AOE emitter (PUSH/DAMAGE) and one
+     * {@link PotionCloudEffect} per POTION emitter — so any weapon, not just
+     * the Wand, casts a lingering cloud at its own terminus. The environmental
+     * kinds (MINING/FIRE/ICE/DEPOSIT) are applied by the projectile along its
+     * flight instead, and DETECT is a sensor, not a delivery — both are skipped
+     * here. Empty when the stack had none of the above — so a mining ray or a
+     * fire trail delivers no terminus effect. Pure.
      */
     public Payload buildPayload(ProjectileSpec spec) {
         List<PayloadEffect> effects = new ArrayList<>();
         for (AoeSpec aoe : spec.payload()) {
-            if (aoe.kind().isEnvironmental() || aoe.kind() == AoeKind.DETECT || aoe.kind() == AoeKind.POTION) {
-                continue; // environmental: applied along the flight; DETECT: a sensor; POTION: the Wand's own cast, not a burst
+            if (aoe.kind() == AoeKind.POTION) {
+                effects.add(new PotionCloudEffect(aoe, potionSettings));
+                continue;
+            }
+            if (aoe.kind().isEnvironmental() || aoe.kind() == AoeKind.DETECT) {
+                continue; // environmental: applied along the flight; DETECT: a sensor
             }
             effects.add(new BurstEffect(burst, aoe));
         }

@@ -38,6 +38,7 @@ import com.xton.fusion.modifier.impl.DamageModifier;
 import com.xton.fusion.modifier.impl.DelayModifier;
 import com.xton.fusion.modifier.impl.DepositModifier;
 import com.xton.fusion.modifier.impl.DetectModifier;
+import com.xton.fusion.modifier.impl.DistanceModifier;
 import com.xton.fusion.modifier.impl.DurationModifier;
 import com.xton.fusion.modifier.impl.ExpandModifier;
 import com.xton.fusion.modifier.impl.FireModifier;
@@ -163,7 +164,8 @@ public final class FusionPlugin extends JavaPlugin implements Listener {
                 .register(new InvisibleModifier())
                 .register(new SpeedModifier())
                 .register(new DurationModifier())
-                .register(new RateModifier());
+                .register(new RateModifier())
+                .register(new DistanceModifier());
 
         LatentRegistry latent = loadLatentRegistry(registry);
 

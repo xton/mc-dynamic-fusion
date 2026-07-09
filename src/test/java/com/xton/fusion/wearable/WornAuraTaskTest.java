@@ -25,11 +25,13 @@ import com.xton.fusion.item.FusionKeys;
 import com.xton.fusion.item.LoreGenerator;
 import com.xton.fusion.modifier.ModifierRegistry;
 import com.xton.fusion.modifier.impl.DamageModifier;
+import com.xton.fusion.modifier.impl.DistanceModifier;
 import com.xton.fusion.modifier.impl.DurationModifier;
 import com.xton.fusion.modifier.impl.FireModifier;
 import com.xton.fusion.modifier.impl.HomingModifier;
 import com.xton.fusion.modifier.impl.IceModifier;
 import com.xton.fusion.modifier.impl.MultishotModifier;
+import com.xton.fusion.modifier.impl.RateModifier;
 import com.xton.fusion.modifier.impl.SpeedModifier;
 import com.xton.fusion.projectile.AoeBurst;
 import com.xton.fusion.projectile.BounceSettings;
@@ -73,7 +75,9 @@ class WornAuraTaskTest {
                 .register(new HomingModifier())
                 .register(new MultishotModifier())
                 .register(new SpeedModifier())
-                .register(new DurationModifier());
+                .register(new DurationModifier())
+                .register(new RateModifier())
+                .register(new DistanceModifier());
         reader = new FusedItemReader(keys);
         factory = new FusedItemFactory(keys, new LoreGenerator(registry));
 
@@ -184,5 +188,46 @@ class WornAuraTaskTest {
         server.getScheduler().performTicks(40);
 
         assertTrue(mob.getHealth() < before, "a homing bolt fired from the armor should have found and hit the mob");
+    }
+
+    @Test
+    void distanceModifierOverridesTheConfigDefaultThreshold() {
+        // Both config thresholds are huge, so only a per-item DISTANCE override
+        // (much smaller) can explain a second pulse after moving just a little.
+        WornAuraTask task = newTask(20_000, 1000.0);
+        PlayerMock player = server.addPlayer();
+        player.setLocation(new Location(world, 0.5, 100, 0.5));
+        player.getInventory().setChestplate(
+                factory.create(Material.DIAMOND_CHESTPLATE, List.of(FireModifier.ID, "DISTANCE:1"), "test"));
+        task.run();
+        server.getScheduler().performTicks(2);
+
+        player.setLocation(new Location(world, 2.5, 100, 0.5)); // 2 blocks > the DISTANCE:1 override
+        Zombie mob = world.spawn(player.getEyeLocation().add(0.5, 0, 0), Zombie.class);
+        task.run();
+        server.getScheduler().performTicks(2);
+
+        assertTrue(mob.getFireTicks() > 0, "DISTANCE:1 should force a pulse well before the config's 1000-block default");
+    }
+
+    @Test
+    void rateModifierOverridesTheConfigDefaultPeriod() {
+        // Both config thresholds are huge, so only a per-item RATE override
+        // (much shorter) can explain a second pulse a couple of ticks later.
+        WornAuraTask task = newTask(20_000, 1000.0);
+        PlayerMock player = server.addPlayer();
+        player.setLocation(new Location(world, 0.5, 100, 0.5));
+        player.getInventory().setChestplate(
+                factory.create(Material.DIAMOND_CHESTPLATE, List.of(FireModifier.ID, "RATE:0.1"), "test"));
+        task.run();
+        server.getScheduler().performTicks(2);
+
+        // Not moving, so only RATE:0.1 (2 ticks) — not the huge config period —
+        // can explain a fresh pulse this soon.
+        Zombie mob = world.spawn(player.getEyeLocation().add(0.5, 0, 0), Zombie.class);
+        task.run();
+        server.getScheduler().performTicks(2);
+
+        assertTrue(mob.getFireTicks() > 0, "RATE:0.1 should force a pulse well before the config's huge default period");
     }
 }

@@ -357,10 +357,17 @@ the bits that need a real player or an eye:
       often *that* armor's aura re-casts, independent of the server default
       (`worn.aura-period-ticks`) — low for a rapid heartbeat, high for a slow
       one. Confirm a low `RATE` visibly pulses faster than the default.
-    - **Two ways to trigger a pulse regardless of RATE:** stand still and it
-      still pulses on the timer; walk around and it pulses *more* often,
-      leaving a denser trail (`worn.aura-distance-blocks`) — whichever
-      threshold you cross first fires the next one.
+    - **Cast distance:** fuse `DISTANCE:<blocks>` to tune how far *that*
+      armor's wearer has to walk to force an early pulse, independent of the
+      server default (`worn.aura-distance-blocks`) — low so even a couple
+      steps re-casts, high so only real movement does. `RATE` and `DISTANCE`
+      are independent knobs (fuse either, both, or neither) meant for quick
+      iteration on what an aura's cadence should feel like without touching
+      the server config.
+    - **Two ways to trigger a pulse regardless of RATE/DISTANCE:** stand
+      still and it still pulses on the timer; walk around and it pulses
+      *more* often, leaving a denser trail — whichever threshold you cross
+      first fires the next one.
     - **Combining pieces:** fuse `FIRE` on a helmet and `EXPAND` on boots and
       confirm the aura comes out with the *widened* radius — all four armor
       pieces' modifiers combine into one stack, same RPN nearest-previous

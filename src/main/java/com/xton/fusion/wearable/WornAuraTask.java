@@ -42,13 +42,15 @@ import com.xton.fusion.util.WorldFilter;
  * compose the way you'd expect.
  *
  * <p>A pulse fires whenever <em>either</em> the timer has elapsed since the
- * last one <em>or</em> the wearer has walked {@code worn.aura-distance-blocks}
- * since then — standing still still gets a steady heartbeat, and moving
- * quickly leaves a denser trail of pulses, rather than the aura only ever
- * ticking on a clock. The timer itself defaults to
- * {@code worn.aura-period-ticks} but is tunable per-item by fusing
- * {@code RATE:<seconds>} onto the armor, so a wearer can dial their own aura
- * up to a rapid heartbeat or down to a slow one.
+ * last one <em>or</em> the wearer has walked far enough since then — standing
+ * still still gets a steady heartbeat, and moving quickly leaves a denser
+ * trail of pulses, rather than the aura only ever ticking on a clock. Both
+ * thresholds default to config ({@code worn.aura-period-ticks} /
+ * {@code worn.aura-distance-blocks}) but are tunable per-item by fusing
+ * {@code RATE:<seconds>} and/or {@code DISTANCE:<blocks>} onto the armor, so a
+ * wearer can dial their own aura up to a rapid heartbeat or down to a slow
+ * one without touching the server config — handy for quickly iterating on
+ * what feels good.
  *
  * <p>The wearer is always excluded from their own burst/environmental effects
  * (see {@code EnvironmentalAoe#applyEntity}/{@code AoeBurst#asTarget}, which
@@ -103,7 +105,8 @@ public final class WornAuraTask implements Runnable, Listener {
             }
 
             int period = spec.auraRateTicks() > 0 ? spec.auraRateTicks() : periodTicks;
-            if (due(id, player.getLocation(), period)) {
+            double distance = spec.auraDistanceBlocks() > 0 ? spec.auraDistanceBlocks() : distanceBlocks;
+            if (due(id, player.getLocation(), period, distance)) {
                 launcher.launchAnchored(player, stack);
                 lastPulseTick.put(id, Bukkit.getCurrentTick());
                 lastPulseLocation.put(id, player.getLocation());
@@ -112,8 +115,12 @@ public final class WornAuraTask implements Runnable, Listener {
         }
     }
 
-    /** Due if either the timer (RATE, or the config default) or the distance-travelled threshold has been crossed. */
-    private boolean due(UUID id, Location now, int period) {
+    /**
+     * Due if either the timer (RATE, or the config default) or the
+     * distance-travelled threshold (DISTANCE, or the config default) has been
+     * crossed since the last pulse.
+     */
+    private boolean due(UUID id, Location now, int period, double distance) {
         Integer lastTick = lastPulseTick.get(id);
         if (lastTick == null || Bukkit.getCurrentTick() - lastTick >= period) {
             return true;
@@ -122,7 +129,7 @@ public final class WornAuraTask implements Runnable, Listener {
         if (last == null || !Objects.equals(last.getWorld(), now.getWorld())) {
             return true; // never pulsed yet, or switched worlds since — treat as due
         }
-        return last.distance(now) >= distanceBlocks;
+        return last.distance(now) >= distance;
     }
 
     /** Every fused armor piece's modifier ids, combined in slot order into one stack. */

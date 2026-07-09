@@ -104,19 +104,4 @@ class JetpackTaskTest {
 
         assertTrue(player.getAllowFlight(), "must never strip a creative player's real flight permission");
     }
-
-    @Test
-    void forcesOffRealFlightSoFallDamageStaysLive() {
-        // AllowFlight (granted for the anti-kick exemption) also lets a
-        // double-tap-space slip into real creative-style flight, which
-        // suppresses gravity/fall damage outright — that's not the jetpack's
-        // deal, so it must get forced back off every tick it's active.
-        PlayerMock player = liftWearer(false);
-        task.run(); // grants AllowFlight
-        player.setFlying(true); // simulate the client's double-tap toggling real flight
-
-        task.run();
-
-        assertFalse(player.isFlying(), "real flight must be forced back off — thrust, not fall-damage immunity");
-    }
 }

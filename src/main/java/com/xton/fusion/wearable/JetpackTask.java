@@ -39,14 +39,17 @@ import com.xton.fusion.util.WorldFilter;
  * standing "you can fly" permission (creative/spectator players, who already
  * have it legitimately, are left alone either way).
  *
- * <p>Granting AllowFlight has a side effect beyond silencing that kick, though:
- * it's also what lets the client toggle <em>real</em> creative-style flight via
- * the vanilla double-tap-space gesture — trivially easy to trigger by accident
- * since jump is already the jetpack's own "rise" button. Real flight
- * ({@link Player#isFlying()}) suppresses gravity and fall damage outright,
- * which isn't the jetpack's deal — it's thrust, not immunity. So every tick the
- * jetpack is active, flying is forced back off if it's somehow become true,
- * keeping real fall risk in play no matter what the client tries.
+ * <p>Granting AllowFlight only silences that kick — it doesn't have to mean the
+ * player ever actually <em>uses</em> real flight. The client's own double-tap-
+ * space gesture to toggle it on is a distinct, cancellable action
+ * ({@code PlayerToggleFlightEvent}), and that transition into real flight is
+ * blocked outright for a LIFT wearer — see {@link JetpackFlightListener} — the
+ * exact same "cancel the toggle into the state that would fight the jetpack"
+ * treatment {@link JetpackGlideListener} already gives vanilla gliding. Real
+ * flight ({@link Player#isFlying()}) suppresses gravity and fall damage
+ * outright, which isn't the jetpack's deal — it's thrust, not immunity — so
+ * blocking the toggle at the source keeps that from ever engaging, rather than
+ * reacting to it (and risking a window where it's briefly live) after the fact.
  */
 public final class JetpackTask implements Runnable {
 
@@ -85,12 +88,8 @@ public final class JetpackTask implements Runnable {
             if (!player.getAllowFlight()) {
                 player.setAllowFlight(true);
             }
-            if (player.isFlying()) {
-                // The AllowFlight grant above lets a double-tap-space slip into
-                // real creative-style flight — force it back off so gravity and
-                // fall damage stay live; the jetpack is thrust, not immunity.
-                player.setFlying(false);
-            }
+            // Real flight itself is blocked at the toggle (see JetpackFlightListener),
+            // not reacted to here — AllowFlight only ever silences the anti-fly kick.
             Input input = player.getCurrentInput();
             Vector v = player.getVelocity();
             boolean changed = false;

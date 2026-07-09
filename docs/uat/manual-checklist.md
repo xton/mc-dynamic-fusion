@@ -288,9 +288,13 @@ the bits that need a real player or an eye:
     - **Fall damage stays real.** The jetpack is thrust, not immunity — fly up
       high, stop thrusting, and fall: you should still take normal fall damage
       landing. (Regression: the `AllowFlight` grant needed to dodge the
-      anti-fly kick also lets a double-tap-space slip into real creative-style
-      flight, which suppresses fall damage outright — confirm that doesn't
-      happen even if you mash jump while airborne.)
+      anti-fly kick also lets the client's double-tap-space gesture toggle
+      real creative-style flight, which suppresses fall damage outright.
+      That toggle is now blocked proactively — `JetpackFlightListener`
+      cancels the transition into real flight the moment the client
+      requests it, the same way `JetpackGlideListener` already blocks
+      vanilla gliding — rather than reacting to it after the fact. Confirm
+      fall damage is still real even if you mash jump while airborne.)
 35. **World filter (`allowed-worlds`).** Set `allowed-worlds: [world]` and
     restart. In `world`, fusion still works as normal (swing/shoot a fused
     weapon, wear GLOW/LIFT armor, brush a Golden Brush). Teleport or portal to

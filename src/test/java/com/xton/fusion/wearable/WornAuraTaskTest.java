@@ -24,8 +24,13 @@ import com.xton.fusion.item.FusedItemReader;
 import com.xton.fusion.item.FusionKeys;
 import com.xton.fusion.item.LoreGenerator;
 import com.xton.fusion.modifier.ModifierRegistry;
+import com.xton.fusion.modifier.impl.DamageModifier;
+import com.xton.fusion.modifier.impl.DurationModifier;
 import com.xton.fusion.modifier.impl.FireModifier;
+import com.xton.fusion.modifier.impl.HomingModifier;
 import com.xton.fusion.modifier.impl.IceModifier;
+import com.xton.fusion.modifier.impl.MultishotModifier;
+import com.xton.fusion.modifier.impl.SpeedModifier;
 import com.xton.fusion.projectile.AoeBurst;
 import com.xton.fusion.projectile.BounceSettings;
 import com.xton.fusion.projectile.EnvironmentalAoe;
@@ -58,11 +63,17 @@ class WornAuraTaskTest {
     private WornAuraTask newTask(int periodTicks, double distanceBlocks) {
         server = MockBukkit.mock();
         world = server.addSimpleWorld("world");
+        world.loadChunk(0, 0); // a flying anchor shot needs its chunk loaded to stay in bounds
         Plugin plugin = MockBukkit.createMockPlugin();
         FusionKeys keys = new FusionKeys(plugin);
         ModifierRegistry registry = new ModifierRegistry()
                 .register(new FireModifier())
-                .register(new IceModifier());
+                .register(new IceModifier())
+                .register(new DamageModifier())
+                .register(new HomingModifier())
+                .register(new MultishotModifier())
+                .register(new SpeedModifier())
+                .register(new DurationModifier());
         reader = new FusedItemReader(keys);
         factory = new FusedItemFactory(keys, new LoreGenerator(registry));
 
@@ -118,12 +129,13 @@ class WornAuraTaskTest {
     @Test
     void aPulseActuallyIgnitesANearbyMob() {
         // First sighting of a FIRE-aura wearer is always due, so this exercises
-        // the full anchor pipeline: launchAnchored schedules a real, zero-velocity
-        // FusionProjectile rooted at the wearer that detonates on the very next
-        // tick (zero duration) and sweeps FIRE onto whatever's nearby.
+        // the full anchor pipeline: launchAnchored schedules a real FusionProjectile
+        // rooted at the wearer's eyes (a bare FIRE defaults to zero speed, zero
+        // duration) that detonates on the very next tick and sweeps FIRE onto
+        // whatever's nearby.
         WornAuraTask task = newTask(20, 2.0);
         PlayerMock player = wearer(new Location(world, 0.5, 100, 0.5), FireModifier.ID);
-        Zombie mob = world.spawn(new Location(world, 1.0, 100, 0.5), Zombie.class);
+        Zombie mob = world.spawn(player.getEyeLocation().add(0.5, 0, 0), Zombie.class);
 
         task.run();
         server.getScheduler().performTicks(2);
@@ -143,10 +155,34 @@ class WornAuraTaskTest {
         // Walk far enough to cross the distance threshold, then check a mob
         // near the *new* spot: only a fresh pulse rooted there would reach it.
         player.setLocation(new Location(world, 10.5, 100, 0.5));
-        Zombie mob = world.spawn(new Location(world, 11.0, 100, 0.5), Zombie.class);
+        Zombie mob = world.spawn(player.getEyeLocation().add(0.5, 0, 0), Zombie.class);
         task.run();
         server.getScheduler().performTicks(2);
 
         assertTrue(mob.getFireTicks() > 0, "walking past the distance threshold should force an early pulse");
+    }
+
+    @Test
+    void multishotHomingDamageActuallyFliesAndHitsATarget() {
+        // "Don't forbid any mods" — fusing flight modifiers onto armor must
+        // genuinely fly real shots, not just an inert stationary burst. SPEED
+        // gives the pulse real velocity (bare FIRE defaults to zero, so HOMING
+        // alone would have nothing to steer) and DURATION gives it time to
+        // fly and curve — the same pairing HOMING already asks for on any
+        // other weapon ("pair with LIFETIME/DURATION so it has time to run
+        // something down"). MULTISHOT/HOMING/DAMAGE compose exactly like they
+        // would on a weapon.
+        WornAuraTask task = newTask(20, 2.0);
+        PlayerMock player = server.addPlayer();
+        player.setLocation(new Location(world, 0.5, 100, 0.5, 0f, 0f)); // yaw 0 = looking +Z
+        player.getInventory().setChestplate(factory.create(Material.DIAMOND_CHESTPLATE,
+                List.of("MULTISHOT", "HOMING", "DAMAGE", "SPEED:2", "DURATION:2"), "test"));
+        Zombie mob = world.spawn(new Location(world, 0.5, 100, 5.5), Zombie.class);
+        double before = mob.getHealth();
+
+        task.run();
+        server.getScheduler().performTicks(40);
+
+        assertTrue(mob.getHealth() < before, "a homing bolt fired from the armor should have found and hit the mob");
     }
 }

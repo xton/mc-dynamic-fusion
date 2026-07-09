@@ -28,21 +28,27 @@ import com.xton.fusion.projectile.ProjectileLauncher;
 import com.xton.fusion.util.WorldFilter;
 
 /**
- * Worn armor auras: fusing <em>any</em> emitter onto armor (FIRE/ICE, but
- * equally PUSH/DAMAGE/DEPOSIT/... — armor is just another possible source of
- * a shot) periodically fires a stationary, zero-duration
+ * Worn armor auras: fusing <em>any</em> modifier onto armor — not just
+ * FIRE/ICE, but PUSH/DAMAGE/DEPOSIT/MULTISHOT/HOMING/SPREAD/GRAVITY/MOB/...,
+ * nothing is off-limits — periodically fires a
  * {@link ProjectileLauncher#launchAnchored anchor} rooted at the wearer's own
  * location, using the exact same compile/payload/environmental-sweep pipeline
- * a real weapon's shot does. All four armor pieces' fused ids are combined
- * into one stack first (the same RPN nearest-previous binding a weapon's own
- * id list gets), so e.g. FIRE on a helmet and EXPAND on boots compose the way
- * you'd expect.
+ * a real weapon's shot does. Fuse just {@code FIRE} and you get a simple,
+ * stationary fire pulse around you; fuse {@code MULTISHOT MULTISHOT HOMING
+ * SPEED:2 DAMAGE} and every pulse genuinely fires a volley of homing bolts
+ * out from you, exactly like a weapon would. All four armor pieces' fused ids
+ * are combined into one stack first (the same RPN nearest-previous binding a
+ * weapon's own id list gets), so e.g. FIRE on a helmet and EXPAND on boots
+ * compose the way you'd expect.
  *
- * <p>A pulse fires whenever <em>either</em> {@code worn.aura-period-ticks}
- * has elapsed since the last one <em>or</em> the wearer has walked
- * {@code worn.aura-distance-blocks} since then — standing still still gets a
- * steady heartbeat, and moving quickly leaves a denser trail of pulses,
- * rather than the aura only ever ticking on a clock.
+ * <p>A pulse fires whenever <em>either</em> the timer has elapsed since the
+ * last one <em>or</em> the wearer has walked {@code worn.aura-distance-blocks}
+ * since then — standing still still gets a steady heartbeat, and moving
+ * quickly leaves a denser trail of pulses, rather than the aura only ever
+ * ticking on a clock. The timer itself defaults to
+ * {@code worn.aura-period-ticks} but is tunable per-item by fusing
+ * {@code RATE:<seconds>} onto the armor, so a wearer can dial their own aura
+ * up to a rapid heartbeat or down to a slow one.
  *
  * <p>The wearer is always excluded from their own burst/environmental effects
  * (see {@code EnvironmentalAoe#applyEntity}/{@code AoeBurst#asTarget}, which
@@ -92,11 +98,12 @@ public final class WornAuraTask implements Runnable, Listener {
                 continue;
             }
             ProjectileSpec spec = launcher.compile(stack);
-            if (spec.payload().isEmpty()) {
-                continue; // fused, but nothing that emits anything
+            if (spec.payload().isEmpty() && spec.mobType() == null) {
+                continue; // fused, but nothing that emits or launches anything
             }
 
-            if (due(id, player.getLocation())) {
+            int period = spec.auraRateTicks() > 0 ? spec.auraRateTicks() : periodTicks;
+            if (due(id, player.getLocation(), period)) {
                 launcher.launchAnchored(player, stack);
                 lastPulseTick.put(id, Bukkit.getCurrentTick());
                 lastPulseLocation.put(id, player.getLocation());
@@ -105,10 +112,10 @@ public final class WornAuraTask implements Runnable, Listener {
         }
     }
 
-    /** Due if either the timer or the distance-travelled threshold has been crossed since the last pulse. */
-    private boolean due(UUID id, Location now) {
+    /** Due if either the timer (RATE, or the config default) or the distance-travelled threshold has been crossed. */
+    private boolean due(UUID id, Location now, int period) {
         Integer lastTick = lastPulseTick.get(id);
-        if (lastTick == null || Bukkit.getCurrentTick() - lastTick >= periodTicks) {
+        if (lastTick == null || Bukkit.getCurrentTick() - lastTick >= period) {
             return true;
         }
         Location last = lastPulseLocation.get(id);

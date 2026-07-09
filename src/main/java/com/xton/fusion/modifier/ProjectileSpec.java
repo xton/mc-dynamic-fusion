@@ -37,6 +37,7 @@ public final class ProjectileSpec {
 
     private int spawnDelayTicks;       // DELAY: ticks to wait before launching this child
     private EntityType mobType;        // MOB:<type>: launch this living entity as the projectile
+    private int auraRateTicks;         // RATE: ticks between worn-armor aura pulses (0 = use the config default)
 
     // ----- payload -----
     private final List<AoeSpec> payload = new ArrayList<>();
@@ -274,5 +275,14 @@ public final class ProjectileSpec {
 
     public void setMobType(EntityType mobType) {
         this.mobType = mobType;
+    }
+
+    /** RATE (worn armor only): ticks between aura pulses, or 0 to fall back to the config default. */
+    public int auraRateTicks() {
+        return auraRateTicks;
+    }
+
+    public void setAuraRateTicks(int ticks) {
+        this.auraRateTicks = ticks;
     }
 }

@@ -58,6 +58,7 @@ import com.xton.fusion.modifier.impl.PierceModifier;
 import com.xton.fusion.modifier.impl.PotionModifier;
 import com.xton.fusion.modifier.impl.PullModifier;
 import com.xton.fusion.modifier.impl.PushModifier;
+import com.xton.fusion.modifier.impl.RateModifier;
 import com.xton.fusion.modifier.impl.SpawnModifier;
 import com.xton.fusion.modifier.impl.SpeedModifier;
 import com.xton.fusion.modifier.impl.SpreadModifier;
@@ -161,7 +162,8 @@ public final class FusionPlugin extends JavaPlugin implements Listener {
                 .register(new VisibleModifier())
                 .register(new InvisibleModifier())
                 .register(new SpeedModifier())
-                .register(new DurationModifier());
+                .register(new DurationModifier())
+                .register(new RateModifier());
 
         LatentRegistry latent = loadLatentRegistry(registry);
 

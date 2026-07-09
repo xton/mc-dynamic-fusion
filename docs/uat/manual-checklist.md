@@ -338,26 +338,38 @@ the bits that need a real player or an eye:
     unaffected: it still casts instantly at the crosshair on a swing, and
     shouldn't *also* fire a duplicate cloud from a melee bolt on that same
     swing.
-39. **Armor auras (any emitter, not just Fire/Ice).** Armor is just another
-    possible *source* of a shot: fuse any emitter onto a piece, e.g.
-    `DIAMOND_CHESTPLATE FIRE` (or `ICE`, or even `PUSH`/`DAMAGE`) — wearing it
-    periodically fires a **stationary, zero-duration burst rooted at you**,
-    the exact same compile/payload pipeline a real weapon's shot uses (so
-    `EXPAND` on the armor widens the radius, `PUSH`/`DAMAGE` shove/hurt
-    whatever's nearby, and so on) — just centred on you instead of a landing
-    spot. **Two ways to trigger a pulse:** stand still and it still pulses on
-    a steady clock (`worn.aura-period-ticks`); walk around and it pulses
-    *more* often, leaving a denser trail (`worn.aura-distance-blocks`) —
-    whichever threshold you cross first fires the next one. **Combining
-    pieces:** fuse `FIRE` on a helmet and `EXPAND` on boots and confirm the
-    aura comes out with the *widened* radius — all four armor pieces'
-    modifiers combine into one stack, same RPN nearest-previous binding a
-    weapon's own fused ids get. **Immunity:** you should be immune to your
-    own FIRE aura — nearby mobs/players catch fire, but you never do, even
-    the real fire blocks it drops underfoot (you should notice you're
-    carrying Fire Resistance the whole time it's worn). ICE needs no
-    equivalent (it only ever lays a harmless snow layer, never a real
-    hazard).
+39. **Armor auras — no modifier is off-limits.** Armor is just another
+    possible *source* of a shot: fuse **anything** onto a piece — not just
+    FIRE/ICE, but PUSH/DAMAGE/MULTISHOT/HOMING/SPREAD/GRAVITY/MOB/... — and
+    wearing it periodically fires a real shot rooted at you, the exact same
+    compile/payload pipeline a weapon's own swing/shot uses.
+    - **Simple aura (`DIAMOND_CHESTPLATE FIRE`):** with no flight modifiers,
+      a pulse defaults to a **stationary, zero-duration burst right at you**
+      — `EXPAND` on the armor widens the radius, and so on, just centred on
+      you instead of a landing spot.
+    - **Real flying shots:** fuse `MULTISHOT HOMING DAMAGE SPEED:2
+      DURATION:2` onto a piece and confirm each pulse **genuinely fires a
+      volley of homing bolts out from you** that chase and hit nearby
+      mobs — not an inert burst at your feet. (HOMING needs SPEED and
+      DURATION to have real velocity and time to fly/curve, same as it would
+      pairing with LIFETIME on any other weapon.)
+    - **Cast frequency:** fuse `RATE:<seconds>` onto a piece to tune how
+      often *that* armor's aura re-casts, independent of the server default
+      (`worn.aura-period-ticks`) — low for a rapid heartbeat, high for a slow
+      one. Confirm a low `RATE` visibly pulses faster than the default.
+    - **Two ways to trigger a pulse regardless of RATE:** stand still and it
+      still pulses on the timer; walk around and it pulses *more* often,
+      leaving a denser trail (`worn.aura-distance-blocks`) — whichever
+      threshold you cross first fires the next one.
+    - **Combining pieces:** fuse `FIRE` on a helmet and `EXPAND` on boots and
+      confirm the aura comes out with the *widened* radius — all four armor
+      pieces' modifiers combine into one stack, same RPN nearest-previous
+      binding a weapon's own fused ids get.
+    - **Immunity:** you should be immune to your own FIRE aura — nearby
+      mobs/players catch fire, but you never do, even the real fire blocks it
+      drops underfoot (you should notice you're carrying Fire Resistance the
+      whole time it's worn). ICE needs no equivalent (it only ever lays a
+      harmless snow layer, never a real hazard).
 40. **Right-clicking an entity doesn't fire your weapon.** Hold a fused sword
     (or Wand) and **trade with a villager** (or right-click any entity — a
     horse, an item frame, ...) → the trade GUI should open normally and your

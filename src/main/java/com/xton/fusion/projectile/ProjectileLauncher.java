@@ -115,27 +115,30 @@ public final class ProjectileLauncher {
     }
 
     /**
-     * Fire a stationary, <em>zero-duration</em> burst rooted at {@code caster}'s
-     * own location — the mechanism worn armor uses to pulse whatever's fused
-     * onto it (FIRE/ICE, but the same machinery as PUSH/DAMAGE/DEPOSIT/... —
-     * armor is just another possible source of a shot) as an aura around the
-     * wearer, on whatever cadence the caller (see {@code WornAuraTask}) decides.
-     * "Zero duration": seeded to detonate on the very next tick, the same
-     * convention {@link #compile(ModifierStack, int)} already uses for the
-     * Wand's cloud — so a bare {@code FIRE} fused onto armor just pulses fire at
-     * the wearer with no flight involved, while an explicit {@code DURATION} on
-     * the armor still overrides it outright if someone wants the anchor to sit
-     * a while before its (single) detonation. The caster is excluded from their
-     * own burst/environmental effects like any other caster (real hazards their
-     * aura might still leave behind, like fire blocks underfoot, are the
-     * caller's problem to grant immunity against).
+     * A worn-armor pulse: like {@link #launchMelee}/{@link #launchBow}, but
+     * sourced from armor instead of a held weapon, aimed along the wearer's
+     * current look direction, fired on whatever cadence the caller (see
+     * {@code WornAuraTask}) decides. No modifier is off-limits — armor is just
+     * another possible source of a shot, so MULTISHOT/HOMING/SPREAD/GRAVITY/
+     * MOB/... all compose exactly like they would on a weapon: fuse
+     * {@code MULTISHOT HOMING DAMAGE} onto armor and each pulse genuinely
+     * fires a volley of homing bolts out from the wearer, not just an inert
+     * burst at their feet.
+     *
+     * <p>Defaults to <em>zero speed and zero duration</em> — a bare
+     * {@code FIRE} fused onto armor pulses fire right at the wearer, not
+     * several blocks away in whatever direction they happen to be facing.
+     * Fusing {@code SPEED} (and/or {@code GRAVITY}) gives the pulse real
+     * velocity, which is what a modifier like HOMING/BOUNCE/PIERCE needs to
+     * have anything to act on — the same as it would on any other weapon with
+     * no speed of its own. {@code DURATION} still means what it always does:
+     * how long each <em>individual</em> pulsed shot lives once launched, not
+     * how often a new one fires — that's {@code RATE} (or
+     * {@code worn.aura-period-ticks} when RATE is absent), read by the caller
+     * before this is even invoked.
      */
     public void launchAnchored(Player caster, ModifierStack stack) {
-        ProjectileSpec spec = compile(stack, 1);
-        Payload payload = buildPayload(spec);
-        Shot shot = new Shot(caster, 0, maxSpawnGeneration, envSettings, bounceSettings, this, new AtomicBoolean(false));
-        new FusionProjectile(plugin, payload, spec, caster.getWorld(),
-                caster.getLocation(), new Vector(0, 0, 0), shot).start();
+        launch(caster, stack, 1.0, false, 1, 0.0, TrailStyle.SUBTLE);
     }
 
     /**

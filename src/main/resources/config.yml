@@ -151,6 +151,12 @@ ice:
 # radius with a block. The block is named in the modifier ID (DEPOSIT:DIRT).
 deposit:
   base-radius: 1.5
+  # LAVA/WATER are placed as real, flowing source blocks — vanilla fluid physics
+  # spreads them well past where they were dropped, including back the way the
+  # caster came. So each one is self-cleaning: it reverts to air this many ticks
+  # after being placed (100 = 5s), which starves any flow it kicked off too.
+  # Non-fluid materials (DIRT, SAND, ...) don't flow, so they're left permanent.
+  fluid-revert-ticks: 100
 
 # Shared safety caps for every environmental emitter (FIRE/ICE/MINING/DEPOSIT),
 # so EXPAND stacks can't grief the whole world in one shot.
@@ -211,6 +217,21 @@ wand:
 worn:
   # How often (ticks) the worn-effect task refreshes (GLOW's glowing outline, etc.).
   effect-period-ticks: 100
+  # Worn armor auras: any emitter fused onto armor (FIRE/ICE, PUSH, DAMAGE,
+  # ...) periodically fires a stationary anchor shot rooted at the wearer (see
+  # WornAuraTask). A pulse fires whenever *either* threshold below is crossed
+  # since the last one, whichever comes first — so standing still still gets a
+  # steady heartbeat, and moving quickly leaves a denser trail of pulses.
+  #
+  # N: the longest a pulse will ever wait, however still the wearer stands.
+  aura-period-ticks: 20
+  # M: how far the wearer has to walk to force an early pulse.
+  aura-distance-blocks: 2.0
+  # How often (ticks) the task itself checks whether a pulse is due. Just a
+  # couple of map lookups per aura-wearer per check (the real work only
+  # happens on an actual pulse), so this can run every tick for the
+  # distance-travelled trigger to stay responsive to a moving player.
+  aura-check-period-ticks: 1
   # GLOW's first-person half: Glowing (above) is invisible to the wearer
   # themself (Minecraft never renders your own body in first person), so a
   # client-side-only LIGHT block (packet-based, sent only to the wearer via

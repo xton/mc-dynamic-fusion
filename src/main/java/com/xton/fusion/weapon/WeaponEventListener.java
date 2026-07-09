@@ -13,12 +13,14 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerAnimationEvent;
 import org.bukkit.event.player.PlayerAnimationType;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 
 import com.xton.fusion.item.FusedItemReader;
 import com.xton.fusion.modifier.ModifierRegistry;
 import com.xton.fusion.modifier.ModifierStack;
+import com.xton.fusion.modifier.impl.PotionModifier;
 import com.xton.fusion.projectile.ProjectileLauncher;
 import com.xton.fusion.util.CooldownMap;
 import com.xton.fusion.util.WorldFilter;
@@ -38,7 +40,8 @@ public final class WeaponEventListener implements Listener {
     private final WorldFilter worldFilter;
 
     /** Tick of each player's last right-click, to filter out the arm-swing that
-     *  a right-click interaction (e.g. opening the Fusion Machine) produces. */
+     *  a right-click interaction (e.g. opening the Fusion Machine, trading with
+     *  a villager) produces. */
     private final Map<UUID, Integer> lastRightClickTick = new HashMap<>();
 
     public WeaponEventListener(FusedItemReader reader,
@@ -59,6 +62,18 @@ public final class WeaponEventListener implements Listener {
         if (action == Action.RIGHT_CLICK_AIR || action == Action.RIGHT_CLICK_BLOCK) {
             lastRightClickTick.put(event.getPlayer().getUniqueId(), Bukkit.getCurrentTick());
         }
+    }
+
+    /**
+     * Right-clicking an entity (a villager to trade, a horse to mount, ...)
+     * fires its own arm-swing animation too — a different event from
+     * {@link #onInteract}, which only sees right-clicks on a block or on air.
+     * Without this, that swing slips past the filter above and gets misread as
+     * a real attack.
+     */
+    @EventHandler
+    public void onInteractEntity(PlayerInteractEntityEvent event) {
+        lastRightClickTick.put(event.getPlayer().getUniqueId(), Bukkit.getCurrentTick());
     }
 
     @EventHandler
@@ -90,6 +105,12 @@ public final class WeaponEventListener implements Listener {
         if (stack.isEmpty()) {
             return; // fused, but no implemented modifiers to act on
         }
+        // A STICK carrying POTION is the Wand — WandListener already casts its
+        // cloud instantly at the crosshair on this same swing; don't also fire
+        // a melee bolt that would cast a second one at its (near-instant) terminus.
+        if (hand.getType() == Material.STICK && isWandCast(stack)) {
+            return;
+        }
         if (!cooldown.tryUse(player.getUniqueId())) {
             return;
         }
@@ -99,5 +120,10 @@ public final class WeaponEventListener implements Listener {
     /** Ranged weapons whose fusion fires on the projectile they shoot, not on a swing. */
     private static boolean isShootable(Material type) {
         return type == Material.BOW || type == Material.CROSSBOW;
+    }
+
+    private static boolean isWandCast(ModifierStack stack) {
+        return stack.ids().stream()
+                .anyMatch(id -> id.equals(PotionModifier.ID) || id.startsWith(PotionModifier.ID + ":"));
     }
 }

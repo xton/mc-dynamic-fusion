@@ -38,6 +38,15 @@ import com.xton.fusion.util.WorldFilter;
  * revoked the moment it doesn't, so a survival player is never left with a
  * standing "you can fly" permission (creative/spectator players, who already
  * have it legitimately, are left alone either way).
+ *
+ * <p>Granting AllowFlight has a side effect beyond silencing that kick, though:
+ * it's also what lets the client toggle <em>real</em> creative-style flight via
+ * the vanilla double-tap-space gesture — trivially easy to trigger by accident
+ * since jump is already the jetpack's own "rise" button. Real flight
+ * ({@link Player#isFlying()}) suppresses gravity and fall damage outright,
+ * which isn't the jetpack's deal — it's thrust, not immunity. So every tick the
+ * jetpack is active, flying is forced back off if it's somehow become true,
+ * keeping real fall risk in play no matter what the client tries.
  */
 public final class JetpackTask implements Runnable {
 
@@ -75,6 +84,12 @@ public final class JetpackTask implements Runnable {
             }
             if (!player.getAllowFlight()) {
                 player.setAllowFlight(true);
+            }
+            if (player.isFlying()) {
+                // The AllowFlight grant above lets a double-tap-space slip into
+                // real creative-style flight — force it back off so gravity and
+                // fall damage stay live; the jetpack is thrust, not immunity.
+                player.setFlying(false);
             }
             Input input = player.getCurrentInput();
             Vector v = player.getVelocity();

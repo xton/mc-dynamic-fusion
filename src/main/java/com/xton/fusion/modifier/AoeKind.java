@@ -30,7 +30,12 @@ public enum AoeKind {
     DEPOSIT,
     /** A sensor, not a burst: marks a DETECT child's trigger radius (widened by EXPAND). */
     DETECT,
-    /** The Wand's cast radius, carrying which effect ({@code potionEffectType}) it lingers. */
+    /**
+     * A lingering-potion cloud radius, carrying which effect ({@code potionEffectType})
+     * it casts — delivered as a terminus burst like PUSH/DAMAGE (see
+     * {@code PotionCloudEffect}) for any weapon, and additionally point-and-cast
+     * instantly by a fused STICK (the Wand — see {@code WandListener}).
+     */
     POTION;
 
     /** True for the block/environment-affecting kinds applied along the flight. */

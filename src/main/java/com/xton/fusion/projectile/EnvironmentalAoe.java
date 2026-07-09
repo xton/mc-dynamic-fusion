@@ -4,6 +4,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
@@ -13,6 +14,7 @@ import org.bukkit.block.Block;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.Plugin;
 
 import com.xton.fusion.modifier.AoeSpec;
 
@@ -28,19 +30,27 @@ import com.xton.fusion.modifier.AoeSpec;
  *       one entity, called at each entity the shot contacts and for entities in
  *       range at the terminus — deduped per shot so a mob is touched once.</li>
  * </ul>
+ *
+ * <p>DEPOSIT:LAVA/WATER place real source blocks, which vanilla fluid physics
+ * spreads well past the drop point — including back toward the caster. Each one
+ * is self-cleaning: it reverts to air after {@code deposit.fluid-revert-ticks},
+ * starving whatever it flowed into as well.
  */
 public final class EnvironmentalAoe {
 
     /** Tunables resolved from config. */
-    public record Settings(int fireBurnTicks, int iceFreezeTicks, double maxRadius, double maxHardness) {
+    public record Settings(int fireBurnTicks, int iceFreezeTicks, double maxRadius, double maxHardness,
+                            int depositFluidRevertTicks) {
     }
 
+    private final Plugin plugin;
     private final World world;
     private final Player caster;
     private final Settings settings;
     private final Set<UUID> touched = new HashSet<>();
 
-    public EnvironmentalAoe(World world, Player caster, Settings settings) {
+    public EnvironmentalAoe(Plugin plugin, World world, Player caster, Settings settings) {
+        this.plugin = plugin;
         this.world = world;
         this.caster = caster;
         this.settings = settings;
@@ -157,11 +167,30 @@ public final class EnvironmentalAoe {
     }
 
     private boolean fillAir(Block block, Material material) {
-        if (block.getType().isAir()) {
-            block.setType(material, true);
-            return true;
+        if (!block.getType().isAir()) {
+            return false;
         }
-        return false;
+        block.setType(material, true);
+        if (material == Material.LAVA || material == Material.WATER) {
+            scheduleFluidRevert(block, material);
+        }
+        return true;
+    }
+
+    /**
+     * LAVA/WATER are placed as real source blocks, so vanilla physics spreads them
+     * well past where they landed — including back toward the caster. Revert this
+     * one cell to air once it's had its moment; with the source gone, vanilla dries
+     * up whatever it fed downstream too, instead of it lingering/flowing forever.
+     */
+    private void scheduleFluidRevert(Block block, Material placed) {
+        Location loc = block.getLocation();
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            Block current = loc.getBlock();
+            if (current.getType() == placed) {
+                current.setType(Material.AIR, true);
+            }
+        }, settings.depositFluidRevertTicks());
     }
 
     // ----- entities -----

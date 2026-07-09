@@ -38,6 +38,7 @@ import com.xton.fusion.modifier.impl.DamageModifier;
 import com.xton.fusion.modifier.impl.DelayModifier;
 import com.xton.fusion.modifier.impl.DepositModifier;
 import com.xton.fusion.modifier.impl.DetectModifier;
+import com.xton.fusion.modifier.impl.DistanceModifier;
 import com.xton.fusion.modifier.impl.DurationModifier;
 import com.xton.fusion.modifier.impl.ExpandModifier;
 import com.xton.fusion.modifier.impl.FireModifier;
@@ -58,6 +59,7 @@ import com.xton.fusion.modifier.impl.PierceModifier;
 import com.xton.fusion.modifier.impl.PotionModifier;
 import com.xton.fusion.modifier.impl.PullModifier;
 import com.xton.fusion.modifier.impl.PushModifier;
+import com.xton.fusion.modifier.impl.RateModifier;
 import com.xton.fusion.modifier.impl.SpawnModifier;
 import com.xton.fusion.modifier.impl.SpeedModifier;
 import com.xton.fusion.modifier.impl.SpreadModifier;
@@ -68,6 +70,7 @@ import com.xton.fusion.modifier.impl.VisibleModifier;
 import com.xton.fusion.projectile.AoeBurst;
 import com.xton.fusion.projectile.BounceSettings;
 import com.xton.fusion.projectile.EnvironmentalAoe;
+import com.xton.fusion.projectile.PotionCloud;
 import com.xton.fusion.projectile.ProjectileLauncher;
 import com.xton.fusion.weapon.GoldenBrush;
 import com.xton.fusion.weapon.GoldenBrushListener;
@@ -80,6 +83,7 @@ import com.xton.fusion.util.WorldFilter;
 import com.xton.fusion.wearable.GlowLightTask;
 import com.xton.fusion.wearable.JetpackGlideListener;
 import com.xton.fusion.wearable.JetpackTask;
+import com.xton.fusion.wearable.WornAuraTask;
 import com.xton.fusion.wearable.WornEffectTask;
 import com.xton.fusion.weapon.ProjectileListener;
 import com.xton.fusion.weapon.ShedParticleTask;
@@ -159,7 +163,9 @@ public final class FusionPlugin extends JavaPlugin implements Listener {
                 .register(new VisibleModifier())
                 .register(new InvisibleModifier())
                 .register(new SpeedModifier())
-                .register(new DurationModifier());
+                .register(new DurationModifier())
+                .register(new RateModifier())
+                .register(new DistanceModifier());
 
         LatentRegistry latent = loadLatentRegistry(registry);
 
@@ -178,11 +184,19 @@ public final class FusionPlugin extends JavaPlugin implements Listener {
                 getConfig().getInt("fire.burn-ticks", 100),
                 getConfig().getInt("ice.freeze-ticks", 140),
                 getConfig().getDouble("environmental.max-radius", 8.0),
-                getConfig().getDouble("environmental.max-hardness", 100.0));
+                getConfig().getDouble("environmental.max-hardness", 100.0),
+                getConfig().getInt("deposit.fluid-revert-ticks", 100));
         BounceSettings bounceSettings = new BounceSettings(
                 getConfig().getDouble("bounce.restitution", 0.55),
                 getConfig().getDouble("bounce.floor-friction", 0.5),
                 getConfig().getDouble("bounce.rest-speed", 0.05));
+        // POTION's cloud settings: shared by the Wand's point-and-cast and any
+        // other weapon's own terminus (see PotionCloudEffect) — POTION always
+        // produces the same cloud, whatever delivers it.
+        PotionCloud.Settings potionSettings = new PotionCloud.Settings(
+                getConfig().getInt("wand.cloud-duration-ticks", 6000),
+                getConfig().getInt("wand.effect-duration-ticks", 60),
+                getConfig().getInt("wand.amplifier", 0));
         ProjectileLauncher launcher = new ProjectileLauncher(this, burst,
                 new WeaponBuilder.Defaults(
                         getConfig().getDouble("projectile.base-speed", 1.6),
@@ -196,7 +210,7 @@ public final class FusionPlugin extends JavaPlugin implements Listener {
                         getConfig().getDouble("ice.base-radius", 1.5),
                         getConfig().getDouble("deposit.base-radius", 1.5),
                         getConfig().getDouble("wand.radius", 1.5)),
-                envSettings, bounceSettings,
+                envSettings, bounceSettings, potionSettings,
                 getConfig().getInt("spawn.max-generation", 2),
                 getConfig().getInt("projectile.melee-lifetime-ticks", 1),
                 getConfig().getDouble("projectile.melee-speed", 4.0));
@@ -223,17 +237,15 @@ public final class FusionPlugin extends JavaPlugin implements Listener {
                 this);
 
         // Wand: swinging a fused STICK with POTION (from a Lingering Potion)
-        // plants a small lingering cloud of that effect at the block you're
-        // looking at. Radius lives on the compiled spec (wand.radius default,
-        // widened by EXPAND); duration defaults to wand.cloud-duration-ticks
-        // but an explicit DURATION on the stack overrides it.
-        WandListener.Settings wandSettings = new WandListener.Settings(
-                getConfig().getInt("wand.cloud-duration-ticks", 6000),
-                getConfig().getInt("wand.effect-duration-ticks", 60),
-                getConfig().getInt("wand.amplifier", 0));
+        // instantly plants a lingering cloud of that effect at the block you're
+        // looking at, rather than waiting on a projectile (any other weapon
+        // casts the same cloud at its own terminus instead). Radius lives on
+        // the compiled spec (wand.radius default, widened by EXPAND); duration
+        // defaults to wand.cloud-duration-ticks but an explicit DURATION on the
+        // stack overrides it.
         CooldownMap wandCooldown = new CooldownMap(getConfig().getLong("wand.cooldown-ms", 500));
         getServer().getPluginManager().registerEvents(
-                new WandListener(reader, registry, launcher, wandSettings, wandCooldown, worldFilter), this);
+                new WandListener(reader, registry, launcher, potionSettings, wandCooldown, worldFilter), this);
 
         // Ambient particle shedding (held fused weapons), toggleable.
         if (getConfig().getBoolean("effect.particle-shedding", true)) {
@@ -250,6 +262,17 @@ public final class FusionPlugin extends JavaPlugin implements Listener {
         // Worn-armor effects (GLOW makes the wearer glow), refreshed on a repeat.
         scheduler.runRepeating(new WornEffectTask(reader, worldFilter), 40,
                 getConfig().getLong("worn.effect-period-ticks", 100));
+
+        // Worn armor auras: any emitter fused onto armor (FIRE/ICE, PUSH,
+        // DAMAGE, ...) periodically fires a stationary anchor shot rooted at
+        // the wearer, who's excluded from their own aura's effects (see
+        // WornAuraTask). Ticked frequently so the distance-travelled trigger
+        // stays responsive to a moving player, not just the timer.
+        WornAuraTask auraTask = new WornAuraTask(reader, registry, launcher, worldFilter,
+                getConfig().getInt("worn.aura-period-ticks", 20),
+                getConfig().getDouble("worn.aura-distance-blocks", 2.0));
+        getServer().getPluginManager().registerEvents(auraTask, this);
+        scheduler.runRepeating(auraTask, 20, getConfig().getLong("worn.aura-check-period-ticks", 1));
 
         // GLOW's other half: Minecraft never renders your own body in first
         // person, so the Glowing effect above is invisible to the wearer

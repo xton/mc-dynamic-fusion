@@ -28,7 +28,7 @@ Before touching this list, run the harnesses — if they're green, the mechanics
 below the "already automated" line are covered and you can skip them:
 
 ```
-make smoke   # boots Paper + runs /fusion test: 47 in-process checks
+make smoke   # boots Paper + runs /fusion test: 52 in-process checks
 make e2e     # a real Mineflayer bot: swing/bow input + the anvil GUI (10 checks)
 ```
 
@@ -131,8 +131,14 @@ player; SPAWN clusters are best judged by eye) still want a look:
     `DEPOSIT:DIRT ... MINING` and it fills then re-digs — confirm order is honored.
 18. **Trail lays a line.** `DEPOSIT:WATER TRAIL` (or `FIRE TRAIL`) draws a
     continuous wake along the whole flight, not just at the end. Deduped, so no
-    spammy stutter. **Warm-up:** the wake starts a couple blocks downrange — a
-    water trail should **not** flood/trap you at your own feet.
+    spammy stutter. **Warm-up:** the wake starts well downrange (~4.5 blocks) — a
+    **lava** trail (`DEPOSIT:LAVA TRAIL`) is the litmus test: you should be able
+    to fire one without ever catching fire yourself. **Self-cleaning:** LAVA/WATER
+    are placed as real source blocks, which vanilla physics would otherwise let
+    spread indefinitely (including back toward you over time) — each one should
+    revert to air on its own a few seconds after being placed
+    (`deposit.fluid-revert-ticks`), rather than lingering/flowing forever. Other
+    DEPOSIT materials (DIRT, SAND, ...) don't flow, so they stay put permanently.
 19. **Spawn cluster.** `DIAMOND_SWORD DAMAGE SPAWN MULTISHOT SPREAD FIRE` → where
     the first bolt lands it should **burst into a fanned volley** of fiery
     children. Bump `spawn.max-generation` for more chaos; confirm it can't run away.
@@ -159,14 +165,18 @@ player; SPAWN clusters are best judged by eye) still want a look:
     **ricochet** off floors/walls (a soft *tick* and crit sparks at each
     bounce), losing a good chunk of speed each time (a dropped rock, not a
     superball on hardwood — it should settle in a few bounces, not skate
-    around for ages), and once it settles it should **sit there armed**, not
-    go off immediately — it should only detonate when its `Duration` runs out
-    or a mob bumps it directly. Fire it into a corner and watch it rattle
-    around, then settle and wait out the rest of its `Duration:10` before it
-    finally pops. Tune `bounce.restitution` / `bounce.floor-friction` if it
-    still feels too bouncy or too dead, or `bounce.rest-speed` if it's calling
-    "settled" too early while still visibly skating. Slime Block is the
-    ingredient.
+    around for ages). Once the hop is basically gone it should **roll for a
+    bit** — sliding along the floor, bleeding off speed — rather than stopping
+    dead the instant it stops bouncing. Once it's fully settled it should **sit
+    there armed** with a **visible sprite** (a small primed-looking block) the
+    whole time it's rolling/armed — it should never just vanish between "it
+    stopped bouncing" and "it goes off" — not go off immediately: it should
+    only detonate when its `Duration` runs out or a mob bumps it directly. Fire
+    it into a corner and watch it rattle around, then settle and wait out the
+    rest of its `Duration:10` before it finally pops. Tune `bounce.restitution`
+    / `bounce.floor-friction` if it still feels too bouncy or too dead, or
+    `bounce.rest-speed` if it's calling "settled" too early while still
+    visibly skating. Slime Block is the ingredient.
 22. **Spawn ricochet.** `DIAMOND_SWORD DAMAGE SPAWN MULTISHOT SPREAD` fired
     **straight at a wall** → the children should spray **back off the wall into
     the room**, not vanish into it. (Compare: before this, a wall-hit cluster
@@ -209,10 +219,13 @@ the bits that need a real player or an eye:
     TREASURE` (or `from:gold_block`). Right-click/brush **any** block → a chance to
     drop loot with a sparkle. More gold = procs more often *and* rarer finds
     (diamonds, enchanted apples at the top). Watch the cooldown so it's not a
-    firehose. Every stroke — loot or not — should also leave the block **scoured
-    to Coarse Dirt**; brush that same spot again and it should do nothing (no
-    sound, no roll, no re-transform) since there's nothing left to find. A
-    placed Fusion Machine should never turn to dirt even if you brush it.
+    firehose. Every stroke — loot or not — should also leave the block scoured:
+    **solid ground** (stone, dirt, ...) turns to **Coarse Dirt**, and brushing
+    that same spot again should do nothing (no sound, no roll, no re-transform)
+    since there's nothing left to find. A **non-solid** plant/decoration (grass,
+    ferns, flowers, ...) should instead just **break**, like a quick brush would
+    — not turn into a big block of dirt. A placed Fusion Machine should never
+    turn to dirt even if you brush it.
 32. **VFX pass (by eye).** A base `DAMAGE` hit is a small **red spark** (not an
     explosion) — `EXPAND` it a few times to grow a real blast; `PUSH` keeps the
     explosive shove. `FIRE`/`ICE` now show a flame/frost **poof**. The `PERSIST`
@@ -242,9 +255,17 @@ the bits that need a real player or an eye:
       rather than just turning off. Walk right up nose-to-the-wall (as close as
       collision lets you get): it should still light up — right around your
       own head — rather than going dark, since even the closest point in front
-      of you is now inside the wall. Take the armor off and both effects lapse
-      (the outline after a few seconds; the light immediately). Lantern is the
-      ingredient.
+      of you is now inside the wall. **Corners and overhangs:** stand somewhere
+      the straight line in front of you *and* behind you are both walled off
+      (a tight corner, or crouched under a low overhang) — it should still find
+      an opening to the side rather than going dark; it no longer only searches
+      the single line you're looking along. **Cobwebs:** a structure thick with
+      them (a generated mineshaft is a good test) shouldn't starve it either —
+      a cobweb is a fine place for the light to sit, not a wall. It shouldn't
+      **flicker** rapidly between two spots as you look around; a settled spot
+      should hold until something clearly better appears. Take the armor off
+      and both effects lapse (the outline after a few seconds; the light
+      immediately). Lantern is the ingredient.
 34. **Jetpack (Jet Elytra).** Wear an `ELYTRA LIFT` (or a `LIFT` chestplate) →
     a normal ground jump is unchanged (tap, hop, land — vanilla). This is a
     **thruster, not a glider**: double-tapping jump to deploy the elytra glide
@@ -264,6 +285,12 @@ the bits that need a real player or an eye:
       (vertical) and `worn.jetpack-lateral-thrust-per-tick` /
       `worn.jetpack-lateral-max-velocity` (lateral). Breeze Rod is the
       ingredient.
+    - **Fall damage stays real.** The jetpack is thrust, not immunity — fly up
+      high, stop thrusting, and fall: you should still take normal fall damage
+      landing. (Regression: the `AllowFlight` grant needed to dodge the
+      anti-fly kick also lets a double-tap-space slip into real creative-style
+      flight, which suppresses fall damage outright — confirm that doesn't
+      happen even if you mash jump while airborne.)
 35. **World filter (`allowed-worlds`).** Set `allowed-worlds: [world]` and
     restart. In `world`, fusion still works as normal (swing/shoot a fused
     weapon, wear GLOW/LIFT armor, brush a Golden Brush). Teleport or portal to
@@ -302,6 +329,62 @@ the bits that need a real player or an eye:
     read at fuse time, not just its material. Tune `wand.radius` /
     `wand.cloud-duration-ticks` / `wand.effect-duration-ticks` /
     `wand.amplifier` / `wand.cooldown-ms` to taste.
+38. **Potion on any weapon.** POTION isn't Wand/Stick-only — fuse it onto a
+    normal weapon, e.g. `DIAMOND_SWORD POTION:POISON` or `BOW POTION:POISON
+    LIFETIME`, and confirm a cloud appears **wherever that weapon's shot
+    actually lands** (arm's reach for the sword, downrange for the bow) — the
+    same cloud the Wand casts, just delivered by a real shot instead of an
+    instant point-and-cast. The Wand itself (a fused `STICK`) should be
+    unaffected: it still casts instantly at the crosshair on a swing, and
+    shouldn't *also* fire a duplicate cloud from a melee bolt on that same
+    swing.
+39. **Armor auras — no modifier is off-limits.** Armor is just another
+    possible *source* of a shot: fuse **anything** onto a piece — not just
+    FIRE/ICE, but PUSH/DAMAGE/MULTISHOT/HOMING/SPREAD/GRAVITY/MOB/... — and
+    wearing it periodically fires a real shot rooted at you, the exact same
+    compile/payload pipeline a weapon's own swing/shot uses.
+    - **Simple aura (`DIAMOND_CHESTPLATE FIRE`):** with no flight modifiers,
+      a pulse defaults to a **stationary, zero-duration burst right at you**
+      — `EXPAND` on the armor widens the radius, and so on, just centred on
+      you instead of a landing spot.
+    - **Real flying shots:** fuse `MULTISHOT HOMING DAMAGE SPEED:2
+      DURATION:2` onto a piece and confirm each pulse **genuinely fires a
+      volley of homing bolts out from you** that chase and hit nearby
+      mobs — not an inert burst at your feet. (HOMING needs SPEED and
+      DURATION to have real velocity and time to fly/curve, same as it would
+      pairing with LIFETIME on any other weapon.)
+    - **Cast frequency:** fuse `RATE:<seconds>` onto a piece to tune how
+      often *that* armor's aura re-casts, independent of the server default
+      (`worn.aura-period-ticks`) — low for a rapid heartbeat, high for a slow
+      one. Confirm a low `RATE` visibly pulses faster than the default.
+    - **Cast distance:** fuse `DISTANCE:<blocks>` to tune how far *that*
+      armor's wearer has to walk to force an early pulse, independent of the
+      server default (`worn.aura-distance-blocks`) — low so even a couple
+      steps re-casts, high so only real movement does. `RATE` and `DISTANCE`
+      are independent knobs (fuse either, both, or neither) meant for quick
+      iteration on what an aura's cadence should feel like without touching
+      the server config.
+    - **Two ways to trigger a pulse regardless of RATE/DISTANCE:** stand
+      still and it still pulses on the timer; walk around and it pulses
+      *more* often, leaving a denser trail — whichever threshold you cross
+      first fires the next one.
+    - **Combining pieces:** fuse `FIRE` on a helmet and `EXPAND` on boots and
+      confirm the aura comes out with the *widened* radius — all four armor
+      pieces' modifiers combine into one stack, same RPN nearest-previous
+      binding a weapon's own fused ids get.
+    - **Immunity:** you should be immune to your own FIRE aura — nearby
+      mobs/players catch fire, but you never do, even the real fire blocks it
+      drops underfoot (you should notice you're carrying Fire Resistance the
+      whole time it's worn). ICE needs no equivalent (it only ever lays a
+      harmless snow layer, never a real hazard).
+40. **Right-clicking an entity doesn't fire your weapon.** Hold a fused sword
+    (or Wand) and **trade with a villager** (or right-click any entity — a
+    horse, an item frame, ...) → the trade GUI should open normally and your
+    weapon should **not** fire. (Regression: right-clicking an entity plays
+    its own arm-swing animation, which used to slip past the same-tick
+    right-click filter that already protects against opening the Fusion
+    Machine — that filter only watched right-clicks on a block/air, not on an
+    entity.)
 
 ---
 

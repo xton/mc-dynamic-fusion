@@ -338,17 +338,26 @@ the bits that need a real player or an eye:
     unaffected: it still casts instantly at the crosshair on a swing, and
     shouldn't *also* fire a duplicate cloud from a melee bolt on that same
     swing.
-39. **Armor auras (Fire/Ice).** Fuse `FIRE` (or `ICE`) onto a piece of armor,
-    e.g. `DIAMOND_CHESTPLATE FIRE` — wearing it should periodically
-    **ignite/freeze the ground and creatures in a radius around you**, the
-    same environmental sweep a FIRE/ICE projectile does, just centred on you
-    instead of a landing spot. `EXPAND` on the armor widens the radius. You
-    should be **immune to your own aura**: nearby mobs/players catch
-    fire/freeze, but you never do — even the real fire blocks a FIRE aura
-    drops underfoot shouldn't burn you (you should notice you're carrying Fire
-    Resistance the whole time it's worn). An ICE aura needs no equivalent
-    (it only ever lays a harmless snow layer, never a real hazard). Tune
-    `worn.aura-period-ticks` for how often it sweeps.
+39. **Armor auras (any emitter, not just Fire/Ice).** Armor is just another
+    possible *source* of a shot: fuse any emitter onto a piece, e.g.
+    `DIAMOND_CHESTPLATE FIRE` (or `ICE`, or even `PUSH`/`DAMAGE`) — wearing it
+    periodically fires a **stationary, zero-duration burst rooted at you**,
+    the exact same compile/payload pipeline a real weapon's shot uses (so
+    `EXPAND` on the armor widens the radius, `PUSH`/`DAMAGE` shove/hurt
+    whatever's nearby, and so on) — just centred on you instead of a landing
+    spot. **Two ways to trigger a pulse:** stand still and it still pulses on
+    a steady clock (`worn.aura-period-ticks`); walk around and it pulses
+    *more* often, leaving a denser trail (`worn.aura-distance-blocks`) —
+    whichever threshold you cross first fires the next one. **Combining
+    pieces:** fuse `FIRE` on a helmet and `EXPAND` on boots and confirm the
+    aura comes out with the *widened* radius — all four armor pieces'
+    modifiers combine into one stack, same RPN nearest-previous binding a
+    weapon's own fused ids get. **Immunity:** you should be immune to your
+    own FIRE aura — nearby mobs/players catch fire, but you never do, even
+    the real fire blocks it drops underfoot (you should notice you're
+    carrying Fire Resistance the whole time it's worn). ICE needs no
+    equivalent (it only ever lays a harmless snow layer, never a real
+    hazard).
 40. **Right-clicking an entity doesn't fire your weapon.** Hold a fused sword
     (or Wand) and **trade with a villager** (or right-click any entity — a
     horse, an item frame, ...) → the trade GUI should open normally and your

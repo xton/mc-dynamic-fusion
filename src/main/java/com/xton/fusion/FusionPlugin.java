@@ -259,10 +259,16 @@ public final class FusionPlugin extends JavaPlugin implements Listener {
         scheduler.runRepeating(new WornEffectTask(reader, worldFilter), 40,
                 getConfig().getLong("worn.effect-period-ticks", 100));
 
-        // Worn FIRE/ICE armor auras: ignite/freeze a radius around the wearer,
-        // who's excluded from their own aura's effects (see WornAuraTask).
-        scheduler.runRepeating(new WornAuraTask(reader, registry, launcher, envSettings, worldFilter), 40,
-                getConfig().getLong("worn.aura-period-ticks", 20));
+        // Worn armor auras: any emitter fused onto armor (FIRE/ICE, PUSH,
+        // DAMAGE, ...) periodically fires a stationary anchor shot rooted at
+        // the wearer, who's excluded from their own aura's effects (see
+        // WornAuraTask). Ticked frequently so the distance-travelled trigger
+        // stays responsive to a moving player, not just the timer.
+        WornAuraTask auraTask = new WornAuraTask(reader, registry, launcher, worldFilter,
+                getConfig().getInt("worn.aura-period-ticks", 20),
+                getConfig().getDouble("worn.aura-distance-blocks", 2.0));
+        getServer().getPluginManager().registerEvents(auraTask, this);
+        scheduler.runRepeating(auraTask, 20, getConfig().getLong("worn.aura-check-period-ticks", 1));
 
         // GLOW's other half: Minecraft never renders your own body in first
         // person, so the Glowing effect above is invisible to the wearer

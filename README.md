@@ -26,8 +26,8 @@ Noita-style. Modifiers come in two kinds:
 | **emit** | **Damage** | Fire Charge, Flint | a damaging burst where it lands |
 | **emit** | **Heal** | Golden Apple | mends friendly entities & the caster; skips hostiles (Damage's complement) |
 | **emit** | **Mining** | Amethyst Shard | carves a tunnel along the flight (Expand widens it); **stack Mining to break harder blocks** — add Pierce to bore through |
-| **emit** | **Fire** | Flint and Steel, Magma Block | spreads fire, melts snow/ice, ignites mobs in a radius (a touch wider than Mining); fused onto **armor** instead, it's a worn aura — periodically ignites the ground/creatures around the wearer, who's immune to it |
-| **emit** | **Ice** | Blue Ice, Snowball | freezes water→ice, lava→obsidian, snuffs fire, chills mobs; fused onto **armor**, the same aura treatment — freezes a radius around the wearer, no self-immunity needed since it never creates a real hazard |
+| **emit** | **Fire** | Flint and Steel, Magma Block | spreads fire, melts snow/ice, ignites mobs in a radius (a touch wider than Mining); fused onto **armor**, it becomes a worn aura (see below) that ignites the ground/creatures around the wearer, who's kept immune to their own fire |
+| **emit** | **Ice** | Blue Ice, Snowball | freezes water→ice, lava→obsidian, snuffs fire, chills mobs; as a worn aura, freezes a radius around the wearer — no self-immunity needed since it never creates a real hazard |
 | **emit** | **Deposit:_block_** | Dirt, Sand, Water/Lava Bucket, Cobweb | fills the empty air in a radius with that block (`Deposit:Dirt`, `Deposit:Water`, …) |
 | **emit** | **Spawn** | Firework Rocket, Egg | at the terminus, bursts into a fresh child built from every modifier *after* Spawn |
 | **emit** | **Delay:_n_** | Clock | like Spawn, but the child blinks in place for _n_ s then goes off (lure-then-blast) |
@@ -54,6 +54,7 @@ Noita-style. Modifiers come in two kinds:
 | *xf (fly)* | **Duration:_n_** | *(parameterized)* | pin the lifetime to _n_ seconds (`Duration:4`) — absolute, unlike Lifetime's added range |
 | **worn** | **Glow** | Lantern, Glow Berries | fused onto **armor**, gives you a powerful glowing outline for others to see, plus a client-side light tracked in front of your face so you can actually see by it too (not night vision) |
 | **worn** | **Lift** | Breeze Rod | fused onto a **chestplate/elytra**, a directional jetpack: hold jump to rise (capped), crouch to brake and fall, forward/back/strafe to drift — blocks vanilla elytra gliding so its look-tied auto-forward can't fight it |
+| **worn** | *(any emitter)* | — | fused onto **armor**, any emitter (Fire, Ice, Push, Damage, ...) becomes an **aura**: armor is just another possible source of a shot, so it periodically fires a stationary, zero-duration burst rooted at the wearer — the same compile/payload pipeline a real weapon uses, just centred on a person instead of a landing spot. A pulse fires whenever *either* a timer (`worn.aura-period-ticks`) or a distance walked (`worn.aura-distance-blocks`) is crossed, whichever comes first, so standing still still gets a heartbeat and moving fast leaves a denser trail. All four armor pieces' fused ids combine into one stack (Fire on a helmet + Expand on boots widens the aura). The wearer is excluded from their own burst/environmental effects like any caster, and is kept immune to whatever real-world hazard their aura would otherwise expose them to (Fire Resistance for Fire/lava). |
 
 Because these are small primitives, weapons **compose**: a nova is
 `Push · Expand · Expand`; a fireball is `Damage · Amplify · Fire`; a shotgun is

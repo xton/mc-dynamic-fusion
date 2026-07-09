@@ -115,6 +115,30 @@ public final class ProjectileLauncher {
     }
 
     /**
+     * Fire a stationary, <em>zero-duration</em> burst rooted at {@code caster}'s
+     * own location — the mechanism worn armor uses to pulse whatever's fused
+     * onto it (FIRE/ICE, but the same machinery as PUSH/DAMAGE/DEPOSIT/... —
+     * armor is just another possible source of a shot) as an aura around the
+     * wearer, on whatever cadence the caller (see {@code WornAuraTask}) decides.
+     * "Zero duration": seeded to detonate on the very next tick, the same
+     * convention {@link #compile(ModifierStack, int)} already uses for the
+     * Wand's cloud — so a bare {@code FIRE} fused onto armor just pulses fire at
+     * the wearer with no flight involved, while an explicit {@code DURATION} on
+     * the armor still overrides it outright if someone wants the anchor to sit
+     * a while before its (single) detonation. The caster is excluded from their
+     * own burst/environmental effects like any other caster (real hazards their
+     * aura might still leave behind, like fire blocks underfoot, are the
+     * caller's problem to grant immunity against).
+     */
+    public void launchAnchored(Player caster, ModifierStack stack) {
+        ProjectileSpec spec = compile(stack, 1);
+        Payload payload = buildPayload(spec);
+        Shot shot = new Shot(caster, 0, maxSpawnGeneration, envSettings, bounceSettings, this, new AtomicBoolean(false));
+        new FusionProjectile(plugin, payload, spec, caster.getWorld(),
+                caster.getLocation(), new Vector(0, 0, 0), shot).start();
+    }
+
+    /**
      * A bow release: a ranged, arcing shot whose speed scales with draw force
      * (a tap still fires a slow shot).
      */

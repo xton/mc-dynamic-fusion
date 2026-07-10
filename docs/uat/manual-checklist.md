@@ -381,8 +381,15 @@ the bits that need a real player or an eye:
     - **Immunity:** you should be immune to your own FIRE aura — nearby
       mobs/players catch fire, but you never do, even the real fire blocks it
       drops underfoot (you should notice you're carrying Fire Resistance the
-      whole time it's worn). ICE needs no equivalent (it only ever lays a
-      harmless snow layer, never a real hazard).
+      whole time it's worn), **and you should never visibly catch fire
+      either** — no flame overlay, no burning character model, even while
+      standing right in the fire it drops. (Fire Resistance alone only zeros
+      the damage; vanilla still sets fire ticks on contact regardless, so
+      standing in your own aura's fire used to look like you were burning
+      even though you took no damage — `WornAuraTask#onCombust` now cancels
+      that ignition outright for a fire/lava-aura wearer.) ICE needs no
+      equivalent (it only ever lays a harmless snow layer, never a real
+      hazard).
 40. **Right-clicking an entity doesn't fire your weapon.** Hold a fused sword
     (or Wand) and **trade with a villager** (or right-click any entity — a
     horse, an item frame, ...) → the trade GUI should open normally and your

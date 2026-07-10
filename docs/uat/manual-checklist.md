@@ -285,16 +285,18 @@ the bits that need a real player or an eye:
       (vertical) and `worn.jetpack-lateral-thrust-per-tick` /
       `worn.jetpack-lateral-max-velocity` (lateral). Breeze Rod is the
       ingredient.
+    - **Requires `allow-flight=true` in `server.properties`.** Sustained
+      airborne thrust with no vanilla-recognized cause otherwise trips the
+      server's own anti-fly kick after a few seconds — `allow-flight` is the
+      server-wide switch that silences that specific check (see
+      `JetpackTask`'s class doc for how). The plugin logs a startup warning if
+      it's off. This never grants the player real flight, whether or not it's
+      set — a vanilla client only offers the double-tap-space flight gesture
+      when the server has separately handed it the `mayfly` permission, which
+      the jetpack never touches.
     - **Fall damage stays real.** The jetpack is thrust, not immunity — fly up
       high, stop thrusting, and fall: you should still take normal fall damage
-      landing. (Regression: the `AllowFlight` grant needed to dodge the
-      anti-fly kick also lets the client's double-tap-space gesture toggle
-      real creative-style flight, which suppresses fall damage outright.
-      That toggle is now blocked proactively — `JetpackFlightListener`
-      cancels the transition into real flight the moment the client
-      requests it, the same way `JetpackGlideListener` already blocks
-      vanilla gliding — rather than reacting to it after the fact. Confirm
-      fall damage is still real even if you mash jump while airborne.)
+      landing, even if you mash jump while airborne.
 35. **World filter (`allowed-worlds`).** Set `allowed-worlds: [world]` and
     restart. In `world`, fusion still works as normal (swing/shoot a fused
     weapon, wear GLOW/LIFT armor, brush a Golden Brush). Teleport or portal to

@@ -81,7 +81,6 @@ import com.xton.fusion.util.CooldownMap;
 import com.xton.fusion.util.Scheduler;
 import com.xton.fusion.util.WorldFilter;
 import com.xton.fusion.wearable.GlowLightTask;
-import com.xton.fusion.wearable.JetpackFlightListener;
 import com.xton.fusion.wearable.JetpackGlideListener;
 import com.xton.fusion.wearable.JetpackTask;
 import com.xton.fusion.wearable.WornAuraTask;
@@ -288,12 +287,14 @@ public final class FusionPlugin extends JavaPlugin implements Listener {
         // Jetpack: a fused LIFT chestplate/elytra is a directional thruster, not
         // an elytra glide — block vanilla gliding outright (its own look-tied
         // auto-forward would fight this) and ramp a controlled rise/lateral
-        // drift instead. Ticked every tick so it feels smooth. Real creative-
-        // style flight is blocked the same way (see JetpackFlightListener), so
-        // the AllowFlight exemption below (needed to dodge the anti-fly kick)
-        // never actually lets the player fly for real.
+        // drift instead. Ticked every tick so it feels smooth. Relies on
+        // server.properties' allow-flight to keep the server's anti-fly kick
+        // from ever engaging (see JetpackTask's class doc) — warn if it's off.
+        if (!getServer().getAllowFlight()) {
+            getLogger().warning("worn.jetpack (LIFT) needs allow-flight=true in server.properties, "
+                    + "or sustained airborne thrust will eventually trigger the anti-fly kick.");
+        }
         getServer().getPluginManager().registerEvents(new JetpackGlideListener(reader, worldFilter), this);
-        getServer().getPluginManager().registerEvents(new JetpackFlightListener(reader, worldFilter), this);
         scheduler.runRepeating(new JetpackTask(reader,
                 getConfig().getDouble("worn.jetpack-thrust-per-tick", 0.1),
                 getConfig().getDouble("worn.jetpack-max-velocity", 0.7),

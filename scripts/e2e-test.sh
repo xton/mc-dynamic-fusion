@@ -66,7 +66,7 @@ docker run -d --name "$NAME" \
   -e EULA=TRUE -e TYPE=PAPER -e VERSION="$VERSION" \
   -e ONLINE_MODE=FALSE -e MEMORY=2G \
   -e MODE=creative -e DIFFICULTY=peaceful -e OPS="$BOT_USER" \
-  -e SPAWN_PROTECTION=0 \
+  -e SPAWN_PROTECTION=0 -e ALLOW_FLIGHT=TRUE \
   -e MODRINTH_PROJECTS="${MC_MODRINTH_PROJECTS:-viaversion,viabackwards}" \
   ${SANDBOX_DOCKER_ARGS[@]:+"${SANDBOX_DOCKER_ARGS[@]}"} \
   -p "$PORT":25565 \

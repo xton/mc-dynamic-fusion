@@ -130,6 +130,9 @@ cost XP levels (`fusion.cost`, off by default).
 - **Java 25** (Minecraft 26.1+ requires it)
 - **Paper 26.1.2+** server (build pins `26.1.2.build.72-stable`, the latest
   stable line; a plugin built against it runs fine on newer 26.x servers)
+- **`allow-flight=true`** in `server.properties` — needed for the Lift
+  jetpack's sustained airborne thrust to not eventually trip the server's
+  anti-fly kick. The plugin logs a startup warning if it's off.
 
 ## Build
 

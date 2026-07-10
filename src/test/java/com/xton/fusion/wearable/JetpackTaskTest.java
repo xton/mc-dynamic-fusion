@@ -25,11 +25,12 @@ import com.xton.fusion.modifier.impl.LiftModifier;
 import com.xton.fusion.util.WorldFilter;
 
 /**
- * Since we block vanilla elytra gliding for LIFT, the jetpack has to grant its
- * own {@code setAllowFlight} exemption or the server's own anti-fly check
- * kicks the player — this covers that grant/revoke bookkeeping (the actual
- * jump/WASD thrust needs a real client's Input packets, so it isn't
- * MockBukkit-testable; see JetpackGlideListenerTest for what is).
+ * The jetpack never touches {@code AllowFlight}/{@code isFlying} at all — the
+ * server's anti-fly kick is silenced server-wide via {@code server.properties}'
+ * {@code allow-flight} (see {@link JetpackTask}'s class doc), so there's no
+ * per-player permission bookkeeping left to do here. This just guards that
+ * invariant (the actual jump/WASD thrust needs a real client's Input packets,
+ * so it isn't MockBukkit-testable; see JetpackGlideListenerTest for what is).
  */
 class JetpackTaskTest {
 
@@ -62,25 +63,13 @@ class JetpackTaskTest {
     }
 
     @Test
-    void grantsFlightWhileAirborneWithLift() {
+    void neverGrantsFlightToAnAirborneLiftWearer() {
         PlayerMock player = liftWearer(false);
-        assertFalse(player.getAllowFlight(), "sanity: starts without flight");
 
         task.run();
 
-        assertTrue(player.getAllowFlight(), "airborne LIFT wearer needs the exemption or vanilla kicks them");
-    }
-
-    @Test
-    void revokesFlightOnceGrounded() {
-        PlayerMock player = liftWearer(false);
-        task.run();
-        assertTrue(player.getAllowFlight());
-
-        player.setOnGround(true);
-        task.run();
-
-        assertFalse(player.getAllowFlight(), "landing should give back the exemption we only lent them");
+        assertFalse(player.getAllowFlight(),
+                "the jetpack relies on server.properties allow-flight, not a per-player grant");
     }
 
     @Test
@@ -95,28 +84,13 @@ class JetpackTaskTest {
     }
 
     @Test
-    void neverRevokesACreativePlayersOwnFlight() {
-        PlayerMock player = liftWearer(true); // grounded, not actively jetpacking
+    void neverTouchesACreativePlayersOwnFlight() {
+        PlayerMock player = liftWearer(false);
         player.setGameMode(GameMode.CREATIVE);
         player.setAllowFlight(true); // their own legitimate creative flight
 
         task.run();
 
         assertTrue(player.getAllowFlight(), "must never strip a creative player's real flight permission");
-    }
-
-    @Test
-    void forcesOffRealFlightSoFallDamageStaysLive() {
-        // AllowFlight (granted for the anti-kick exemption) also lets a
-        // double-tap-space slip into real creative-style flight, which
-        // suppresses gravity/fall damage outright — that's not the jetpack's
-        // deal, so it must get forced back off every tick it's active.
-        PlayerMock player = liftWearer(false);
-        task.run(); // grants AllowFlight
-        player.setFlying(true); // simulate the client's double-tap toggling real flight
-
-        task.run();
-
-        assertFalse(player.isFlying(), "real flight must be forced back off — thrust, not fall-damage immunity");
     }
 }

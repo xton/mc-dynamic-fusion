@@ -1,7 +1,6 @@
 package com.xton.fusion.wearable;
 
 import org.bukkit.Bukkit;
-import org.bukkit.GameMode;
 import org.bukkit.Input;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
@@ -32,21 +31,18 @@ import com.xton.fusion.util.WorldFilter;
  *
  * <p>Sustained airborne movement with no vanilla-recognized cause (gliding,
  * creative/spectator, levitation, ...) trips the server's own anti-fly check
- * and kicks the player — since we deliberately block real gliding (see
- * {@link JetpackGlideListener}), we have to supply that exemption ourselves:
- * {@link Player#setAllowFlight} is granted the moment the jetpack engages and
- * revoked the moment it doesn't, so a survival player is never left with a
- * standing "you can fly" permission (creative/spectator players, who already
- * have it legitimately, are left alone either way).
- *
- * <p>Granting AllowFlight has a side effect beyond silencing that kick, though:
- * it's also what lets the client toggle <em>real</em> creative-style flight via
- * the vanilla double-tap-space gesture — trivially easy to trigger by accident
- * since jump is already the jetpack's own "rise" button. Real flight
- * ({@link Player#isFlying()}) suppresses gravity and fall damage outright,
- * which isn't the jetpack's deal — it's thrust, not immunity. So every tick the
- * jetpack is active, flying is forced back off if it's somehow become true,
- * keeping real fall risk in play no matter what the client tries.
+ * and kicks the player. That check's gate is the server-wide
+ * {@code allow-flight} property in {@code server.properties} — with it on, the
+ * kick never engages for anyone, full stop, before it even looks at a per-
+ * player flight permission. So the jetpack never has to touch
+ * {@link Player#setAllowFlight} at all: no grant/revoke bookkeeping, and
+ * critically no {@code abilities.mayfly} bit ever reaches the client, which is
+ * what the vanilla double-tap-space gesture itself checks before it'll toggle
+ * real creative-style flight. With that bit never set, the gesture has nothing
+ * to engage — {@link Player#isFlying()} can never become true from this, so
+ * gravity and fall damage stay entirely vanilla with no extra code needed to
+ * enforce it. {@code FusionPlugin} warns on startup if {@code allow-flight} is
+ * off, since the jetpack depends on it.
  */
 public final class JetpackTask implements Runnable {
 
@@ -73,23 +69,8 @@ public final class JetpackTask implements Runnable {
             boolean active = !player.isOnGround() && WornLift.isWorn(reader, player)
                     && worldFilter.isAllowed(player.getWorld());
             if (!active) {
-                // grounded jumps stay vanilla; revoke the flight exemption we
-                // grant below the moment it's no longer earned (never touch a
-                // creative/spectator player's own legitimate flight).
-                if (player.getAllowFlight() && player.getGameMode() != GameMode.CREATIVE
-                        && player.getGameMode() != GameMode.SPECTATOR) {
-                    player.setAllowFlight(false);
-                }
+                // grounded jumps stay vanilla
                 continue;
-            }
-            if (!player.getAllowFlight()) {
-                player.setAllowFlight(true);
-            }
-            if (player.isFlying()) {
-                // The AllowFlight grant above lets a double-tap-space slip into
-                // real creative-style flight — force it back off so gravity and
-                // fall damage stay live; the jetpack is thrust, not immunity.
-                player.setFlying(false);
             }
             Input input = player.getCurrentInput();
             Vector v = player.getVelocity();

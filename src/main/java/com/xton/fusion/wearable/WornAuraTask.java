@@ -13,6 +13,7 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityCombustEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
@@ -62,6 +63,17 @@ import com.xton.fusion.util.WorldFilter;
  * (Fire Resistance for fire/lava), the same "refresh with headroom" treatment
  * {@link WornEffectTask} gives GLOW. ICE's aura never creates a real hazard
  * block (a plain snow layer, not powder snow), so it needs no equivalent.
+ *
+ * <p>Fire Resistance only zeroes the <em>damage</em> from that contact —
+ * vanilla still sets the entity's fire ticks and the flame overlay/model
+ * engages regardless, since those are a separate system from the damage
+ * itself. That's a real vanilla quirk (drink a Fire Resistance potion and
+ * stand in lava; you take no damage but still visibly burn), and it's
+ * distracting enough on a FIRE aura wearer — who's constantly standing in
+ * their own dropped fire — to be worth closing: {@link #onCombust} cancels
+ * ignition outright for a wearer whose compiled aura carries a fire/lava
+ * hazard, the same real-world-hazard check {@link #refreshImmunity} already
+ * makes.
  */
 public final class WornAuraTask implements Runnable, Listener {
 
@@ -162,6 +174,23 @@ public final class WornAuraTask implements Runnable, Listener {
             return PotionEffectType.FIRE_RESISTANCE; // real lava — Fire Resistance covers lava damage too
         }
         return null;
+    }
+
+    /** Never let a fire/lava-aura wearer actually catch fire — see the class doc. */
+    @EventHandler(ignoreCancelled = true)
+    public void onCombust(EntityCombustEvent event) {
+        if (!(event.getEntity() instanceof Player player) || !worldFilter.isAllowed(player.getWorld())) {
+            return;
+        }
+        ModifierStack stack = wornStack(player);
+        if (stack.isEmpty()) {
+            return;
+        }
+        ProjectileSpec spec = launcher.compile(stack);
+        boolean hasFireHazard = spec.payload().stream().anyMatch(aoe -> immunityFor(aoe) != null);
+        if (hasFireHazard) {
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler

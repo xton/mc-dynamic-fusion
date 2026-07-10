@@ -9,6 +9,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.Zombie;
+import org.bukkit.event.entity.EntityCombustEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.potion.PotionEffectType;
@@ -117,6 +118,44 @@ class WornAuraTaskTest {
         task.run();
 
         assertFalse(player.hasPotionEffect(PotionEffectType.FIRE_RESISTANCE), "ICE has no fire-immunity need");
+    }
+
+    @Test
+    void fireAuraArmorCancelsItsOwnWearerCatchingFire() {
+        // Fire Resistance (asserted above) only zeroes the damage — vanilla still
+        // sets fire ticks and the flame overlay engages regardless, since those
+        // are a separate system. A FIRE aura wearer is constantly standing in
+        // their own dropped fire, so that's worth closing outright.
+        WornAuraTask task = newTask(20, 2.0);
+        PlayerMock player = wearer(new Location(world, 0.5, 100, 0.5), FireModifier.ID);
+        EntityCombustEvent event = new EntityCombustEvent(player, 8f);
+
+        task.onCombust(event);
+
+        assertTrue(event.isCancelled(), "a FIRE aura wearer should never visibly catch fire from their own aura");
+    }
+
+    @Test
+    void iceAuraArmorDoesNotCancelCatchingFire() {
+        WornAuraTask task = newTask(20, 2.0);
+        PlayerMock player = wearer(new Location(world, 0.5, 100, 0.5), IceModifier.ID);
+        EntityCombustEvent event = new EntityCombustEvent(player, 8f);
+
+        task.onCombust(event);
+
+        assertFalse(event.isCancelled(), "ICE carries no fire hazard, so there's nothing to guard against");
+    }
+
+    @Test
+    void unfusedArmorDoesNotCancelCatchingFire() {
+        WornAuraTask task = newTask(20, 2.0);
+        PlayerMock player = server.addPlayer();
+        player.getInventory().setChestplate(new ItemStack(Material.DIAMOND_CHESTPLATE));
+        EntityCombustEvent event = new EntityCombustEvent(player, 8f);
+
+        task.onCombust(event);
+
+        assertFalse(event.isCancelled(), "no aura worn, nothing to guard against");
     }
 
     @Test

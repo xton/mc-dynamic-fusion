@@ -19,6 +19,9 @@ services:
       ONLINE_MODE: "TRUE"
       MEMORY: "${MC_MEMORY:-2G}"
       OPS: "${MC_USERNAME:-}"
+      # Needed for the Lift jetpack: without it, sustained airborne thrust
+      # eventually trips the server's anti-fly kick (see JetpackTask's class doc).
+      ALLOW_FLIGHT: "TRUE"
       MOTD: "DynamicFusion UAT"
       # ViaVersion lets newer clients (e.g. 26.2) join this 26.1.2 server, so
       # you don't need a client that exactly matches the server version. itzg

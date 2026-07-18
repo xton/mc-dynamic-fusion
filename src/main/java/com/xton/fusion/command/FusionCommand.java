@@ -16,6 +16,7 @@ import org.bukkit.block.Chest;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.ProxiedCommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -157,7 +158,8 @@ public final class FusionCommand implements CommandExecutor, TabCompleter {
      * checklist names by its display name and swing.
      */
     private boolean showcase(CommandSender sender) {
-        if (!(sender instanceof Player player)) {
+        Player player = resolvePlayer(sender);
+        if (player == null) {
             sender.sendMessage(Component.text("Only a player can spawn the showcase chests.", NamedTextColor.RED));
             return true;
         }
@@ -207,8 +209,25 @@ public final class FusionCommand implements CommandExecutor, TabCompleter {
         };
     }
 
+    /**
+     * The player behind {@code sender}, unwrapping the {@link ProxiedCommandSender} that
+     * Bukkit substitutes when the command runs via {@code /execute as <player> run ...}
+     * (its callee is the acting player; {@code sender} itself is never a {@link Player}
+     * in that case).
+     */
+    private static Player resolvePlayer(CommandSender sender) {
+        if (sender instanceof Player player) {
+            return player;
+        }
+        if (sender instanceof ProxiedCommandSender proxied && proxied.getCallee() instanceof Player player) {
+            return player;
+        }
+        return null;
+    }
+
     private boolean giveMachine(CommandSender sender) {
-        if (!(sender instanceof Player player)) {
+        Player player = resolvePlayer(sender);
+        if (player == null) {
             sender.sendMessage("Only players can receive a Fusion Machine.");
             return true;
         }
@@ -220,7 +239,8 @@ public final class FusionCommand implements CommandExecutor, TabCompleter {
 
     /** Quick hand-fusion: main hand = Target (kept), off hand = Ingredient (consumed). */
     private boolean fuse(CommandSender sender) {
-        if (!(sender instanceof Player player)) {
+        Player player = resolvePlayer(sender);
+        if (player == null) {
             sender.sendMessage("Only players can fuse.");
             return true;
         }

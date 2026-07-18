@@ -16,14 +16,20 @@ import org.bukkit.event.player.PlayerInteractEvent;
  * Wires Fusion Machine blocks to the GUI. A machine is marked by a PDC flag on
  * the placed block's own block-entity (no side file), so the marker can never
  * drift from the block: place tags it, break drops the machine item back, and
- * right-click opens the fusion (anvil) GUI.
+ * right-click opens the fusion GUI — the anvil for Java players, or a chest
+ * for Bedrock players (see {@link BedrockPlayers}: Geyser's anvil translation
+ * doesn't reliably support a non-vanilla item pairing).
  */
 public final class MachineListener implements Listener {
 
     private final FusionMachineMenu menu;
+    private final FusionChestMenu chestMenu;
+    private final BedrockPlayers bedrockPlayers;
 
-    public MachineListener(FusionMachineMenu menu) {
+    public MachineListener(FusionMachineMenu menu, FusionChestMenu chestMenu, BedrockPlayers bedrockPlayers) {
         this.menu = menu;
+        this.chestMenu = chestMenu;
+        this.bedrockPlayers = bedrockPlayers;
     }
 
     @EventHandler
@@ -59,7 +65,11 @@ public final class MachineListener implements Listener {
             return;
         }
         event.setCancelled(true); // suppress the vanilla enchanting-table UI
-        menu.open(player, block.getLocation());
+        if (bedrockPlayers.isBedrock(player)) {
+            chestMenu.open(player, block.getLocation());
+        } else {
+            menu.open(player, block.getLocation());
+        }
     }
 
     @EventHandler
@@ -70,10 +80,12 @@ public final class MachineListener implements Listener {
     @EventHandler
     public void onClick(InventoryClickEvent event) {
         menu.onClick(event);
+        chestMenu.onClick(event);
     }
 
     @EventHandler
     public void onClose(InventoryCloseEvent event) {
         menu.onClose(event);
+        chestMenu.onClose(event);
     }
 }

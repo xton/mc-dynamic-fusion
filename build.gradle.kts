@@ -10,6 +10,9 @@ repositories {
     maven("https://repo.papermc.io/repository/maven-public/") {
         name = "papermc"
     }
+    maven("https://repo.opencollab.dev/main/") {
+        name = "opencollab-floodgate"
+    }
 }
 
 // Minecraft 26.1+ requires Java 25 at runtime. 26.1.2 is the latest *stable*
@@ -17,8 +20,14 @@ repositories {
 // A plugin built against 26.1.2 runs fine on newer 26.x servers.
 val paperApi = "26.1.2.build.72-stable"
 
+// Floodgate is a soft dependency (compileOnly, not shaded in): servers without
+// Geyser/Floodgate installed run fine, BedrockPlayers just never detects a
+// Bedrock player. See BedrockPlayers for the runtime guard.
+val floodgateApi = "2.2.5-SNAPSHOT"
+
 dependencies {
     compileOnly("io.papermc.paper:paper-api:$paperApi")
+    compileOnly("org.geysermc.floodgate:api:$floodgateApi")
 
     testImplementation("io.papermc.paper:paper-api:$paperApi")
     testImplementation("org.junit.jupiter:junit-jupiter:6.1.1")

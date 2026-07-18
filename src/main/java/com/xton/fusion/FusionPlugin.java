@@ -26,6 +26,8 @@ import com.xton.fusion.item.FusedItemReader;
 import com.xton.fusion.item.FusionKeys;
 import com.xton.fusion.item.LatentRegistry;
 import com.xton.fusion.item.LoreGenerator;
+import com.xton.fusion.machine.BedrockPlayers;
+import com.xton.fusion.machine.FusionChestMenu;
 import com.xton.fusion.machine.FusionMachineMenu;
 import com.xton.fusion.machine.MachineGlowTask;
 import com.xton.fusion.machine.MachineListener;
@@ -222,9 +224,13 @@ public final class FusionPlugin extends JavaPlugin implements Listener {
                 new ProjectileListener(reader, registry, launcher, worldFilter), this);
 
         // Fusion Machine: placeable enchanting table, tagged via block-entity PDC
-        // (no side file), opening the anvil-style fusion GUI on right-click.
+        // (no side file), opening the anvil-style fusion GUI on right-click — or,
+        // for Bedrock players (Geyser's anvil translation can't reliably show a
+        // non-vanilla fusion result), a chest-based GUI instead.
         FusionMachineMenu menu = new FusionMachineMenu(engine, keys, fusionCost, getLogger(), debug);
-        getServer().getPluginManager().registerEvents(new MachineListener(menu), this);
+        FusionChestMenu chestMenu = new FusionChestMenu(this, engine, fusionCost, getLogger(), debug);
+        BedrockPlayers bedrockPlayers = new BedrockPlayers(this, getLogger());
+        getServer().getPluginManager().registerEvents(new MachineListener(menu, chestMenu, bedrockPlayers), this);
 
         // Golden Brush: brushing a fused BRUSH with TREASURE (gold) rolls a loot table.
         GoldenBrush goldenBrush = new GoldenBrush(new GoldenBrush.Settings(

@@ -4,6 +4,7 @@ main: com.xton.fusion.FusionPlugin
 api-version: '26.1.2'
 description: Noita-style emergent fusion weapons.
 author: xton
+softdepend: [floodgate]
 commands:
   fusion:
     description: DynamicFusion admin command (machine, fuse, give).
